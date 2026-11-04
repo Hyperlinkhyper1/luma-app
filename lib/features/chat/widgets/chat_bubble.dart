@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -318,8 +319,58 @@ class _ChatPicture extends StatelessWidget {
 
   final String path;
 
+  Future<void> _download(BuildContext context) async {
+    final t = L.of(context);
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    try {
+      final bytes = await File(path).readAsBytes();
+      final mobile = Platform.isAndroid || Platform.isIOS;
+      final name = path.split(RegExp(r'[\\/]')).last;
+      final target = await FilePicker.saveFile(
+        dialogTitle: t.assistantPictureDownload,
+        fileName: 'luma-$name',
+        type: FileType.image,
+        bytes: mobile ? bytes : null,
+      );
+      if (target == null) return;
+      if (!mobile) await File(target).writeAsBytes(bytes, flush: true);
+      messenger?.showSnackBar(SnackBar(content: Text(t.assistantPictureSaved)));
+    } catch (error) {
+      messenger?.showSnackBar(
+        SnackBar(content: Text(t.assistantPictureSaveFailed('$error'))),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final luma = context.luma;
+    final picture = _picture(context);
+    if (!File(path).existsSync()) return picture;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        picture,
+        const SizedBox(height: 6),
+        OutlinedButton.icon(
+          onPressed: () => _download(context),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: luma.textPrimary,
+            side: BorderSide(color: luma.border),
+            visualDensity: VisualDensity.compact,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+          icon: const Icon(Icons.download_rounded, size: 16),
+          label: Text(L.of(context).assistantPictureDownload),
+        ),
+      ],
+    );
+  }
+
+  Widget _picture(BuildContext context) {
     final luma = context.luma;
     return ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 420, maxHeight: 420),

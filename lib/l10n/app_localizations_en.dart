@@ -2827,6 +2827,21 @@ class LEn extends L {
   String get assistantPictureMissing => 'This picture isn\'t on this device';
 
   @override
+  String get assistantPictureDownload => 'Download';
+
+  @override
+  String get assistantPictureSaved => 'Saved the picture';
+
+  @override
+  String assistantPictureSaveFailed(String error) {
+    return 'Could not save the picture: $error';
+  }
+
+  @override
+  String get assistantPasteUnsupported =>
+      'These pasted files can\'t be attached here';
+
+  @override
   String get textLibraryMcMailbox => 'Mailbox';
 
   @override

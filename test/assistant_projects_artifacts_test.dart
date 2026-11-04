@@ -403,6 +403,75 @@ void main() {
   );
 
   test(
+    'a follow-up picture edits the previous one, or redraws without image input',
+    () async {
+      settings.setAdminPlan('orbit');
+      settings.setPictureTier('standard');
+      final sync = _ServerSync();
+      final bodies = <Map>[];
+      final imageController = ChatController(
+        repository: repo,
+        keyStore: _Keys(),
+        tools: _Tools(),
+        settings: settings,
+        syncService: sync,
+        imageDirectory: () async => directory,
+        imageClientFor: (url) => LumaImageClient(
+          serverUrl: url,
+          httpClient: MockClient((request) async {
+            bodies.add(jsonDecode(request.body) as Map);
+            return http.Response(
+              jsonEncode({
+                'image': base64Encode([bodies.length]),
+                'mimeType': 'image/png',
+              }),
+              200,
+            );
+          }),
+        ),
+      );
+      try {
+        final chat = await repo.createConversation();
+        await imageController.sendMessage(
+          chat,
+          'A red fox',
+          mode: AssistantComposeMode.picture,
+        );
+        expect(bodies.single['prompt'], 'A red fox');
+        expect(bodies.single['images'], isNull);
+
+        await imageController.sendMessage(
+          chat,
+          'Give it a hat',
+          mode: AssistantComposeMode.picture,
+        );
+        expect(bodies[1]['images'], [
+          {'mimeType': 'image/png', 'data': base64Encode([1])},
+        ]);
+        expect(bodies[1]['prompt'], contains('Edit that picture'));
+        expect(bodies[1]['prompt'], contains('- A red fox'));
+        expect(bodies[1]['prompt'], endsWith('New request: Give it a hat'));
+        final messages = await repo.loadMessages(chat);
+        expect(messages[2].content, 'Give it a hat');
+
+        settings.setPictureTier('pro');
+        await imageController.sendMessage(
+          chat,
+          'Make it night',
+          mode: AssistantComposeMode.picture,
+        );
+        expect(bodies[2]['images'], isNull);
+        expect(bodies[2]['prompt'], startsWith('Redraw the picture'));
+        expect(bodies[2]['prompt'], contains('- Give it a hat'));
+      } finally {
+        settings.setPictureTier('standard');
+        imageController.dispose();
+        sync.dispose();
+      }
+    },
+  );
+
+  test(
     'picture reference images persist with text and require a capable tier',
     () async {
       settings.setAdminPlan('orbit');

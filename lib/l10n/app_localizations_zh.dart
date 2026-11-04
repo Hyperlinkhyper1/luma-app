@@ -2699,6 +2699,20 @@ class LZh extends L {
   String get assistantPictureMissing => '此图片不在本设备上';
 
   @override
+  String get assistantPictureDownload => '下载';
+
+  @override
+  String get assistantPictureSaved => '图片已保存';
+
+  @override
+  String assistantPictureSaveFailed(String error) {
+    return '无法保存图片：$error';
+  }
+
+  @override
+  String get assistantPasteUnsupported => '无法在此处附加这些粘贴的文件';
+
+  @override
   String get textLibraryMcMailbox => '信箱';
 
   @override

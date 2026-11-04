@@ -4991,6 +4991,30 @@ abstract class L {
   /// **'This picture isn\'t on this device'**
   String get assistantPictureMissing;
 
+  /// No description provided for @assistantPictureDownload.
+  ///
+  /// In en, this message translates to:
+  /// **'Download'**
+  String get assistantPictureDownload;
+
+  /// No description provided for @assistantPictureSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved the picture'**
+  String get assistantPictureSaved;
+
+  /// No description provided for @assistantPictureSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not save the picture: {error}'**
+  String assistantPictureSaveFailed(String error);
+
+  /// No description provided for @assistantPasteUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'These pasted files can\'t be attached here'**
+  String get assistantPasteUnsupported;
+
   /// No description provided for @textLibraryMcMailbox.
   ///
   /// In en, this message translates to:

@@ -122,6 +122,12 @@ AiModeRoute canonicalAiImageRoute(
           reasoningEffort: route.reasoningEffort);
 }
 
+/// True for a route [canonicalAiImageRoute] left on Google with an id only
+/// OpenRouter serves (no OpenRouter key to move it to). Sending it to
+/// Google would just come back as a confusing `:predict` 404.
+bool aiImageNeedsOpenRouter(AiModeRoute route) =>
+    route.upstream == AiUpstream.google && route.model.contains('/');
+
 /// The upstreams that can draw. Mistral has no image model behind the
 /// OpenAI-shape API, so it is left out of the dashboard's picker.
 const kAiImageUpstreams = [AiUpstream.google, AiUpstream.openrouter];

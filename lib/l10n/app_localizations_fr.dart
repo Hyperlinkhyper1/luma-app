@@ -2858,6 +2858,21 @@ class LFr extends L {
       'Cette image n\'est pas sur cet appareil';
 
   @override
+  String get assistantPictureDownload => 'Télécharger';
+
+  @override
+  String get assistantPictureSaved => 'Image enregistrée';
+
+  @override
+  String assistantPictureSaveFailed(String error) {
+    return 'Impossible d\'enregistrer l\'image : $error';
+  }
+
+  @override
+  String get assistantPasteUnsupported =>
+      'Ces fichiers collés ne peuvent pas être joints ici';
+
+  @override
   String get textLibraryMcMailbox => 'Boîte aux lettres';
 
   @override

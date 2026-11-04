@@ -2847,6 +2847,21 @@ class LEs extends L {
       'Esta imagen no está en este dispositivo';
 
   @override
+  String get assistantPictureDownload => 'Descargar';
+
+  @override
+  String get assistantPictureSaved => 'Imagen guardada';
+
+  @override
+  String assistantPictureSaveFailed(String error) {
+    return 'No se pudo guardar la imagen: $error';
+  }
+
+  @override
+  String get assistantPasteUnsupported =>
+      'Estos archivos pegados no se pueden adjuntar aquí';
+
+  @override
   String get textLibraryMcMailbox => 'Buzón';
 
   @override

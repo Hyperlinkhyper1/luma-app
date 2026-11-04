@@ -2845,6 +2845,21 @@ class LNl extends L {
       'Deze afbeelding staat niet op dit apparaat';
 
   @override
+  String get assistantPictureDownload => 'Downloaden';
+
+  @override
+  String get assistantPictureSaved => 'Afbeelding opgeslagen';
+
+  @override
+  String assistantPictureSaveFailed(String error) {
+    return 'Kon de afbeelding niet opslaan: $error';
+  }
+
+  @override
+  String get assistantPasteUnsupported =>
+      'Deze geplakte bestanden kunnen hier niet worden bijgevoegd';
+
+  @override
   String get textLibraryMcMailbox => 'Brievenbus';
 
   @override

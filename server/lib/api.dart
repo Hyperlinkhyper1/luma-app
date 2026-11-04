@@ -4792,6 +4792,13 @@ class Api {
       final last = index == candidates.length - 1;
       final drawWith =
           canonicalAiImageRoute(candidate.route, config.configuredAiUpstreams);
+      if (aiImageNeedsOpenRouter(drawWith)) {
+        stderr.writeln('[luma] ${_guardedLabel(candidate.key)} '
+            '${drawWith.model} needs an OpenRouter key');
+        if (!last) continue;
+        return errorResponse(503, 'not_configured',
+            'The picture model is not available right now.');
+      }
       final imageBody = aiImageRequestBody(drawWith, prompt, images: images);
       final maxPrice = _applyAiMaxPrice(candidate.key, drawWith, imageBody);
       final int status;
@@ -4889,6 +4896,16 @@ class Api {
       return errorResponse(404, 'not_configured',
           'Set an API key for Google AI Studio or OpenRouter first.');
     }
+    if (aiImageNeedsOpenRouter(route)) {
+      return jsonResponse(200, {
+        'ok': false,
+        'upstream': route.upstream.label,
+        'model': route.model,
+        'error': '${route.model} is only on OpenRouter, and this server has '
+            'no OpenRouter key. Add one, or pick a Google id such as '
+            'gemini-2.5-flash-image.',
+      });
+    }
     final started = DateTime.now();
     try {
       final (status, responseBody) = await _postJsonWithRetry(
@@ -4971,7 +4988,7 @@ class Api {
       }
       route = canonicalAiImageRoute(
           AiModeRoute(upstream, model), config.configuredAiUpstreams);
-      if (route.upstream == AiUpstream.google && route.model.contains('/')) {
+      if (aiImageNeedsOpenRouter(route)) {
         return errorResponse(
             400,
             'bad_request',

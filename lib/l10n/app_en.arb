@@ -1405,6 +1405,17 @@
   "assistantResearchWriting": "Writing up the answer…",
   "assistantPictureDrawing": "Drawing your picture…",
   "assistantPictureMissing": "This picture isn't on this device",
+  "assistantPictureDownload": "Download",
+  "assistantPictureSaved": "Saved the picture",
+  "assistantPictureSaveFailed": "Could not save the picture: {error}",
+  "@assistantPictureSaveFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "assistantPasteUnsupported": "These pasted files can't be attached here",
   "textLibraryMcMailbox": "Mailbox",
   "textLibraryMcMailWaiting": "Letters waiting: {count}",
   "@textLibraryMcMailWaiting": {

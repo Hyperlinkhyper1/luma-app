@@ -29,6 +29,7 @@ class ChatInputBar extends StatefulWidget {
     this.attachments,
     this.hasAttachments = false,
     this.onStartTyping,
+    this.onPaste,
   });
 
   final ValueChanged<String> onSend;
@@ -60,6 +61,9 @@ class ChatInputBar extends StatefulWidget {
   /// Called each time the field goes from empty to holding text, e.g. to
   /// load a local model while the message is still being written.
   final VoidCallback? onStartTyping;
+
+  /// Called on Ctrl+V (Cmd+V), so files on the clipboard can be attached.
+  final VoidCallback? onPaste;
 
   @override
   State<ChatInputBar> createState() => _ChatInputBarState();
@@ -111,6 +115,15 @@ class _ChatInputBarState extends State<ChatInputBar> {
 
   KeyEventResult _onKey(FocusNode node, KeyEvent event) {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    final keyboard = HardwareKeyboard.instance;
+    if (event.logicalKey == LogicalKeyboardKey.keyV &&
+        (keyboard.isControlPressed || keyboard.isMetaPressed) &&
+        !keyboard.isAltPressed) {
+      // Text still pastes as usual; files and pictures on the clipboard
+      // are picked up alongside it.
+      widget.onPaste?.call();
+      return KeyEventResult.ignored;
+    }
     final enter =
         event.logicalKey == LogicalKeyboardKey.enter ||
         event.logicalKey == LogicalKeyboardKey.numpadEnter;

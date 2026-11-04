@@ -5,6 +5,7 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:path/path.dart' as p;
 
 import '../../account/plan.dart';
 import '../../app/widgets.dart';
@@ -31,6 +32,7 @@ import 'local_model_store.dart';
 import 'ai_tools.dart';
 import 'web_search_client.dart';
 import 'chat_controller.dart';
+import 'clipboard_files.dart';
 import 'chat_scope.dart';
 import 'chat_usage.dart';
 import 'memory/assistant_memory_scope.dart';
@@ -442,16 +444,57 @@ class _ChatLayoutState extends State<_ChatLayout> {
       ],
     );
     if (picked == null || !mounted) return;
+    if (picked.files.any((file) => file.path == null)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('This file could not be opened.')),
+      );
+      return;
+    }
+    await _attachFiles([for (final file in picked.files) File(file.path!)]);
+  }
+
+  /// Ctrl+V in the composer: attaches files copied in Explorer, or a copied
+  /// picture, when the clipboard holds any. Text pastes on its own.
+  Future<void> _paste() async {
+    final settings = SettingsScope.of(context);
+    if (!assistantFilesAllowed(settings.selectedPlanId)) return;
+    final files = await ClipboardFiles.read();
+    if (files.isEmpty || !mounted) return;
+    final mode = _effectiveComposeMode(settings);
+    final picture = mode == AssistantComposeMode.picture;
+    final supportsImages = await widget.controller.supportsImageInput(
+      mode: mode,
+    );
+    if (!mounted) return;
+    final allowed = {
+      if (!picture) ...AssistantAttachment.textExtensions,
+      if (supportsImages) ...AssistantAttachment.imageExtensions,
+    };
+    final usable = [
+      for (final file in files)
+        if (allowed.contains(
+          p.extension(file.path).replaceFirst('.', '').toLowerCase(),
+        ))
+          file,
+    ];
+    if (usable.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(L.of(context).assistantPasteUnsupported)),
+      );
+      return;
+    }
+    await _attachFiles(usable);
+  }
+
+  Future<void> _attachFiles(List<File> files) async {
+    final settings = SettingsScope.of(context);
     try {
-      if (_attachments.length + picked.files.length > 3) {
+      if (_attachments.length + files.length > 3) {
         throw const FormatException('Choose up to three attachments.');
       }
       final loaded = <AssistantAttachment>[];
-      for (final file in picked.files) {
-        if (file.path == null) {
-          throw const FormatException('This file could not be opened.');
-        }
-        loaded.add(await AssistantAttachment.fromFile(File(file.path!)));
+      for (final file in files) {
+        loaded.add(await AssistantAttachment.fromFile(file));
       }
       if (mounted && assistantFilesAllowed(settings.selectedPlanId)) {
         setState(() => _attachments.addAll(loaded));
@@ -548,6 +591,7 @@ class _ChatLayoutState extends State<_ChatLayout> {
               : const [],
           onRemoveAttachment: (a) => setState(() => _attachments.remove(a)),
           onUpload: _upload,
+          onPaste: _paste,
         );
 
         final Widget body = _view == 'projects'
@@ -1826,6 +1870,7 @@ class _ChatComposer extends StatefulWidget {
     required this.attachments,
     required this.onRemoveAttachment,
     required this.onUpload,
+    this.onPaste,
     this.textController,
     this.focusNode,
     this.hintText,
@@ -1848,6 +1893,7 @@ class _ChatComposer extends StatefulWidget {
   final List<AssistantAttachment> attachments;
   final ValueChanged<AssistantAttachment> onRemoveAttachment;
   final VoidCallback onUpload;
+  final VoidCallback? onPaste;
   final TextEditingController? textController;
   final FocusNode? focusNode;
   final String? hintText;
@@ -1997,6 +2043,7 @@ class _ChatComposerState extends State<_ChatComposer> {
     final composeMode = widget.composeMode;
     return ChatInputBar(
       onStartTyping: widget.controller.warmUpLocalModel,
+      onPaste: widget.controller.isSending ? null : widget.onPaste,
       sending: widget.controller.isSending,
       enabled: !_blocked,
       caption: '',

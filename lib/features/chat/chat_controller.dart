@@ -21,6 +21,7 @@ import 'providers/ai_providers.dart';
 import 'providers/ai_usage.dart';
 import 'providers/google_client.dart';
 import 'providers/local_qwen_client.dart';
+import 'picture_context.dart';
 import 'providers/luma_image_client.dart';
 import 'providers/mistral_proxy_client.dart';
 import 'web_search_client.dart';
@@ -516,6 +517,27 @@ class ChatController extends ChangeNotifier {
     activity.value = const AssistantActivity.picture();
     notifyListeners();
     try {
+      final pictureContext = PictureContext.fromHistory(
+        await _repository.loadMessages(conversationId),
+      );
+      AiInputImage? previous;
+      final lastPath = pictureContext.lastImagePath;
+      if (lastPath != null &&
+          attachments.length < 3 &&
+          await supportsImageInput(mode: AssistantComposeMode.picture)) {
+        final file = File(lastPath);
+        if (await file.exists() && await file.length() <= 4 * 1024 * 1024) {
+          final lower = lastPath.toLowerCase();
+          previous = AiInputImage(
+            mimeType: lower.endsWith('.jpg') || lower.endsWith('.jpeg')
+                ? 'image/jpeg'
+                : lower.endsWith('.webp')
+                ? 'image/webp'
+                : 'image/png',
+            data: base64Encode(await file.readAsBytes()),
+          );
+        }
+      }
       await _repository.addMessage(
         conversationId,
         'user',
@@ -530,10 +552,11 @@ class ChatController extends ChangeNotifier {
 
       final image = await _imageClientFor(sync.serverUrl!).generate(
         authToken: sync.authToken!,
-        prompt: prompt,
+        prompt: pictureContext.promptFor(prompt, editingImage: previous != null),
         mode: mode.name,
         tier: _settings.pictureTier,
         images: [
+          ?previous,
           for (final attachment in attachments)
             AiInputImage(
               mimeType: attachment.mimeType,
