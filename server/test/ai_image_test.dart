@@ -6,6 +6,32 @@ import 'package:luma_sync_server/ai_mode_routing.dart';
 import 'package:test/test.dart';
 
 void main() {
+  test('OpenRouter-style ids on Google are rerouted instead of hitting :predict',
+      () {
+    const both = {AiUpstream.google, AiUpstream.openrouter};
+    const googleOnly = {AiUpstream.google};
+    const banana = AiModeRoute(AiUpstream.google, 'google/gemini-nano-banana-2.1');
+    const gpt = AiModeRoute(AiUpstream.google, 'openai/gpt-sunburst');
+
+    final viaRouter = canonicalAiImageRoute(banana, both);
+    expect(viaRouter.upstream, AiUpstream.openrouter);
+    expect(viaRouter.model, 'google/gemini-nano-banana-2.1');
+    expect(canonicalAiImageRoute(gpt, both).upstream, AiUpstream.openrouter);
+
+    final stripped = canonicalAiImageRoute(banana, googleOnly);
+    expect(stripped.upstream, AiUpstream.google);
+    expect(stripped.model, 'gemini-nano-banana-2.1');
+    expect(aiImageUsesGemini(stripped), isTrue);
+
+    final models = canonicalAiImageRoute(
+        const AiModeRoute(AiUpstream.google, 'models/gemini-2.5-flash-image'),
+        googleOnly);
+    expect(models.model, 'gemini-2.5-flash-image');
+
+    const imagen = AiModeRoute(AiUpstream.google, 'imagen-4.0-generate-001');
+    expect(identical(canonicalAiImageRoute(imagen, both), imagen), isTrue);
+  });
+
   test('validates reference image counts, types, base64 and sizes', () {
     expect(parseAiImageInputs(null), isEmpty);
     final input = {'mimeType': 'image/png', 'data': 'YQ=='};

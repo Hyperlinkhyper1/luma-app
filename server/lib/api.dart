@@ -3232,6 +3232,7 @@ class Api {
 
   bool _pictureRouteSupportsImages(AiModeRoute? route) {
     if (route == null) return false;
+    route = canonicalAiImageRoute(route, config.configuredAiUpstreams);
     final catalog = aiCatalog.routingModelById(route.model) ??
         aiCatalog.routingModelById('${route.upstream.name}/${route.model}');
     return aiImageSupportsInput(route, inputModalities: catalog?.inputModalities);
@@ -4789,7 +4790,8 @@ class Api {
     // it fails or answers without a picture.
     for (final (index, candidate) in candidates.indexed) {
       final last = index == candidates.length - 1;
-      final drawWith = candidate.route;
+      final drawWith =
+          canonicalAiImageRoute(candidate.route, config.configuredAiUpstreams);
       final imageBody = aiImageRequestBody(drawWith, prompt, images: images);
       final maxPrice = _applyAiMaxPrice(candidate.key, drawWith, imageBody);
       final int status;
@@ -4878,7 +4880,8 @@ class Api {
           'error': 'No API key is configured for ${upstream.label}.',
         });
       }
-      route = AiModeRoute(upstream, model);
+      route = canonicalAiImageRoute(
+          AiModeRoute(upstream, model), config.configuredAiUpstreams);
     } else {
       route = aiImageConfig.resolve(config.configuredAiUpstreams, selector);
     }
@@ -4966,7 +4969,15 @@ class Api {
         return errorResponse(
             400, 'bad_request', '"$model" is not a valid model id.');
       }
-      route = AiModeRoute(upstream, model);
+      route = canonicalAiImageRoute(
+          AiModeRoute(upstream, model), config.configuredAiUpstreams);
+      if (route.upstream == AiUpstream.google && route.model.contains('/')) {
+        return errorResponse(
+            400,
+            'bad_request',
+            '"$model" is an OpenRouter model id. Pick OpenRouter as the '
+                'provider, or a Google AI Studio id like gemini-2.5-flash-image.');
+      }
     }
     final preferred = _formPreferredRoute(form, selector);
     if (preferred.error != null) {

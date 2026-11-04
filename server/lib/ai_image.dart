@@ -100,6 +100,28 @@ bool aiImageSupportsInput(AiModeRoute? route, {List<String>? inputModalities}) {
           route.model.startsWith('google/gemini-'));
 }
 
+/// Fixes a picture route whose model id doesn't belong to its provider.
+/// Google AI Studio only knows bare ids (`gemini-2.5-flash-image`); a
+/// slashed id such as `google/gemini-…` or `openai/gpt-…` is an OpenRouter
+/// id, and sending it to Google falls through to Imagen's `:predict` and a
+/// 404. Such a route draws through OpenRouter when it has a key; without
+/// one, a `google/` or `models/` prefix is dropped so Google can still try.
+AiModeRoute canonicalAiImageRoute(
+    AiModeRoute route, Set<AiUpstream> configured) {
+  if (route.upstream != AiUpstream.google) return route;
+  var model = route.model;
+  if (model.startsWith('models/')) model = model.substring('models/'.length);
+  if (model.contains('/') && configured.contains(AiUpstream.openrouter)) {
+    return AiModeRoute(AiUpstream.openrouter, model,
+        reasoningEffort: route.reasoningEffort);
+  }
+  if (model.startsWith('google/')) model = model.substring('google/'.length);
+  return model == route.model
+      ? route
+      : AiModeRoute(AiUpstream.google, model,
+          reasoningEffort: route.reasoningEffort);
+}
+
 /// The upstreams that can draw. Mistral has no image model behind the
 /// OpenAI-shape API, so it is left out of the dashboard's picker.
 const kAiImageUpstreams = [AiUpstream.google, AiUpstream.openrouter];
@@ -321,7 +343,9 @@ class AiImageConfigStore {
   AiModeRoute? resolve(Set<AiUpstream> configured,
       [String selector = kAiImageSelector]) {
     final chosen = _routes[selector];
-    if (chosen != null && configured.contains(chosen.upstream)) return chosen;
+    if (chosen != null && configured.contains(chosen.upstream)) {
+      return canonicalAiImageRoute(chosen, configured);
+    }
     for (final upstream in kAiImageUpstreams) {
       if (configured.contains(upstream)) {
         return AiModeRoute(upstream, aiImageDefaultModels(selector)[upstream]!);
