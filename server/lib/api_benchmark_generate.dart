@@ -981,18 +981,22 @@ extension BenchmarkGenerateApi on Api {
   }
 
   String _benchmarkUpstreamError(BenchmarkGenJob job, int status, String body) {
-    String? message;
-    try {
-      final decoded = jsonDecode(body);
-      final err =
-          decoded is List && decoded.isNotEmpty ? decoded.first : decoded;
-      final e = err is Map ? err['error'] ?? err['message'] : null;
-      message = e is Map ? '${e['message'] ?? e}' : e?.toString();
-    } catch (_) {
-      message = body.trim().isEmpty ? null : body.trim();
+    // OpenRouter's "Provider returned error" is only the wrapper; the
+    // provider's own reason is in error.metadata.raw.
+    String? message = providerErrorMessage(body);
+    if (message == null) {
+      try {
+        final decoded = jsonDecode(body);
+        final err =
+            decoded is List && decoded.isNotEmpty ? decoded.first : decoded;
+        final e = err is Map ? err['error'] ?? err['message'] : null;
+        message = e is Map ? '${e['message'] ?? e}' : e?.toString();
+      } catch (_) {
+        message = body.trim().isEmpty ? null : body.trim();
+      }
     }
     final flat = (message ?? '').replaceAll(RegExp(r'\s+'), ' ').trim();
-    final short = flat.length > 300 ? '${flat.substring(0, 300)}…' : flat;
+    final short = flat.length > 500 ? '${flat.substring(0, 500)}…' : flat;
     final refused =
         status == HttpStatus.unauthorized || status == HttpStatus.forbidden;
     return 'HTTP $status${short.isEmpty ? '' : ': $short'}'

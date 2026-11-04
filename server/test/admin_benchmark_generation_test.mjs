@@ -53,7 +53,7 @@ test('truncated run exposes reason, usage, validation, finish reason and raw res
 });
 
 test('every outcome renders independently of lifecycle and escapes provider details', async () => {
-  for (const resultStatus of ['PROVIDER_BUSY', 'RATE_LIMITED', 'MODEL_ERROR', 'INVALID_OUTPUT']) {
+  for (const resultStatus of ['PROVIDER_BUSY', 'RATE_LIMITED', 'MODEL_ERROR', 'INVALID_OUTPUT', 'CONTENT_FILTERED']) {
     const html = await render([{ ...job, resultStatus, resultReason: '<img onerror=alert(1)>',
       outputCapSent: false, batch: true, batchId: 'batch1' }]);
     assert.match(html, new RegExp('>' + resultStatus + '</span>'));

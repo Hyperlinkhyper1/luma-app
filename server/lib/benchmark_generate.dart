@@ -161,6 +161,27 @@ BenchmarkGenerationResult benchmarkGenerationResult({
       validation: validation
     );
   }
+  // A filtered reply is cut off or replaced by the provider, so the page
+  // cannot be trusted even when it happens to close.
+  const filters = {
+    'CONTENT_FILTER',
+    'SAFETY',
+    'PROHIBITED_CONTENT',
+    'BLOCKLIST',
+    'SPII',
+    'RECITATION',
+    'REFUSAL',
+  };
+  final nativeFinish = nativeFinishReason?.trim().toUpperCase();
+  if (filters.contains(finish) || filters.contains(nativeFinish)) {
+    return (
+      status: 'CONTENT_FILTERED',
+      reason: 'Blocked by the provider\'s content filter '
+          '(${nativeFinishReason ?? finishReason}); the prompt was not '
+          'answered, so retry or pick another provider',
+      validation: validation
+    );
+  }
   if (page == null || !benchmarkHtmlComplete(page)) {
     return (
       status: 'INVALID_OUTPUT',

@@ -100,10 +100,25 @@ void main() {
           benchmarkGenerationResult(reply: reply, error: 'Stream error').status,
           'MODEL_ERROR');
     }
+  });
+
+  test('a content-filtered reply is reported as filtered, not invalid HTML',
+      () {
+    for (final reply in ['', partial, page]) {
+      final result = benchmarkGenerationResult(
+          reply: reply,
+          finishReason: 'content_filter',
+          nativeFinishReason: 'content_filter');
+      expect(result.status, 'CONTENT_FILTERED');
+      expect(result.reason, contains('content filter'));
+    }
     expect(
-        benchmarkGenerationResult(reply: page, finishReason: 'content_filter')
+        benchmarkGenerationResult(
+                reply: partial,
+                finishReason: 'stop',
+                nativeFinishReason: 'SAFETY')
             .status,
-        'MODEL_ERROR');
+        'CONTENT_FILTERED');
   });
 
   test('native Google streamed and batch replies retain MAX_TOKENS and usage',
