@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:drift/drift.dart';
 
+import 'ai_usage_files.dart';
 import 'ai_usage_source.dart';
 import 'data/ai_usage_database.dart';
 
@@ -97,16 +98,15 @@ class AntigravityScanner {
   ) async {
     if (dir == null) return AntigravityScanResult.unavailable;
 
-    final files = <File>[];
+    final List<File> files;
     try {
-      await for (final entity in dir.list(recursive: true, followLinks: false)) {
-        // Only the (smaller, user-facing) transcript — not
-        // transcript_full.jsonl, which duplicates it with more internal
-        // detail we have no use for here.
-        if (entity is File && entity.uri.pathSegments.last == 'transcript.jsonl') {
-          files.add(entity);
-        }
-      }
+      // Only the (smaller, user-facing) transcript — not
+      // transcript_full.jsonl, which duplicates it with more internal
+      // detail we have no use for here.
+      files = await listFilesTolerant(
+        dir,
+        (path) => fileBaseName(path) == 'transcript.jsonl',
+      );
     } on FileSystemException {
       return const AntigravityScanResult(brainDirFound: true);
     }

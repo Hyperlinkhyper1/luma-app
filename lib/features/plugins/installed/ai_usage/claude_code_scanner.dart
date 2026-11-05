@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:drift/drift.dart';
 
+import 'ai_usage_files.dart';
 import 'ai_usage_project.dart';
 import 'ai_usage_source.dart';
 import 'data/ai_usage_database.dart';
@@ -69,13 +70,12 @@ class ClaudeCodeScanner {
   ) async {
     if (dir == null) return ClaudeCodeScanResult.unavailable;
 
-    final files = <File>[];
+    final List<File> files;
     try {
-      await for (final entity in dir.list(recursive: true, followLinks: false)) {
-        if (entity is File && entity.path.toLowerCase().endsWith('.jsonl')) {
-          files.add(entity);
-        }
-      }
+      files = await listFilesTolerant(
+        dir,
+        (path) => path.toLowerCase().endsWith('.jsonl'),
+      );
     } on FileSystemException {
       return const ClaudeCodeScanResult(projectsDirFound: true);
     }
