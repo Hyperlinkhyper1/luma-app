@@ -4,7 +4,6 @@ import 'dart:ui';
 import 'map_maker_geometry.dart';
 
 const kCityGrid = 24.0;
-const kCitySheetSize = Size(3200, 2400);
 const kCityMetersPerUnit = .25;
 
 enum CityRoadKind { street, avenue, highway, pedestrian }
@@ -69,8 +68,13 @@ class CityRoad {
     return total;
   }
 
-  CityRoad clone() => CityRoad(
-    id: id,
+  Rect get bounds {
+    final line = centerline;
+    return line.isEmpty ? Rect.zero : _boundsOf(line).inflate(kind.width / 2);
+  }
+
+  CityRoad clone({String? id}) => CityRoad(
+    id: id ?? this.id,
     kind: kind,
     points: List<Offset>.from(points),
     curved: curved,
@@ -192,6 +196,8 @@ class CityBuilding {
     );
   }
 
+  Rect get parcelBounds => hasParcel ? _boundsOf(parcel) : bounds;
+
   bool contains(Offset point) {
     final delta = point - position;
     final local = Offset(
@@ -202,8 +208,8 @@ class CityBuilding {
         local.dy.abs() <= size.height / 2;
   }
 
-  CityBuilding clone() => CityBuilding(
-    id: id,
+  CityBuilding clone({String? id}) => CityBuilding(
+    id: id ?? this.id,
     kind: kind,
     x: x,
     y: y,
@@ -295,6 +301,25 @@ class CityMap {
   final List<CityBuilding> buildings;
   final List<CityJunction> junctions;
 
+  Rect? get contentBounds {
+    Rect? result;
+    for (final road in roads) {
+      if (road.points.isEmpty) continue;
+      result = result?.expandToInclude(road.bounds) ?? road.bounds;
+    }
+    for (final building in buildings) {
+      result =
+          result?.expandToInclude(building.parcelBounds) ??
+          building.parcelBounds;
+    }
+    return result;
+  }
+
+  double get roadLengthMeters => roads.fold<double>(
+    0,
+    (total, road) => total + road.length * kCityMetersPerUnit,
+  );
+
   CityMap clone() => CityMap(
     roads: roads.map((road) => road.clone()).toList(),
     buildings: buildings.map((building) => building.clone()).toList(),
@@ -326,12 +351,8 @@ class CityMap {
   }
 
   Offset snap(Offset point) => Offset(
-    ((point.dx / kCityGrid).round() * kCityGrid)
-        .clamp(0.0, (kCitySheetSize.width / kCityGrid).floor() * kCityGrid)
-        .toDouble(),
-    ((point.dy / kCityGrid).round() * kCityGrid)
-        .clamp(0.0, (kCitySheetSize.height / kCityGrid).floor() * kCityGrid)
-        .toDouble(),
+    (point.dx / kCityGrid).round() * kCityGrid,
+    (point.dy / kCityGrid).round() * kCityGrid,
   );
 
   Map<String, dynamic> toJson() => {
@@ -356,3 +377,10 @@ class CityMap {
         .toList(),
   );
 }
+
+Rect _boundsOf(List<Offset> points) => Rect.fromLTRB(
+  points.map((point) => point.dx).reduce(math.min),
+  points.map((point) => point.dy).reduce(math.min),
+  points.map((point) => point.dx).reduce(math.max),
+  points.map((point) => point.dy).reduce(math.max),
+);

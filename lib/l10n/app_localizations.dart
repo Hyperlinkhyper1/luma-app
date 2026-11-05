@@ -67084,6 +67084,132 @@ abstract class L {
   /// In en, this message translates to:
   /// **'Start the chat translator and choose a source to begin.'**
   String get cs2TeammateVoiceIdle;
+
+  /// No description provided for @mapMakerCityInfiniteCanvas.
+  ///
+  /// In en, this message translates to:
+  /// **'Infinite canvas'**
+  String get mapMakerCityInfiniteCanvas;
+
+  /// No description provided for @mapMakerCityDuplicate.
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicate'**
+  String get mapMakerCityDuplicate;
+
+  /// No description provided for @mapMakerCityFitSelection.
+  ///
+  /// In en, this message translates to:
+  /// **'Fit selection'**
+  String get mapMakerCityFitSelection;
+
+  /// No description provided for @mapMakerCityOrigin.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to origin'**
+  String get mapMakerCityOrigin;
+
+  /// No description provided for @mapMakerCityMeasure.
+  ///
+  /// In en, this message translates to:
+  /// **'Measure distance'**
+  String get mapMakerCityMeasure;
+
+  /// No description provided for @mapMakerCityMeasureHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Click two points to measure. Esc clears the measurement.'**
+  String get mapMakerCityMeasureHint;
+
+  /// No description provided for @mapMakerCityMeasuredDistance.
+  ///
+  /// In en, this message translates to:
+  /// **'{value} m'**
+  String mapMakerCityMeasuredDistance(String value);
+
+  /// No description provided for @mapMakerCityShortcuts.
+  ///
+  /// In en, this message translates to:
+  /// **'Keyboard shortcuts'**
+  String get mapMakerCityShortcuts;
+
+  /// No description provided for @mapMakerCityNavigationHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Scroll to zoom · Space or middle-drag to pan · F to fit'**
+  String get mapMakerCityNavigationHint;
+
+  /// No description provided for @mapMakerCityLabels.
+  ///
+  /// In en, this message translates to:
+  /// **'Labels'**
+  String get mapMakerCityLabels;
+
+  /// No description provided for @mapMakerCityOverview.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan overview'**
+  String get mapMakerCityOverview;
+
+  /// No description provided for @mapMakerCityRoadLength.
+  ///
+  /// In en, this message translates to:
+  /// **'Road network'**
+  String get mapMakerCityRoadLength;
+
+  /// No description provided for @mapMakerCityDevelopedArea.
+  ///
+  /// In en, this message translates to:
+  /// **'Built footprint'**
+  String get mapMakerCityDevelopedArea;
+
+  /// No description provided for @mapMakerCityGreenSpace.
+  ///
+  /// In en, this message translates to:
+  /// **'Park area'**
+  String get mapMakerCityGreenSpace;
+
+  /// No description provided for @mapMakerCityInfiniteHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Your city has no edges. Pan in any direction and keep building.'**
+  String get mapMakerCityInfiniteHint;
+
+  /// No description provided for @mapMakerCityStartRoad.
+  ///
+  /// In en, this message translates to:
+  /// **'Draw your first road'**
+  String get mapMakerCityStartRoad;
+
+  /// No description provided for @mapMakerCityFootprint.
+  ///
+  /// In en, this message translates to:
+  /// **'Footprint'**
+  String get mapMakerCityFootprint;
+
+  /// No description provided for @mapMakerCityDimensions.
+  ///
+  /// In en, this message translates to:
+  /// **'{width} × {height} m'**
+  String mapMakerCityDimensions(String width, String height);
+
+  /// No description provided for @mapMakerCityDuplicateFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'No room for a copy nearby. Make space or disable road frontage.'**
+  String get mapMakerCityDuplicateFailed;
+
+  /// No description provided for @mapMakerCitySelection.
+  ///
+  /// In en, this message translates to:
+  /// **'Selected feature'**
+  String get mapMakerCitySelection;
+
+  /// No description provided for @mapMakerCityNavigator.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan navigator'**
+  String get mapMakerCityNavigator;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

@@ -468,6 +468,36 @@ void main() {
     expect(job['original'], _trout);
   });
 
+  test('a new fish built only from spheres goes back for a mesh skin', () async {
+    final prompts = <String>[];
+    final spheres = _trout.replaceFirst(
+        'b:fishBody(0.21, 0.12, {', 'b:layered("Body", Vector3.zero, Vector3.one, {');
+    final lib = library(
+      replies: [spheres, _trout],
+      prompts: prompts,
+      // Stands in for the real exporter: only fishBody bodies report a skin.
+      luau: (source) async {
+        final fish = _fakeExport(source);
+        if (source.contains('b:fishBody(')) fish['skin'] = {'mode': 'bands', 'rings': <Object>[]};
+        return (code: 0, stdout: 'FISHCHECK 1\n${jsonEncode(fish)}\n', stderr: '');
+      },
+    );
+    File('${dir.path}/wiki/source/scripts/fish-models/export.luau')
+        .writeAsStringSync('local function encodeSkin() end\n');
+    final created = await _json(lib.createJob(_post('/', {
+      'mode': 'new', 'provider': 'openrouter', 'model': 'm', 'effort': '', 'prompt': '',
+      'fields': {'name': 'Ember Snapper', 'pools': ['OpenSea']},
+    })));
+    await _settle(lib, created['id'] as String);
+    final job = await _json(lib.job(_get('/'), created['id'] as String));
+    expect(job['status'], 'ready', reason: '${job['error']}');
+    expect(prompts, hasLength(2));
+    expect(prompts.last, contains('smooth 3D mesh skin'));
+    expect(job['result'], contains('b:fishBody('));
+    final preview = jsonDecode(await (await lib.preview(_get('/'), created['id'] as String)).readAsString());
+    expect(preview['skin'], isNotNull);
+  });
+
   test('a failing preview is retried, then the job fails', () async {
     final lib = library(
         replies: [_trout, _trout, _trout],

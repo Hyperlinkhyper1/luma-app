@@ -103,7 +103,7 @@ class CityGeometry {
     }
     if (best != null) return best;
     return CitySnapResult(
-      position: grid ? map.snap(point) : _boundPoint(point),
+      position: grid ? map.snap(point) : point,
       kind: grid ? CitySnapKind.grid : CitySnapKind.none,
     );
   }
@@ -120,8 +120,7 @@ class CityGeometry {
     final free = prototype.clone()
       ..roadId = null
       ..roadAnchor = null
-      ..position = grid ? map.snap(pointer) : _boundPoint(pointer);
-    _boundBuilding(free);
+      ..position = grid ? map.snap(pointer) : pointer;
     if (!connect || !prototype.hasParcel) {
       return CityPlacement(
         building: free,
@@ -191,16 +190,25 @@ class CityGeometry {
 
   void rebuildTopology() {
     final nodes = <_Node>[];
+    final nodeBuckets = <(int, int), List<_Node>>{};
     void add(Offset position, Iterable<String> ids) {
       _Node? existing;
-      for (final node in nodes) {
-        if ((node.position - position).distance <= .05) {
-          existing = node;
-          break;
+      final cellX = (position.dx / .05).floor();
+      final cellY = (position.dy / .05).floor();
+      for (var x = cellX - 1; x <= cellX + 1 && existing == null; x++) {
+        for (var y = cellY - 1; y <= cellY + 1 && existing == null; y++) {
+          for (final node in nodeBuckets[(x, y)] ?? const <_Node>[]) {
+            if ((node.position - position).distance <= .05) {
+              existing = node;
+              break;
+            }
+          }
         }
       }
       if (existing == null) {
-        nodes.add(_Node(position, ids.toSet()));
+        final node = _Node(position, ids.toSet());
+        nodes.add(node);
+        nodeBuckets.putIfAbsent((cellX, cellY), () => []).add(node);
       } else {
         existing.roadIds.addAll(ids);
       }
@@ -218,39 +226,27 @@ class CityGeometry {
         }
       }
     }
-    final buckets = <String, List<int>>{};
-    final seen = <String>{};
-    for (var index = 0; index < segments.length; index++) {
-      final segment = segments[index];
-      final bounds = Rect.fromPoints(segment.a, segment.b);
-      for (
-        var x = (bounds.left / 128).floor();
-        x <= (bounds.right / 128).floor();
-        x++
-      ) {
-        for (
-          var y = (bounds.top / 128).floor();
-          y <= (bounds.bottom / 128).floor();
-          y++
-        ) {
-          final key = '$x:$y';
-          final bucket = buckets.putIfAbsent(key, () => []);
-          for (final otherIndex in bucket) {
-            if (!seen.add('$otherIndex:$index')) continue;
-            final other = segments[otherIndex];
-            if (segment.roadId == other.roadId) continue;
-            for (final point in _intersections(
-              segment.a,
-              segment.b,
-              other.a,
-              other.b,
-            )) {
-              add(point, [segment.roadId, other.roadId]);
-            }
-          }
-          bucket.add(index);
+    segments.sort((a, b) => a.bounds.left.compareTo(b.bounds.left));
+    final active = <_Segment>[];
+    for (final segment in segments) {
+      final bounds = segment.bounds;
+      active.removeWhere((other) => other.bounds.right < bounds.left - .001);
+      for (final other in active) {
+        if (segment.roadId == other.roadId ||
+            other.bounds.bottom < bounds.top - .001 ||
+            other.bounds.top > bounds.bottom + .001) {
+          continue;
+        }
+        for (final point in _intersections(
+          segment.a,
+          segment.b,
+          other.a,
+          other.b,
+        )) {
+          add(point, [segment.roadId, other.roadId]);
         }
       }
+      active.add(segment);
     }
     map.junctions
       ..clear()
@@ -319,15 +315,6 @@ class CityGeometry {
     final polygon = candidate.hasParcel
         ? candidate.parcel
         : candidate.footprint;
-    if (polygon.any(
-      (point) =>
-          point.dx < 0 ||
-          point.dy < 0 ||
-          point.dx > kCitySheetSize.width ||
-          point.dy > kCitySheetSize.height,
-    )) {
-      return false;
-    }
     final bounds = _polygonBounds(polygon);
     for (final other in map.buildings) {
       if (other.id == candidate.id ||
@@ -365,28 +352,6 @@ class CityGeometry {
 
 bool _accessible(CityRoad road) =>
     road.kind == CityRoadKind.street || road.kind == CityRoadKind.avenue;
-
-Offset _boundPoint(Offset point) => Offset(
-  point.dx.clamp(0, kCitySheetSize.width).toDouble(),
-  point.dy.clamp(0, kCitySheetSize.height).toDouble(),
-);
-
-void _boundBuilding(CityBuilding building) {
-  final bounds = building.hasParcel
-      ? _polygonBounds(building.parcel)
-      : building.bounds;
-  var dx = 0.0;
-  var dy = 0.0;
-  if (bounds.left < 0) dx = -bounds.left;
-  if (bounds.right > kCitySheetSize.width) {
-    dx = kCitySheetSize.width - bounds.right;
-  }
-  if (bounds.top < 0) dy = -bounds.top;
-  if (bounds.bottom > kCitySheetSize.height) {
-    dy = kCitySheetSize.height - bounds.bottom;
-  }
-  building.position += Offset(dx, dy);
-}
 
 Rect _polygonBounds(List<Offset> points) => Rect.fromLTRB(
   points.map((point) => point.dx).reduce(math.min),
@@ -476,7 +441,12 @@ Iterable<Offset> _intersections(Offset a, Offset b, Offset c, Offset d) sync* {
   }
   final t = _cross(c - a, cd) / denominator;
   final u = _cross(c - a, ab) / denominator;
-  if (t >= -.000001 && t <= 1.000001 && u >= -.000001 && u <= 1.000001) {
+  final toleranceT = .001 / ab.distance;
+  final toleranceU = .001 / cd.distance;
+  if (t >= -toleranceT &&
+      t <= 1 + toleranceT &&
+      u >= -toleranceU &&
+      u <= 1 + toleranceU) {
     yield a + ab * t.clamp(0, 1);
   }
 }
@@ -532,8 +502,9 @@ class _Node {
 }
 
 class _Segment {
-  _Segment(this.roadId, this.a, this.b);
+  _Segment(this.roadId, this.a, this.b) : bounds = Rect.fromPoints(a, b);
   final String roadId;
   final Offset a;
   final Offset b;
+  final Rect bounds;
 }

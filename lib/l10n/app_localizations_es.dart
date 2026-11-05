@@ -41350,4 +41350,75 @@ class LEs extends L {
   @override
   String get cs2TeammateVoiceIdle =>
       'Inicia el traductor de chat y elige una fuente para empezar.';
+
+  @override
+  String get mapMakerCityInfiniteCanvas => 'Lienzo infinito';
+
+  @override
+  String get mapMakerCityDuplicate => 'Duplicar';
+
+  @override
+  String get mapMakerCityFitSelection => 'Encuadrar selección';
+
+  @override
+  String get mapMakerCityOrigin => 'Ir al origen';
+
+  @override
+  String get mapMakerCityMeasure => 'Medir distancia';
+
+  @override
+  String get mapMakerCityMeasureHint =>
+      'Haz clic en dos puntos para medir. Esc borra la medición.';
+
+  @override
+  String mapMakerCityMeasuredDistance(String value) {
+    return '$value m';
+  }
+
+  @override
+  String get mapMakerCityShortcuts => 'Atajos de teclado';
+
+  @override
+  String get mapMakerCityNavigationHint =>
+      'Desplaza para ampliar · Espacio o botón central + arrastrar para mover · F para encuadrar';
+
+  @override
+  String get mapMakerCityLabels => 'Etiquetas';
+
+  @override
+  String get mapMakerCityOverview => 'Resumen del plano';
+
+  @override
+  String get mapMakerCityRoadLength => 'Red de carreteras';
+
+  @override
+  String get mapMakerCityDevelopedArea => 'Superficie construida';
+
+  @override
+  String get mapMakerCityGreenSpace => 'Superficie de parques';
+
+  @override
+  String get mapMakerCityInfiniteHint =>
+      'Tu ciudad no tiene límites. Muévete en cualquier dirección y sigue construyendo.';
+
+  @override
+  String get mapMakerCityStartRoad => 'Dibuja tu primera calle';
+
+  @override
+  String get mapMakerCityFootprint => 'Huella del edificio';
+
+  @override
+  String mapMakerCityDimensions(String width, String height) {
+    return '$width × $height m';
+  }
+
+  @override
+  String get mapMakerCityDuplicateFailed =>
+      'No hay espacio para una copia cerca. Libera espacio o desactiva el acceso a la carretera.';
+
+  @override
+  String get mapMakerCitySelection => 'Elemento seleccionado';
+
+  @override
+  String get mapMakerCityNavigator => 'Navegador del plano';
 }

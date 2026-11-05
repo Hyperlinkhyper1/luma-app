@@ -14,6 +14,47 @@ class CityPlanInspector extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = L.of(context);
     final colors = context.luma;
+    Widget metric(IconData icon, String label, String value) => Padding(
+      padding: const EdgeInsets.symmetric(vertical: 9),
+      child: Row(
+        children: [
+          Container(
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(
+              color: colors.accentSubtle,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 16, color: colors.accent),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(fontSize: 11, color: colors.textSecondary),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: colors.textPrimary,
+            ),
+          ),
+        ],
+      ),
+    );
+    Widget panel(Widget child) => Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: colors.surfaceHover.withValues(alpha: .55),
+        border: Border.all(color: colors.border),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: child,
+    );
     Widget heading(String label) => Padding(
       padding: const EdgeInsets.only(top: 16, bottom: 10),
       child: Text(
@@ -45,6 +86,7 @@ class CityPlanInspector extends StatelessWidget {
       builder: (context, _) {
         final road = plan.selectedRoad;
         final building = plan.selectedBuilding;
+        final hasSelection = road != null || building != null;
         final selectedName = plan.selectedId == null
             ? null
             : plan.stagedFeatureName(plan.selectedId!) ??
@@ -57,10 +99,67 @@ class CityPlanInspector extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                heading(t.mapMakerCityProperties),
-                if (road == null && building == null)
+                heading(
+                  hasSelection
+                      ? t.mapMakerCityProperties
+                      : t.mapMakerCityOverview,
+                ),
+                if (!hasSelection) ...[
+                  panel(
+                    Column(
+                      children: [
+                        metric(
+                          Icons.route_outlined,
+                          t.mapMakerCityRoadLength,
+                          _distance(
+                            plan.map.roads.fold<double>(
+                                  0,
+                                  (sum, road) => sum + road.length,
+                                ) *
+                                kCityMetersPerUnit,
+                          ),
+                        ),
+                        Divider(height: 1, color: colors.border),
+                        metric(
+                          Icons.apartment_rounded,
+                          t.mapMakerCityDevelopedArea,
+                          _area(
+                            plan.map.buildings
+                                .where((building) => building.hasParcel)
+                                .fold<double>(
+                                  0,
+                                  (sum, building) =>
+                                      sum +
+                                      building.size.width *
+                                          building.size.height,
+                                ),
+                          ),
+                        ),
+                        Divider(height: 1, color: colors.border),
+                        metric(
+                          Icons.park_outlined,
+                          t.mapMakerCityGreenSpace,
+                          _area(
+                            plan.map.buildings
+                                .where(
+                                  (building) =>
+                                      building.kind == CityBuildingKind.park,
+                                )
+                                .fold<double>(
+                                  0,
+                                  (sum, building) =>
+                                      sum +
+                                      building.size.width *
+                                          building.size.height,
+                                ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 14),
+                    padding: const EdgeInsets.only(bottom: 4),
                     child: Text(
                       t.mapMakerCityNoSelection,
                       style: TextStyle(
@@ -70,6 +169,55 @@ class CityPlanInspector extends StatelessWidget {
                       ),
                     ),
                   ),
+                ],
+                if (hasSelection) ...[
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: colors.accentSubtle,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(
+                          road != null
+                              ? Icons.route_outlined
+                              : Icons.location_city_rounded,
+                          color: colors.accent,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              t.mapMakerCitySelection,
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: colors.textMuted,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              road != null
+                                  ? t.mapMakerCityRoadType(road.kind.name)
+                                  : t.mapMakerCityBuildingType(
+                                      building!.kind.name,
+                                    ),
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                ],
                 if (selectedName != null) ...[
                   _FeatureNameEditor(
                     key: ValueKey('city-feature-name-${plan.selectedId}'),
@@ -127,20 +275,30 @@ class CityPlanInspector extends StatelessWidget {
                   ),
                 ],
                 if (building != null) ...[
-                  Text(
-                    t.mapMakerCityBuildingType(building.kind.name),
-                    style: TextStyle(fontSize: 12, color: colors.textSecondary),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    t.mapMakerCityArea(
-                      (building.size.width *
-                              building.size.height *
-                              kCityMetersPerUnit *
-                              kCityMetersPerUnit)
-                          .toStringAsFixed(1),
+                  panel(
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        metric(
+                          Icons.square_foot_rounded,
+                          t.mapMakerCityFootprint,
+                          _area(building.size.width * building.size.height),
+                        ),
+                        Text(
+                          t.mapMakerCityDimensions(
+                            (building.size.width * kCityMetersPerUnit)
+                                .toStringAsFixed(1),
+                            (building.size.height * kCityMetersPerUnit)
+                                .toStringAsFixed(1),
+                          ),
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: colors.textSecondary,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                      ],
                     ),
-                    style: TextStyle(fontSize: 12, color: colors.textSecondary),
                   ),
                   if (building.hasParcel) ...[
                     const SizedBox(height: 12),
@@ -170,6 +328,62 @@ class CityPlanInspector extends StatelessWidget {
                       ],
                     ),
                   ],
+                ],
+                if (hasSelection) ...[
+                  const SizedBox(height: 16),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      FilledButton.tonalIcon(
+                        key: const ValueKey('city-inspector-duplicate'),
+                        style: FilledButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          textStyle: Theme.of(
+                            context,
+                          ).textTheme.labelMedium?.copyWith(fontSize: 11),
+                        ),
+                        onPressed: plan.canDuplicateSelection
+                            ? () {
+                                if (!plan.duplicateSelection()) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        t.mapMakerCityDuplicateFailed,
+                                      ),
+                                    ),
+                                  );
+                                }
+                              }
+                            : null,
+                        icon: const Icon(Icons.copy_outlined, size: 16),
+                        label: Text(t.mapMakerCityDuplicate),
+                      ),
+                      if (building != null)
+                        IconButton.outlined(
+                          key: const ValueKey('city-inspector-rotate'),
+                          visualDensity: VisualDensity.compact,
+                          tooltip: t.mapMakerCityRotate,
+                          onPressed: plan.rotate,
+                          icon: const Icon(
+                            Icons.rotate_right_rounded,
+                            size: 18,
+                          ),
+                        ),
+                      IconButton.outlined(
+                        key: const ValueKey('city-inspector-delete'),
+                        visualDensity: VisualDensity.compact,
+                        tooltip: t.mapMakerCityDelete,
+                        onPressed: plan.deleteSelection,
+                        icon: Icon(
+                          Icons.delete_outline_rounded,
+                          size: 18,
+                          color: colors.danger,
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
                 const Divider(height: 28),
                 heading(t.mapMakerCityDigitizing),
@@ -260,12 +474,47 @@ class CityPlanInspector extends StatelessWidget {
                   t.mapMakerCityLocalPlan,
                   style: TextStyle(fontSize: 10, color: colors.textMuted),
                 ),
+                const SizedBox(height: 16),
+                panel(
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        Icons.all_inclusive_rounded,
+                        color: colors.accent,
+                        size: 18,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          t.mapMakerCityInfiniteHint,
+                          style: TextStyle(
+                            fontSize: 11,
+                            height: 1.5,
+                            color: colors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
         );
       },
     );
+  }
+
+  String _distance(double metres) => metres >= 1000
+      ? '${(metres / 1000).toStringAsFixed(2)} km'
+      : '${metres.toStringAsFixed(0)} m';
+
+  String _area(double squareUnits) {
+    final squareMetres = squareUnits * kCityMetersPerUnit * kCityMetersPerUnit;
+    return squareMetres >= 10000
+        ? '${(squareMetres / 10000).toStringAsFixed(2)} ha'
+        : '${squareMetres.toStringAsFixed(0)} m²';
   }
 }
 

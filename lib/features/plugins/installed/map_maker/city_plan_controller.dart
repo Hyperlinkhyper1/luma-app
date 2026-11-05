@@ -53,6 +53,10 @@ class CityPlanController extends ChangeNotifier {
       snapTolerancePixels / (viewScale > 0 ? viewScale : 1);
   bool get canUndo => _undo.isNotEmpty;
   bool get canRedo => _redo.isNotEmpty;
+  bool get canDuplicateSelection =>
+      selectedBuilding != null || selectedRoad != null;
+  Rect? get selectionBounds =>
+      selectedBuilding?.parcelBounds ?? selectedRoad?.bounds;
   bool get canFinishRoad => draftRoad.toSet().length >= (curvedRoad ? 3 : 2);
   bool get movingRoadVertex => _movingRoadId != null;
   CityPlacement? get placementPreview =>
@@ -283,6 +287,102 @@ class CityPlanController extends ChangeNotifier {
     map.roads.removeWhere((road) => road.id == selectedId);
     selectedId = null;
     _persist();
+  }
+
+  bool duplicateSelection() {
+    endMove();
+    commitFeatureNames();
+    final building = selectedBuilding;
+    final road = selectedRoad;
+    if (building != null) {
+      final prototype = building.clone(id: _id());
+      final bounds = building.parcelBounds;
+      for (var ring = 1; ring <= 12; ring++) {
+        final dx = (bounds.width / kCityGrid).ceil() * kCityGrid * ring;
+        final dy = (bounds.height / kCityGrid).ceil() * kCityGrid * ring;
+        for (final delta in [
+          Offset(dx, 0),
+          Offset(0, dy),
+          Offset(-dx, 0),
+          Offset(0, -dy),
+          Offset(dx, dy),
+          Offset(-dx, dy),
+          Offset(-dx, -dy),
+          Offset(dx, -dy),
+        ]) {
+          final placement = _geometry.placeBuilding(
+            prototype,
+            building.position + delta,
+            connect: building.connected && connectHousing,
+            grid: snapEnabled && snapGrid,
+          );
+          if (!placement.valid) continue;
+          _remember(map.clone());
+          map.buildings.add(placement.building);
+          selectedId = placement.building.id;
+          tool = CityPlanTool.select;
+          draftRoad.clear();
+          _persist();
+          return true;
+        }
+      }
+      return false;
+    }
+    if (road != null) {
+      final duplicate = road.clone(id: _id());
+      var direction = road.points.isEmpty
+          ? const Offset(1, 0)
+          : road.points.last - road.points.first;
+      if (direction.distance < .001) {
+        for (var index = 1; index < road.points.length; index++) {
+          final segment = road.points[index] - road.points[index - 1];
+          if (segment.distance < .001) continue;
+          direction = segment;
+          break;
+        }
+      }
+      if (direction.distance < .001) direction = const Offset(1, 0);
+      final normal = Offset(-direction.dy, direction.dx) / direction.distance;
+      final delta = map.snap(normal * (road.kind.width + kCityGrid * 2));
+      var translation = delta;
+      bool occupied(Offset offset) {
+        for (final other in map.roads) {
+          if (other.points.length != road.points.length) continue;
+          var forward = true;
+          var reverse = true;
+          for (var index = 0; index < road.points.length; index++) {
+            final point = road.points[index] + offset;
+            forward = forward && (point - other.points[index]).distance < .001;
+            reverse =
+                reverse &&
+                (point - other.points[other.points.length - index - 1])
+                        .distance <
+                    .001;
+          }
+          if (forward || reverse) return true;
+        }
+        return false;
+      }
+
+      for (
+        var attempt = 1;
+        attempt <= map.roads.length && occupied(translation);
+        attempt++
+      ) {
+        translation = delta * (attempt + 1).toDouble();
+      }
+      for (var index = 0; index < duplicate.points.length; index++) {
+        duplicate.points[index] += translation;
+      }
+      _remember(map.clone());
+      map.roads.add(duplicate);
+      selectedId = duplicate.id;
+      tool = CityPlanTool.select;
+      draftRoad.clear();
+      _persist();
+      return true;
+    }
+    return false;
   }
 
   void beginMove(Offset position) {

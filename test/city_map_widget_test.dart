@@ -1,8 +1,10 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:luma/features/plugins/installed/map_maker/city_map_editor_view.dart';
 import 'package:luma/features/plugins/installed/map_maker/city_map_models.dart';
+import 'package:luma/features/plugins/installed/map_maker/city_map_overlays.dart';
 import 'package:luma/features/plugins/installed/map_maker/city_map_painter.dart';
 import 'package:luma/features/plugins/installed/map_maker/map_maker_models.dart';
 import 'package:luma/features/plugins/installed/map_maker/map_maker_page.dart';
@@ -18,7 +20,286 @@ Widget _app(Widget home, {Locale locale = const Locale('en')}) => MaterialApp(
   home: home,
 );
 
+CityMapPainter _mapPaint(WidgetTester tester) =>
+    tester
+            .widget<CustomPaint>(find.byKey(const ValueKey('city-canvas')))
+            .painter!
+        as CityMapPainter;
+
+Offset _worldToScreen(WidgetTester tester, Offset world) {
+  final canvas = tester.renderObject<RenderBox>(
+    find.byKey(const ValueKey('city-canvas')),
+  );
+  return canvas.localToGlobal(
+    MatrixUtils.transformPoint(_mapPaint(tester).worldTransform!, world),
+  );
+}
+
 void main() {
+  testWidgets(
+    'compact landscape menus expose scrollable layers and properties',
+    (tester) async {
+      tester.view.physicalSize = const Size(640, 360);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final store = MapMakerStore.memory();
+      final save = await store.createCity();
+      await tester.pumpWidget(
+        _app(CityMapEditorView(save: save, store: store, onBack: () {})),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('city-more')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('city-more-layers')));
+      await tester.pumpAndSettle();
+      final grid = find.byKey(const ValueKey('city-layer-grid'));
+      await tester.ensureVisible(grid);
+      await tester.tap(grid);
+      await tester.pump();
+      expect(_mapPaint(tester).showGrid, isFalse);
+      expect(tester.takeException(), isNull);
+      await tester.tapAt(const Offset(10, 10));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('city-more')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('city-more-properties')));
+      await tester.pumpAndSettle();
+      expect(find.text('Plan overview'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
+      await store.flush();
+      store.dispose();
+    },
+  );
+
+  testWidgets(
+    'canvas fills the viewport and supports building after distant panning',
+    (tester) async {
+      tester.view.physicalSize = const Size(1100, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final store = MapMakerStore.memory();
+      final save = await store.createCity();
+      await tester.pumpWidget(
+        _app(CityMapEditorView(save: save, store: store, onBack: () {})),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('city-pan')));
+      await tester.dragFrom(const Offset(600, 400), const Offset(8000, 6000));
+      await tester.pump();
+      expect(_mapPaint(tester).visibleWorldBounds!.right, lessThan(-3200));
+      expect(_mapPaint(tester).visibleWorldBounds!.bottom, lessThan(-2400));
+      final canvasSize = tester.getSize(
+        find.byKey(const ValueKey('city-canvas')),
+      );
+      expect(
+        canvasSize,
+        tester.getSize(find.byKey(const ValueKey('city-viewport'))),
+      );
+      expect(canvasSize.width, 880);
+      await tester.tap(find.byKey(const ValueKey('city-frontage')));
+      await tester.tap(find.byKey(const ValueKey('city-building-house')));
+      await tester.tapAt(const Offset(600, 400));
+      await tester.pump();
+      expect(save.city.buildings.single.x, lessThan(-3200));
+      expect(save.city.buildings.single.y, lessThan(-2400));
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
+      await store.flush();
+      store.dispose();
+    },
+  );
+
+  testWidgets(
+    'wheel zoom stays anchored and the city can fit distant features',
+    (tester) async {
+      tester.view.physicalSize = const Size(1440, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final store = MapMakerStore.memory();
+      final save = await store.createCity();
+      save.city.buildings.addAll([
+        CityBuilding(
+          id: 'west',
+          kind: CityBuildingKind.house,
+          x: -1000000,
+          y: -500000,
+        ),
+        CityBuilding(
+          id: 'east',
+          kind: CityBuildingKind.house,
+          x: 1000000,
+          y: 500000,
+        ),
+      ]);
+      await tester.pumpWidget(
+        _app(CityMapEditorView(save: save, store: store, onBack: () {})),
+      );
+      await tester.pumpAndSettle();
+      final initial = _mapPaint(tester);
+      expect(
+        initial.visibleWorldBounds!.contains(const Offset(-1000000, -500000)),
+        isTrue,
+      );
+      expect(
+        initial.visibleWorldBounds!.contains(const Offset(1000000, 500000)),
+        isTrue,
+      );
+      expect(find.byKey(const ValueKey('city-navigator')), findsOneWidget);
+      final canvas = tester.renderObject<RenderBox>(
+        find.byKey(const ValueKey('city-canvas')),
+      );
+      const local = Offset(280, 260);
+      final anchor = MatrixUtils.transformPoint(
+        Matrix4.inverted(initial.worldTransform!),
+        local,
+      );
+      await tester.sendEventToBinding(
+        PointerScrollEvent(
+          position: canvas.localToGlobal(local),
+          scrollDelta: const Offset(0, -120),
+        ),
+      );
+      await tester.pump();
+      final zoomed = _mapPaint(tester);
+      expect(zoomed.viewScale, greaterThan(initial.viewScale));
+      expect(
+        (MatrixUtils.transformPoint(
+                  Matrix4.inverted(zoomed.worldTransform!),
+                  local,
+                ) -
+                anchor)
+            .distance,
+        lessThan(.00001),
+      );
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
+      await store.flush();
+      store.dispose();
+    },
+  );
+
+  testWidgets(
+    'duplicate shortcut and measurement preserve undo and map geometry',
+    (tester) async {
+      tester.view.physicalSize = const Size(1440, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final store = MapMakerStore.memory();
+      final save = await store.createCity();
+      save.city.buildings.add(
+        CityBuilding(
+          id: 'source',
+          kind: CityBuildingKind.house,
+          x: -6000,
+          y: -8000,
+        ),
+      );
+      await tester.pumpWidget(
+        _app(CityMapEditorView(save: save, store: store, onBack: () {})),
+      );
+      await tester.pumpAndSettle();
+      await tester.tapAt(_worldToScreen(tester, const Offset(-6000, -8000)));
+      await tester.pump();
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyD);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+      await tester.pump();
+      expect(save.city.buildings, hasLength(2));
+      await tester.tap(find.byKey(const ValueKey('city-undo')));
+      await tester.pump();
+      expect(save.city.buildings.single.id, 'source');
+      await tester.tapAt(const Offset(600, 400));
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyM);
+      await tester.pump();
+      await tester.tapAt(const Offset(500, 420));
+      await tester.tapAt(const Offset(700, 420));
+      await tester.pump();
+      final paint = tester.widget<CustomPaint>(
+        find.byKey(const ValueKey('city-canvas')),
+      );
+      final measure = paint.foregroundPainter! as CityMeasurePainter;
+      expect((measure.start - measure.end).distance, greaterThan(100));
+      expect(measure.label, endsWith(' m'));
+      expect(save.city.buildings, hasLength(1));
+      expect(save.city.roads, isEmpty);
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pump();
+      expect(
+        tester
+            .widget<CustomPaint>(find.byKey(const ValueKey('city-canvas')))
+            .foregroundPainter,
+        isNull,
+      );
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
+      await store.flush();
+      store.dispose();
+    },
+  );
+
+  testWidgets('pinch zoom and space panning leave features intact', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1100, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final store = MapMakerStore.memory();
+    final save = await store.createCity();
+    save.city.buildings.add(
+      CityBuilding(id: 'source', kind: CityBuildingKind.house, x: 0, y: 0),
+    );
+    await tester.pumpWidget(
+      _app(CityMapEditorView(save: save, store: store, onBack: () {})),
+    );
+    await tester.pumpAndSettle();
+    final originalScale = _mapPaint(tester).viewScale;
+    final first = await tester.startGesture(const Offset(500, 350), pointer: 1);
+    final second = await tester.startGesture(
+      const Offset(700, 350),
+      pointer: 2,
+    );
+    await first.moveBy(const Offset(-60, 0));
+    await second.moveBy(const Offset(60, 0));
+    await tester.pump();
+    await first.up();
+    await second.up();
+    expect(_mapPaint(tester).viewScale, greaterThan(originalScale));
+    final originalBounds = _mapPaint(tester).visibleWorldBounds!;
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.space);
+    await tester.dragFrom(const Offset(600, 400), const Offset(160, 80));
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.space);
+    await tester.pump();
+    expect(
+      _mapPaint(tester).visibleWorldBounds!.left,
+      lessThan(originalBounds.left),
+    );
+    expect(save.city.buildings.single.position, Offset.zero);
+    final beforeMiddle = _mapPaint(tester).visibleWorldBounds!;
+    final mouse = await tester.createGesture(
+      kind: PointerDeviceKind.mouse,
+      buttons: kMiddleMouseButton,
+    );
+    await mouse.down(const Offset(600, 400));
+    await mouse.moveBy(const Offset(100, 50));
+    await mouse.up();
+    await tester.pump();
+    expect(
+      _mapPaint(tester).visibleWorldBounds!.left,
+      lessThan(beforeMiddle.left),
+    );
+    expect(save.city.buildings.single.position, Offset.zero);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpAndSettle();
+    await store.flush();
+    store.dispose();
+  });
+
   testWidgets(
     'fit below full scale keeps zoom, snapping and scale feedback synchronized',
     (tester) async {
@@ -37,11 +318,7 @@ void main() {
         _app(CityMapEditorView(save: save, store: store, onBack: () {})),
       );
       await tester.pumpAndSettle();
-      final viewer = tester.widget<InteractiveViewer>(
-        find.byType(InteractiveViewer),
-      );
-      final actualScale = viewer.transformationController!.value
-          .getMaxScaleOnAxis();
+      final actualScale = _mapPaint(tester).worldTransform!.getMaxScaleOnAxis();
       final paint =
           tester
                   .widget<CustomPaint>(
@@ -55,7 +332,7 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('city-zoom-out')));
       await tester.pump();
       expect(
-        viewer.transformationController!.value.getMaxScaleOnAxis(),
+        _mapPaint(tester).worldTransform!.getMaxScaleOnAxis(),
         lessThan(actualScale),
       );
       await tester.pumpWidget(const SizedBox.shrink());
@@ -79,6 +356,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('city-road-street')));
       await tester.tap(find.byKey(const ValueKey('city-curve')));
+      await tester.pump();
       await tester.tapAt(const Offset(380, 420));
       await tester.tapAt(const Offset(620, 280));
       await tester.pump();
@@ -103,10 +381,7 @@ void main() {
       expect(save.city.buildings.single.roadId, curve.id);
       expect(save.city.buildings.single.roadAnchor, isNotNull);
 
-      final canvas = tester.renderObject<RenderBox>(
-        find.byKey(const ValueKey('city-canvas')),
-      );
-      final endpoint = canvas.localToGlobal(curve.points.first);
+      final endpoint = _worldToScreen(tester, curve.points.first);
       await tester.tap(find.byKey(const ValueKey('city-road-avenue')));
       await tester.tap(find.byKey(const ValueKey('city-straight')));
       await tester.tapAt(endpoint + const Offset(5, 2));
@@ -124,7 +399,7 @@ void main() {
         isTrue,
       );
       await tester.tap(find.byKey(const ValueKey('city-select')));
-      await tester.tapAt(canvas.localToGlobal(curve.points[1]));
+      await tester.tapAt(_worldToScreen(tester, curve.points[1]));
       await tester.pump();
       final name = find.byKey(ValueKey('city-feature-name-${curve.id}'));
       await tester.enterText(name, 'River Road');
@@ -172,10 +447,7 @@ void main() {
       _app(CityMapEditorView(save: save, store: store, onBack: () {})),
     );
     await tester.pumpAndSettle();
-    final canvas = tester.renderObject<RenderBox>(
-      find.byKey(const ValueKey('city-canvas')),
-    );
-    await tester.tapAt(canvas.localToGlobal(const Offset(1600, 1200)));
+    await tester.tapAt(_worldToScreen(tester, const Offset(1600, 1200)));
     await tester.pump();
     await tester.enterText(
       find.byKey(const ValueKey('city-feature-name-named')),
@@ -256,6 +528,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Street'), findsNothing);
     await tester.tap(find.byKey(const ValueKey('city-road-street')));
+    await tester.pump();
     await tester.tapAt(const Offset(70, 350));
     await tester.tapAt(const Offset(270, 350));
     await tester.pump();
@@ -302,10 +575,10 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('city-zoom-in')));
     await tester.tap(find.byKey(const ValueKey('city-select')));
     await tester.pump();
-    final canvas = tester.renderObject<RenderBox>(
-      find.byKey(const ValueKey('city-canvas')),
+    await tester.dragFrom(
+      _worldToScreen(tester, original),
+      const Offset(96, 48),
     );
-    await tester.dragFrom(canvas.localToGlobal(original), const Offset(96, 48));
     await tester.pump();
     expect(save.city.buildings.single.position, isNot(original));
     await tester.tap(find.byKey(const ValueKey('city-undo')));

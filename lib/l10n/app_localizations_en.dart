@@ -40907,4 +40907,75 @@ class LEn extends L {
   @override
   String get cs2TeammateVoiceIdle =>
       'Start the chat translator and choose a source to begin.';
+
+  @override
+  String get mapMakerCityInfiniteCanvas => 'Infinite canvas';
+
+  @override
+  String get mapMakerCityDuplicate => 'Duplicate';
+
+  @override
+  String get mapMakerCityFitSelection => 'Fit selection';
+
+  @override
+  String get mapMakerCityOrigin => 'Go to origin';
+
+  @override
+  String get mapMakerCityMeasure => 'Measure distance';
+
+  @override
+  String get mapMakerCityMeasureHint =>
+      'Click two points to measure. Esc clears the measurement.';
+
+  @override
+  String mapMakerCityMeasuredDistance(String value) {
+    return '$value m';
+  }
+
+  @override
+  String get mapMakerCityShortcuts => 'Keyboard shortcuts';
+
+  @override
+  String get mapMakerCityNavigationHint =>
+      'Scroll to zoom · Space or middle-drag to pan · F to fit';
+
+  @override
+  String get mapMakerCityLabels => 'Labels';
+
+  @override
+  String get mapMakerCityOverview => 'Plan overview';
+
+  @override
+  String get mapMakerCityRoadLength => 'Road network';
+
+  @override
+  String get mapMakerCityDevelopedArea => 'Built footprint';
+
+  @override
+  String get mapMakerCityGreenSpace => 'Park area';
+
+  @override
+  String get mapMakerCityInfiniteHint =>
+      'Your city has no edges. Pan in any direction and keep building.';
+
+  @override
+  String get mapMakerCityStartRoad => 'Draw your first road';
+
+  @override
+  String get mapMakerCityFootprint => 'Footprint';
+
+  @override
+  String mapMakerCityDimensions(String width, String height) {
+    return '$width × $height m';
+  }
+
+  @override
+  String get mapMakerCityDuplicateFailed =>
+      'No room for a copy nearby. Make space or disable road frontage.';
+
+  @override
+  String get mapMakerCitySelection => 'Selected feature';
+
+  @override
+  String get mapMakerCityNavigator => 'Plan navigator';
 }

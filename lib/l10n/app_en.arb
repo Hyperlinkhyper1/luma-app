@@ -25029,5 +25029,43 @@
   "cs2TeammateVoiceStart": "Start listening",
   "cs2TeammateVoiceStop": "Stop listening",
   "cs2TeammateVoiceRunning": "Listening and translating into the chat translator’s target language.",
-  "cs2TeammateVoiceIdle": "Start the chat translator and choose a source to begin."
+  "cs2TeammateVoiceIdle": "Start the chat translator and choose a source to begin.",
+  "mapMakerCityInfiniteCanvas": "Infinite canvas",
+  "mapMakerCityDuplicate": "Duplicate",
+  "mapMakerCityFitSelection": "Fit selection",
+  "mapMakerCityOrigin": "Go to origin",
+  "mapMakerCityMeasure": "Measure distance",
+  "mapMakerCityMeasureHint": "Click two points to measure. Esc clears the measurement.",
+  "mapMakerCityMeasuredDistance": "{value} m",
+  "@mapMakerCityMeasuredDistance": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "mapMakerCityShortcuts": "Keyboard shortcuts",
+  "mapMakerCityNavigationHint": "Scroll to zoom · Space or middle-drag to pan · F to fit",
+  "mapMakerCityLabels": "Labels",
+  "mapMakerCityOverview": "Plan overview",
+  "mapMakerCityRoadLength": "Road network",
+  "mapMakerCityDevelopedArea": "Built footprint",
+  "mapMakerCityGreenSpace": "Park area",
+  "mapMakerCityInfiniteHint": "Your city has no edges. Pan in any direction and keep building.",
+  "mapMakerCityStartRoad": "Draw your first road",
+  "mapMakerCityFootprint": "Footprint",
+  "mapMakerCityDimensions": "{width} × {height} m",
+  "@mapMakerCityDimensions": {
+    "placeholders": {
+      "width": {
+        "type": "String"
+      },
+      "height": {
+        "type": "String"
+      }
+    }
+  },
+  "mapMakerCityDuplicateFailed": "No room for a copy nearby. Make space or disable road frontage.",
+  "mapMakerCitySelection": "Selected feature",
+  "mapMakerCityNavigator": "Plan navigator"
 }

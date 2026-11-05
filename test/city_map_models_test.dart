@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:ui' show Rect;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:luma/features/plugins/installed/map_maker/city_map_models.dart';
@@ -125,16 +126,46 @@ void main() {
     expect(city.hitRoad(const Offset(120, 157)), isNull);
   });
 
-  test('grid snapping stays inside the sheet at every edge', () {
+  test('grid snapping extends beyond the former sheet in every direction', () {
     final city = CityMap();
     expect(city.snap(const Offset(23, 25)), const Offset(24, 24));
-    expect(city.snap(const Offset(-100, -1)), Offset.zero);
-    final edge = city.snap(const Offset(9000, 9000));
-    expect(edge.dx, lessThanOrEqualTo(kCitySheetSize.width));
-    expect(edge.dy, lessThanOrEqualTo(kCitySheetSize.height));
-    expect(edge.dx % kCityGrid, 0);
-    expect(edge.dy % kCityGrid, 0);
+    expect(city.snap(const Offset(-100, -1)), const Offset(-96, 0));
+    expect(city.snap(const Offset(9000, -9000)), const Offset(9000, -9000));
+    expect(
+      city.snap(const Offset(1200001, -1200001)),
+      const Offset(1200000, -1200000),
+    );
   });
+
+  test(
+    'content bounds cover road widths and parcels at distant coordinates',
+    () {
+      final city = CityMap();
+      expect(city.contentBounds, isNull);
+      final road = CityRoad(
+        id: 'road',
+        points: [const Offset(-1000, 0), const Offset(1000, 0)],
+      );
+      city.roads.add(road);
+      expect(road.bounds, const Rect.fromLTRB(-1012, -12, 1012, 12));
+      final house = CityBuilding(
+        id: 'distant',
+        kind: CityBuildingKind.house,
+        x: 50000,
+        y: -50000,
+      );
+      city.buildings.add(house);
+      expect(
+        house.parcelBounds,
+        const Rect.fromLTRB(49964, -50036, 50036, -49964),
+      );
+      expect(city.contentBounds, const Rect.fromLTRB(-1012, -50036, 50036, 12));
+      expect(city.roadLengthMeters, 500);
+      final reopened = CityMap.fromJson(jsonDecode(jsonEncode(city.toJson())));
+      expect(reopened.contentBounds, city.contentBounds);
+      expect(reopened.buildings.single.position, house.position);
+    },
+  );
 
   test('legacy saves open with empty cities and retain transit content', () {
     final legacy = {

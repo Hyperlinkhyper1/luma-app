@@ -16,6 +16,103 @@ CityBuilding _house(String id) =>
     CityBuilding(id: id, kind: CityBuildingKind.house, x: 0, y: 0);
 
 void main() {
+  test('free placement and frontage work beyond every former map edge', () {
+    final city = CityMap(
+      roads: [
+        _road(
+          'remote',
+          const Offset(-100000, -50000),
+          const Offset(-99000, -50000),
+        ),
+      ],
+    );
+    final geometry = CityGeometry(city);
+    final connected = geometry.placeBuilding(
+      _house('frontage'),
+      const Offset(-99500, -50080),
+    );
+    expect(connected.valid, isTrue);
+    expect(connected.building.roadId, 'remote');
+    city.buildings.add(connected.building);
+    final detached = geometry.placeBuilding(
+      _house('detached'),
+      const Offset(120000, -120000),
+      connect: false,
+    );
+    expect(detached.valid, isTrue);
+    expect(detached.building.position, const Offset(120000, -120000));
+    expect(
+      geometry.snap(const Offset(-999999, 999999), grid: false).position,
+      const Offset(-999999, 999999),
+    );
+    final overlap = geometry.placeBuilding(
+      _house('overlap'),
+      connected.building.position,
+      connect: false,
+      grid: false,
+    );
+    expect(overlap.valid, isFalse);
+  });
+
+  test('very long roads form intersections without enumerating map area', () {
+    final city = CityMap(
+      roads: [
+        _road(
+          'diagonal',
+          const Offset(-1000000000, -1000000000),
+          const Offset(1000000000, 1000000000),
+        ),
+        _road(
+          'crossing',
+          const Offset(-1000000000, 1000000000),
+          const Offset(1000000000, -1000000000),
+        ),
+        _road('vertical', const Offset(0, -100), const Offset(0, 100)),
+      ],
+    );
+    final geometry = CityGeometry(city)..rebuildTopology();
+    final center = city.junctions.singleWhere(
+      (node) => node.position.distance < .01,
+    );
+    expect(center.roadIds.toSet(), {'diagonal', 'crossing', 'vertical'});
+    expect(geometry.connectedRoadIds('diagonal'), {
+      'diagonal',
+      'crossing',
+      'vertical',
+    });
+  });
+
+  test(
+    'long segments never connect at intersections beyond their endpoints',
+    () {
+      final city = CityMap(
+        roads: [
+          _road(
+            'diagonal',
+            const Offset(-1000000000, -1000000000),
+            Offset.zero,
+          ),
+          _road('nearby', const Offset(-100, -20), const Offset(100, 40)),
+        ],
+      );
+      final geometry = CityGeometry(city)..rebuildTopology();
+      expect(geometry.connectedRoadIds('diagonal'), {'diagonal'});
+      expect(city.junctions.where((node) => node.roadIds.length > 1), isEmpty);
+    },
+  );
+
+  test('nearby endpoints merge across spatial bucket edges', () {
+    final city = CityMap(
+      roads: [
+        _road('left', const Offset(-100, 0), const Offset(-.01, -.01)),
+        _road('right', const Offset(.01, .01), const Offset(100, 0)),
+      ],
+    );
+    final geometry = CityGeometry(city)..rebuildTopology();
+    expect(geometry.connectedRoadIds('left'), {'left', 'right'});
+    expect(city.junctions, hasLength(3));
+  });
+
   test(
     'smooth roads retain authored vertices and hit their actual centerline',
     () {

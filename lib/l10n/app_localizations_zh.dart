@@ -39046,4 +39046,71 @@ class LZh extends L {
 
   @override
   String get cs2TeammateVoiceIdle => '启动聊天翻译器并选择录音源即可开始。';
+
+  @override
+  String get mapMakerCityInfiniteCanvas => '无限画布';
+
+  @override
+  String get mapMakerCityDuplicate => '复制';
+
+  @override
+  String get mapMakerCityFitSelection => '适应所选要素';
+
+  @override
+  String get mapMakerCityOrigin => '返回原点';
+
+  @override
+  String get mapMakerCityMeasure => '测量距离';
+
+  @override
+  String get mapMakerCityMeasureHint => '点击两点测量距离，按 Esc 清除测量。';
+
+  @override
+  String mapMakerCityMeasuredDistance(String value) {
+    return '$value 米';
+  }
+
+  @override
+  String get mapMakerCityShortcuts => '键盘快捷键';
+
+  @override
+  String get mapMakerCityNavigationHint => '滚动缩放 · 空格键或鼠标中键 + 拖动平移 · F 适应全部';
+
+  @override
+  String get mapMakerCityLabels => '标签';
+
+  @override
+  String get mapMakerCityOverview => '规划概览';
+
+  @override
+  String get mapMakerCityRoadLength => '道路网络';
+
+  @override
+  String get mapMakerCityDevelopedArea => '建筑占地面积';
+
+  @override
+  String get mapMakerCityGreenSpace => '公园面积';
+
+  @override
+  String get mapMakerCityInfiniteHint => '城市没有边界，向任意方向平移即可继续建设。';
+
+  @override
+  String get mapMakerCityStartRoad => '绘制第一条道路';
+
+  @override
+  String get mapMakerCityFootprint => '占地面积';
+
+  @override
+  String mapMakerCityDimensions(String width, String height) {
+    return '$width × $height 米';
+  }
+
+  @override
+  String get mapMakerCityDuplicateFailed => '附近没有空间可放置副本，请腾出空间或关闭道路临街设置。';
+
+  @override
+  String get mapMakerCitySelection => '所选要素';
+
+  @override
+  String get mapMakerCityNavigator => '规划导航器';
 }

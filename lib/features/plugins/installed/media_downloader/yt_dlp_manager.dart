@@ -56,6 +56,14 @@ class YtVideoInfo {
 
 enum DownloadMode { video, audio }
 
+class _ResolvedSource {
+  _ResolvedSource(this.url, {this.id, this.title, this.thumbnail});
+  final String url;
+  final String? id;
+  final String? title;
+  final String? thumbnail;
+}
+
 class _ProcessHolder {
   Process? process;
   bool cancelled = false;
@@ -240,13 +248,59 @@ class YtDlpManager {
     }
   }
 
+  static final _regionalEpisode = RegExp(
+      r'^https?://(?:www\.)?omroepwest\.nl/tv/aflevering/[^/?#]+/(\d+)',
+      caseSensitive: false);
+
+  Future<_ResolvedSource> _resolve(String url) async {
+    final m = _regionalEpisode.firstMatch(url.trim());
+    if (m == null) return _ResolvedSource(url);
+    final id = m.group(1)!;
+    final stream =
+        'https://omroepwest.bbvms.com/mediaclip/srcid:$id/redirect/MP4_HLS';
+    String? title;
+    String? thumbnail;
+    try {
+      final res = await http
+          .get(Uri.parse(url.trim()), headers: const {'User-Agent': 'Mozilla/5.0'})
+          .timeout(const Duration(seconds: 15));
+      if (res.statusCode == 200) {
+        final html = utf8.decode(res.bodyBytes, allowMalformed: true);
+        title = _metaContent(html, 'og:title')
+            ?.replaceFirst(RegExp(r'\s*-\s*Omroep West\s*$'), '');
+        thumbnail = _metaContent(html, 'og:image');
+      }
+    } catch (_) {}
+    return _ResolvedSource(stream, id: id, title: title, thumbnail: thumbnail);
+  }
+
+  static String? _metaContent(String html, String property) {
+    final m = RegExp('property="${RegExp.escape(property)}"\\s+content="([^"]*)"')
+        .firstMatch(html);
+    final raw = m?.group(1)?.trim();
+    if (raw == null || raw.isEmpty) return null;
+    return raw
+        .replaceAll('&quot;', '"')
+        .replaceAll('&#39;', "'")
+        .replaceAll('&#x27;', "'")
+        .replaceAll('&lt;', '<')
+        .replaceAll('&gt;', '>')
+        .replaceAll('&amp;', '&');
+  }
+
+  static String _safeFileName(String name) => name
+      .replaceAll(RegExp(r'[<>:"/\\|?*\x00-\x1F]'), '_')
+      .replaceAll('%', '%%')
+      .trim();
+
   Future<YtVideoInfo> fetchInfo(String url) async {
     if (!await toolsReady) {
       throw YtDlpException(currentL.mediaDlToolsNotReady);
     }
+    final source = await _resolve(url);
     final result = await Process.run(
       await _ytDlpPath,
-      ['-j', '--no-playlist', '--no-warnings', url],
+      ['-j', '--no-playlist', '--no-warnings', source.url],
       stdoutEncoding: utf8,
       stderrEncoding: utf8,
     );
@@ -260,7 +314,11 @@ class YtDlpManager {
       throw YtDlpException(currentL.mediaDlCouldNotReadInfo);
     }
     try {
-      return YtVideoInfo.fromJson(jsonDecode(line) as Map<String, dynamic>);
+      final json = jsonDecode(line) as Map<String, dynamic>;
+      if (source.id != null) json['id'] = source.id;
+      if (source.title != null) json['title'] = source.title;
+      if (source.thumbnail != null) json['thumbnail'] = source.thumbnail;
+      return YtVideoInfo.fromJson(json);
     } catch (_) {
       throw YtDlpException(currentL.mediaDlCouldNotParseInfo);
     }
@@ -310,11 +368,15 @@ class YtDlpManager {
       if (!await toolsReady) {
         throw YtDlpException(currentL.mediaDlToolsNotReady);
       }
+      final source = await _resolve(url);
+      final baseName = source.id == null
+          ? '%(title)s [%(id)s]'
+          : '${_safeFileName(source.title ?? source.id!)} [${source.id}]';
       final outputTemplate =
-          '$outputDir${Platform.pathSeparator}%(title)s [%(id)s].%(ext)s';
+          '$outputDir${Platform.pathSeparator}$baseName.%(ext)s';
 
       final args = <String>[
-        url,
+        source.url,
         if (_isWindows) ...['--ffmpeg-location', (await _toolsDir()).path],
         '--no-playlist',
         '--no-warnings',

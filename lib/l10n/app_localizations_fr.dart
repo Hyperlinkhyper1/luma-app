@@ -41426,4 +41426,75 @@ class LFr extends L {
   @override
   String get cs2TeammateVoiceIdle =>
       'Démarrez le traducteur de chat et choisissez une source.';
+
+  @override
+  String get mapMakerCityInfiniteCanvas => 'Canevas infini';
+
+  @override
+  String get mapMakerCityDuplicate => 'Dupliquer';
+
+  @override
+  String get mapMakerCityFitSelection => 'Cadrer la sélection';
+
+  @override
+  String get mapMakerCityOrigin => 'Aller à l’origine';
+
+  @override
+  String get mapMakerCityMeasure => 'Mesurer une distance';
+
+  @override
+  String get mapMakerCityMeasureHint =>
+      'Cliquez sur deux points pour mesurer. Échap efface la mesure.';
+
+  @override
+  String mapMakerCityMeasuredDistance(String value) {
+    return '$value m';
+  }
+
+  @override
+  String get mapMakerCityShortcuts => 'Raccourcis clavier';
+
+  @override
+  String get mapMakerCityNavigationHint =>
+      'Défiler pour zoomer · Espace ou bouton central + glisser pour déplacer · F pour tout cadrer';
+
+  @override
+  String get mapMakerCityLabels => 'Étiquettes';
+
+  @override
+  String get mapMakerCityOverview => 'Vue d’ensemble du plan';
+
+  @override
+  String get mapMakerCityRoadLength => 'Réseau routier';
+
+  @override
+  String get mapMakerCityDevelopedArea => 'Emprise bâtie';
+
+  @override
+  String get mapMakerCityGreenSpace => 'Surface des parcs';
+
+  @override
+  String get mapMakerCityInfiniteHint =>
+      'Votre ville n’a pas de limites. Déplacez-vous dans toutes les directions et continuez à construire.';
+
+  @override
+  String get mapMakerCityStartRoad => 'Tracez votre première route';
+
+  @override
+  String get mapMakerCityFootprint => 'Emprise au sol';
+
+  @override
+  String mapMakerCityDimensions(String width, String height) {
+    return '$width × $height m';
+  }
+
+  @override
+  String get mapMakerCityDuplicateFailed =>
+      'Pas de place pour une copie à proximité. Libérez de l’espace ou désactivez l’accès routier.';
+
+  @override
+  String get mapMakerCitySelection => 'Élément sélectionné';
+
+  @override
+  String get mapMakerCityNavigator => 'Navigateur du plan';
 }

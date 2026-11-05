@@ -41200,4 +41200,75 @@ class LNl extends L {
   @override
   String get cs2TeammateVoiceIdle =>
       'Start de chatvertaler en kies een bron om te beginnen.';
+
+  @override
+  String get mapMakerCityInfiniteCanvas => 'Oneindig canvas';
+
+  @override
+  String get mapMakerCityDuplicate => 'Dupliceren';
+
+  @override
+  String get mapMakerCityFitSelection => 'Selectie in beeld';
+
+  @override
+  String get mapMakerCityOrigin => 'Naar oorsprong';
+
+  @override
+  String get mapMakerCityMeasure => 'Afstand meten';
+
+  @override
+  String get mapMakerCityMeasureHint =>
+      'Klik op twee punten om te meten. Esc wist de meting.';
+
+  @override
+  String mapMakerCityMeasuredDistance(String value) {
+    return '$value m';
+  }
+
+  @override
+  String get mapMakerCityShortcuts => 'Sneltoetsen';
+
+  @override
+  String get mapMakerCityNavigationHint =>
+      'Scroll om te zoomen · Spatie of middelste muisknop + slepen om te verschuiven · F voor alles in beeld';
+
+  @override
+  String get mapMakerCityLabels => 'Labels';
+
+  @override
+  String get mapMakerCityOverview => 'Planoverzicht';
+
+  @override
+  String get mapMakerCityRoadLength => 'Wegennet';
+
+  @override
+  String get mapMakerCityDevelopedArea => 'Bebouwde oppervlakte';
+
+  @override
+  String get mapMakerCityGreenSpace => 'Parkoppervlakte';
+
+  @override
+  String get mapMakerCityInfiniteHint =>
+      'Je stad heeft geen grenzen. Verschuif het canvas in elke richting en bouw verder.';
+
+  @override
+  String get mapMakerCityStartRoad => 'Teken je eerste weg';
+
+  @override
+  String get mapMakerCityFootprint => 'Grondoppervlakte';
+
+  @override
+  String mapMakerCityDimensions(String width, String height) {
+    return '$width × $height m';
+  }
+
+  @override
+  String get mapMakerCityDuplicateFailed =>
+      'Geen ruimte voor een kopie in de buurt. Maak ruimte of schakel de wegaansluiting uit.';
+
+  @override
+  String get mapMakerCitySelection => 'Geselecteerd object';
+
+  @override
+  String get mapMakerCityNavigator => 'Plannavigator';
 }

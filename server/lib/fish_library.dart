@@ -792,7 +792,8 @@ class FishLibrary {
         String? previewJson;
         if (failure == null) {
           await stage('previewing', 'Building the model in the sandbox…');
-          final built = await _buildPreview(head.files, file);
+          final built = await _buildPreview(head.files, file,
+              requireSkin: job.mode == 'new' && _needsSkin(file));
           failure = built.error;
           previewJson = built.json;
         }
@@ -1113,10 +1114,19 @@ $table''';
     }
   }
 
+  /// New fish get the smooth mesh body the game's clients loft over the
+  /// spheres; only junk, shark drops and cage/net catches (no pools: crabs,
+  /// mussels) may stay plain parts.
+  static bool _needsSkin(FishSpeciesFile file) =>
+      file.rarity != 'Junk' && !file.dropOnly && file.list('Pools').isNotEmpty;
+
   /// Runs [file] through the game's own AnglerCatalog and FishModels in the
   /// sandbox and returns the model in the wiki's file format, or what broke.
+  /// With [requireSkin], a model without a smooth mesh skin counts as broken
+  /// (when the wiki's exporter is new enough to report skins).
   Future<({String? json, String? error})> _buildPreview(
-      Map<String, String> files, FishSpeciesFile file) async {
+      Map<String, String> files, FishSpeciesFile file,
+      {bool requireSkin = false}) async {
     final mockDir = wikiDir == null ? null : '$wikiDir/source/scripts/fish-models';
     final mock = mockDir == null ? null : File('$mockDir/roblox-mock.luau');
     final export = mockDir == null ? null : File('$mockDir/export.luau');
@@ -1132,6 +1142,7 @@ $table''';
         .replaceFirst('require(script.Parent.FishMutations)', 'FishMutations');
     final catalog = withSpecies(read(await _file(files, 'src/shared/AnglerCatalog.luau')));
     final id = file.id;
+    final exporter = await export.readAsString();
     final bundle = [
       read(await mock.readAsString()),
       'local FishSpecies = { ["$id"] = (function()\n${read(file.source)}\nend)() }',
@@ -1141,7 +1152,7 @@ $table''';
       'assert(Catalog.Fish["$id"], "AnglerCatalog did not load $id")',
       'FISH_IDS = if FishModels.has("$id") then { "$id" } else {}',
       'print("FISHCHECK " .. #FISH_IDS)',
-      read(await export.readAsString()),
+      read(exporter),
     ].join('\n');
     final run = await _runLuau(bundle);
     if (run.code != 0) {
@@ -1156,7 +1167,15 @@ $table''';
       return (json: null, error: 'The model built nothing (no Build output).');
     }
     try {
-      return (json: packModel(jsonDecode(line) as Map<String, dynamic>), error: null);
+      final fish = jsonDecode(line) as Map<String, dynamic>;
+      if (requireSkin && exporter.contains('encodeSkin') && fish['skin'] == null) {
+        return (json: null, error: 'The body is still built from loose spheres, '
+            'with no smooth 3D mesh skin. Build the body with b:fishBody, '
+            'b:loftBody, a skinned kit family (carp, trout, sturgeon, eel, '
+            'flatfish), or call b:beginSkin(colors) before its b:layered '
+            'body spheres, as the rules describe.');
+      }
+      return (json: packModel(fish), error: null);
     } on FormatException catch (e) {
       return (json: null, error: e.message);
     }
