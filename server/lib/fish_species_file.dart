@@ -24,7 +24,9 @@ const kFishRarities = [
   'Exotic',
   'Divine',
   // Bites only while switched on in the dashboard, at the chance set there.
-  'Limited'
+  'Limited',
+  // The rarest tier by far (1 in a million and up): "WRONG WATER" fish.
+  'Admin'
 ];
 
 /// Data fields in the order they appear in a module; a missing field is

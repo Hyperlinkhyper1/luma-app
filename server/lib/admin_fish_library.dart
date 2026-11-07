@@ -154,7 +154,7 @@ class AdminFishLibrary {
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
     });
   }
-  var RARITY_COLOR = { Junk: '#9d8568', Common: '#c4c4c4', Uncommon: '#6fca7d', Rare: '#52a3e5', Epic: '#b06ce6', Legendary: '#f0b040', Mythical: '#e83e5c', Exotic: '#34dec4', Divine: '#fff2b2', Limited: '#ff54d6' };
+  var RARITY_COLOR = { Junk: '#9d8568', Common: '#c4c4c4', Uncommon: '#6fca7d', Rare: '#52a3e5', Epic: '#b06ce6', Legendary: '#f0b040', Mythical: '#e83e5c', Exotic: '#34dec4', Divine: '#fff2b2', Limited: '#ff54d6', Admin: '#ff1c1c' };
   var COND_LABEL = { Rain: 'Rain', Clear: 'Clear skies', Storm: 'Storm', Supercell: 'Supercell', BlackHole: 'Black hole', Day: 'Daytime', Night: 'Night', Beach: 'Beach' };
   var lib = null, selected = null, providers = null, jobs = [], loaded = false;
   // Limited fish switches from the dashboard state: { id: { enabled, chance } }.

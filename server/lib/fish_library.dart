@@ -954,7 +954,10 @@ class FishLibrary {
             '${kFishRarities.where((r) => r != 'Junk' && r != 'Limited').join(', ')}. '
             'Limited is a special tier: it bites only while the dashboard has '
             'it switched on, at the chance set there, so its RarityDenominator '
-            'only counts for the rarest-catch record; give it a high one.');
+            'only counts for the rarest-catch record; give it a high one. '
+            'Admin is the rarest tier by far, for fish that should not be in '
+            'the water at all: RarityDenominator 1,000,000 or more, with a '
+            'BaseValue to match.');
       if (job.prompt.isNotEmpty) lines.add('Notes from the designer: ${job.prompt}');
     }
     if (image != null) {
