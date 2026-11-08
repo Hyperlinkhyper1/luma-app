@@ -106,4 +106,20 @@ void main() {
     await expectLater(looping.fetchInventory(steamId), throwsA(isA<Cs2InventoryException>()));
     looping.close();
   });
+
+  test('counts the trade-protected items Steam leaves out of the listing', () async {
+    final api = Cs2InventoryApi(client: MockClient((_) async => http.Response(jsonEncode({
+      'success': 1,
+      'total_inventory_count': 4,
+      'assets': [asset('1', 'a'), asset('2', 'b')],
+      'descriptions': [
+        description('a', 'CSGO_Type_Rifle', 'AK-47 | Redline (Field-Tested)', marketable: 1),
+        description('b', 'CSGO_Type_Collectible', 'Service Medal'),
+      ],
+    }), 200)));
+    final snapshot = await api.fetchSnapshot(steamId);
+    expect(snapshot.items.map((item) => item.assetId), ['1']);
+    expect(snapshot.hiddenCount, 2);
+    api.close();
+  });
 }

@@ -26846,6 +26846,17 @@ class LFr extends L {
   }
 
   @override
+  String steamCs2InventoryHidden(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count objets obtenus récemment sont masqués par Steam.',
+      one: '1 objet obtenu récemment est masqué par Steam.',
+    );
+    return '$_temp0 Steam retire de l\'inventaire public les objets sous protection d\'échange pendant 7 jours au maximum ; luma les ajoute dès la fin de la protection.';
+  }
+
+  @override
   String steamCs2OfflineSyncFailed(String error) {
     return 'Impossible de synchroniser l\'épargne de marché hors ligne : $error';
   }

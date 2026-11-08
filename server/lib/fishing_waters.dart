@@ -52,7 +52,7 @@ class FishingWaters {
   static const _defaultPasses = [
     {'key': 'AutoStore', 'name': 'Auto Store', 'id': 3722004182},
   ];
-  static const _defaultKinds = ['Clear', 'LightRain', 'Rain', 'Storm', 'BlackHole'];
+  static const _defaultKinds = ['Clear', 'Foggy', 'LightRain', 'Rain', 'Storm', 'BlackHole'];
 
   final Map<String, Map<String, dynamic>> _servers = {};
   final Map<int, (int, List<int>)> _avatars = {};
@@ -227,6 +227,7 @@ class FishingWaters {
             : null,
         'rain': _num(weather['rain']) ?? 0,
         'storm': _num(weather['storm']) ?? 0,
+        'fog': (_num(weather['fog']) ?? 0).clamp(0, 1),
         'cloudCover': _num(weather['cloudCover']) ?? 0,
         'windSpeed': _num(weather['windSpeed']) ?? 0,
         'windAngle': _num(weather['windAngle']) ?? 0,

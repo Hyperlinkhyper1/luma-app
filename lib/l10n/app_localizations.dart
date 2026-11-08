@@ -42990,6 +42990,12 @@ abstract class L {
   /// **'Could not save offline market setting: {error}'**
   String steamCs2OfflineSaveFailed(String error);
 
+  /// No description provided for @steamCs2InventoryHidden.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 item you got recently is hidden by Steam.} other{{count} items you got recently are hidden by Steam.}} Steam keeps trade-protected items out of the public inventory for up to 7 days, so luma adds them once protection ends.'**
+  String steamCs2InventoryHidden(int count);
+
   /// No description provided for @steamCs2OfflineSyncFailed.
   ///
   /// In en, this message translates to:

@@ -26,6 +26,18 @@ class Cs2InventoryItem {
   final String? rarityColor;
 }
 
+/// One complete read of an inventory.
+class Cs2InventorySnapshot {
+  const Cs2InventorySnapshot(this.items, {this.hiddenCount = 0});
+
+  final List<Cs2InventoryItem> items;
+
+  /// Items Steam counts but leaves out of the public listing. Since CS2's
+  /// trade protection, recently traded or bought items stay hidden from
+  /// anyone not signed in as the owner until protection ends (up to 7 days).
+  final int hiddenCount;
+}
+
 class Cs2InventoryException implements Exception {
   const Cs2InventoryException(this.message, {this.status});
 
@@ -128,7 +140,10 @@ class Cs2InventoryApi {
   }
   /// Returns a complete snapshot or throws, so callers never mistake a
   /// failed or partial request for an empty inventory.
-  Future<List<Cs2InventoryItem>> fetchInventory(String steamId) async {
+  Future<List<Cs2InventoryItem>> fetchInventory(String steamId) async =>
+      (await fetchSnapshot(steamId)).items;
+
+  Future<Cs2InventorySnapshot> fetchSnapshot(String steamId) async {
     if (!RegExp(r'^\d{17}$').hasMatch(steamId)) {
       throw const Cs2InventoryException('Enter a valid 17-digit Steam ID.');
     }
@@ -136,6 +151,11 @@ class Cs2InventoryApi {
     final seenAssets = <String>{};
     final seenCursors = <String>{};
     String? cursor;
+    int? total;
+    Cs2InventorySnapshot done() => Cs2InventorySnapshot(
+      items,
+      hiddenCount: total != null && total > seenAssets.length ? total - seenAssets.length : 0,
+    );
     while (true) {
       final uri = Uri.https('steamcommunity.com', '/inventory/$steamId/730/2', {
         'l': 'english',
@@ -177,11 +197,12 @@ class Cs2InventoryApi {
           'Steam could not load this inventory. Check that it is Public and try again.',
         );
       }
+      if (decoded['total_inventory_count'] is int) total = decoded['total_inventory_count'] as int;
       final assets = decoded['assets'];
       final descriptions = decoded['descriptions'];
       // Steam can omit both arrays for an empty inventory.
       if (assets == null && descriptions == null && decoded['total_inventory_count'] == 0) {
-        return items;
+        return done();
       }
       if (assets is! List || descriptions is! List) {
         throw const Cs2InventoryException('Steam returned an incomplete inventory.');
@@ -230,7 +251,7 @@ class Cs2InventoryApi {
         ));
       }
       final more = decoded['more_items'] == 1 || decoded['more_items'] == true;
-      if (!more) return items;
+      if (!more) return done();
       final next = decoded['last_assetid'];
       if (next is! String || next.isEmpty || !seenCursors.add(next)) {
         throw const Cs2InventoryException('Steam returned an incomplete inventory.');

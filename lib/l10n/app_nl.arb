@@ -7155,6 +7155,7 @@
   "steamCs2MarketUnreadable": "De Steam Community Market stuurde een onleesbaar antwoord terug.",
   "steamCs2OfflineLoadFailed": "Offline marktopslag kon niet worden geladen: {error}",
   "steamCs2OfflineSaveFailed": "Instelling voor offline markt kon niet worden opgeslagen: {error}",
+  "steamCs2InventoryHidden": "{count, plural, =1{1 item dat je onlangs kreeg wordt door Steam verborgen.} other{{count} items die je onlangs kreeg worden door Steam verborgen.}} Steam houdt items met handelsbescherming tot 7 dagen uit de openbare inventaris, dus luma voegt ze toe zodra de bescherming afloopt.",
   "steamCs2OfflineSyncFailed": "Offline marktopslag kon niet worden gesynchroniseerd: {error}",
   "steamCs2CatalogUpdateFailed": "De itemcatalogus kon niet worden bijgewerkt: {error}",
   "steamCs2CheckPriceFailed": "Die prijs kon niet worden gecontroleerd: {error}",

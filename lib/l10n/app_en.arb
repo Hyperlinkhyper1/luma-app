@@ -16990,6 +16990,8 @@
       }
     }
   },
+  "steamCs2InventoryHidden": "{count, plural, =1{1 item you got recently is hidden by Steam.} other{{count} items you got recently are hidden by Steam.}} Steam keeps trade-protected items out of the public inventory for up to 7 days, so luma adds them once protection ends.",
+  "@steamCs2InventoryHidden": {"placeholders":{"count":{"type":"int"}}},
   "steamCs2OfflineSyncFailed": "Could not sync offline market saving: {error}",
   "@steamCs2OfflineSyncFailed": {
     "placeholders": {

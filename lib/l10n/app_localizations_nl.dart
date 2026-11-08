@@ -26722,6 +26722,17 @@ class LNl extends L {
   }
 
   @override
+  String steamCs2InventoryHidden(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count items die je onlangs kreeg worden door Steam verborgen.',
+      one: '1 item dat je onlangs kreeg wordt door Steam verborgen.',
+    );
+    return '$_temp0 Steam houdt items met handelsbescherming tot 7 dagen uit de openbare inventaris, dus luma voegt ze toe zodra de bescherming afloopt.';
+  }
+
+  @override
   String steamCs2OfflineSyncFailed(String error) {
     return 'Offline marktopslag kon niet worden gesynchroniseerd: $error';
   }

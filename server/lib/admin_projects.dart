@@ -302,6 +302,7 @@ body.theme-fw .proj-menu-label,body.theme-fw .proj-item-text small,body.theme-fw
 .fw-names small{color:#86a3b0;font-size:12px}
 .fw-chip{display:inline-flex;align-items:center;gap:5px;padding:2px 9px;border-radius:999px;font-size:11.5px;font-weight:600;background:rgba(76,195,217,.12);border:1px solid rgba(76,195,217,.3);color:#9fe3ef;margin:2px 4px 2px 0;white-space:nowrap}
 .fw-chip.kind-Storm{background:rgba(236,95,95,.12);border-color:rgba(236,95,95,.3);color:#f2a3a3}
+.fw-chip.kind-Foggy{background:rgba(182,200,206,.12);border-color:rgba(182,200,206,.3);color:#c4d4da}
 .fw-chip.kind-Rain,.fw-chip.kind-LightRain{background:rgba(120,150,240,.12);border-color:rgba(120,150,240,.3);color:#b4c4f7}
 .fw-chip.kind-Clear{background:rgba(242,201,76,.10);border-color:rgba(242,201,76,.28);color:#f2d68a}
 .fw-chip.muted-chip{background:#102733;border-color:#214555;color:#9bb6c2}
@@ -504,6 +505,7 @@ body.theme-fw .proj-menu-label,body.theme-fw .proj-item-text small,body.theme-fw
   var ICONS = {
     Auto: ico('<path d="M20 11a8 8 0 0 0-14.6-4.5M4 4v3.5h3.5"/><path d="M4 13a8 8 0 0 0 14.6 4.5M20 20v-3.5h-3.5"/>'),
     Clear: ico('<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/>'),
+    Foggy: ico('<path d="M3 7h18M6 12h12M3 17h18"/>'),
     LightRain: ico('<path d="M7 15.5h9.5a4 4 0 0 0 .4-8 5.5 5.5 0 0 0-10.6 1.4A3.4 3.4 0 0 0 7 15.5z"/><path d="M10 19l-.5 1.5M14 19l-.5 1.5"/>'),
     Rain: ico('<path d="M7 14.5h9.5a4 4 0 0 0 .4-8 5.5 5.5 0 0 0-10.6 1.4A3.4 3.4 0 0 0 7 14.5z"/><path d="M8.5 17.5l-1 2.5M12.5 17.5l-1 2.5M16.5 17.5l-1 2.5"/>'),
     Storm: ico('<path d="M7 14.5h9.5a4 4 0 0 0 .4-8 5.5 5.5 0 0 0-10.6 1.4A3.4 3.4 0 0 0 7 14.5z"/><path d="M12.5 13.5l-2.5 4h3.5l-2 4"/>'),
@@ -511,7 +513,7 @@ body.theme-fw .proj-menu-label,body.theme-fw .proj-item-text small,body.theme-fw
     Supercell: ico('<path d="M4 5h16"/><path d="M6.5 9.5h11"/><path d="M9 14h6"/><path d="M11 18.5h2"/>'),
     Pass: ico('<path d="M4 9.5h16v3H4z"/><path d="M5.5 12.5V20h13v-7.5"/><path d="M12 9.5V20"/><path d="M12 9.5C10.5 6 7 5.4 7 7.6 7 9 9.5 9.5 12 9.5zM12 9.5c1.5-3.5 5-4.1 5-1.9 0 1.4-2.5 1.9-5 1.9z"/>')
   };
-  var KIND_COLOR = { Clear: '#e8c35a', LightRain: '#7f9cf0', Rain: '#5872d9', Storm: '#d9536a', BlackHole: '#aa6bfa' };
+  var KIND_COLOR = { Clear: '#e8c35a', Foggy: '#b6c8ce', LightRain: '#7f9cf0', Rain: '#5872d9', Storm: '#d9536a', BlackHole: '#aa6bfa' };
 
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -741,12 +743,13 @@ body.theme-fw .proj-menu-label,body.theme-fw .proj-item-text small,body.theme-fw
       nowBox.innerHTML = '<div class="muted">Waiting for a live server…</div>';
     } else {
       var w = s.weather, from = compass(bearingOf(w.windAngle) + 180);
-      var peakKind = w.kind === 'BlackHole' ? 'BlackHole' : w.radar ? (w.radar.peakStorm > 0.38 ? 'Storm' : w.radar.peakRain > 0.4 ? 'Rain' : w.radar.peakRain > 0.06 ? 'LightRain' : 'Clear') : w.kind;
+      var peakKind = w.kind === 'BlackHole' ? 'BlackHole' : w.kind === 'Foggy' ? 'Foggy' : w.radar ? (w.radar.peakStorm > 0.38 ? 'Storm' : w.radar.peakRain > 0.4 ? 'Rain' : w.radar.peakRain > 0.06 ? 'LightRain' : 'Clear') : w.kind;
       nowBox.innerHTML = '<div class="fw-now-head"><div class="fw-now-ico">' + (ICONS[peakKind] || ICONS.Clear) + '</div>' +
         '<div><div class="fw-now-kind">' + esc(label(peakKind)) + '</div><div class="fw-now-sub">' +
-        (w.kind === 'BlackHole' ? 'Admin event · map-wide corruption' : w.radar ? 'Moving fronts · strongest readings across the map' : (w.override ? 'Locked by an override' : 'Following the forecast')) + (list.length > 1 ? ' · server ' + esc(shortJob(s.jobId)) : '') +
+        (w.kind === 'BlackHole' ? 'Admin event · map-wide corruption' : w.kind === 'Foggy' ? 'Marine fog · low visibility and calm winds' : w.radar ? 'Moving fronts · strongest readings across the map' : (w.override ? 'Locked by an override' : 'Following the forecast')) + (list.length > 1 ? ' · server ' + esc(shortJob(s.jobId)) : '') +
         '</div></div></div><div class="fw-meters">' +
         meter('Peak rain', Math.round((w.radar ? w.radar.peakRain : w.rain) * 100) + '%', w.radar ? w.radar.peakRain : w.rain) +
+        (w.fog > 0 ? meter('Fog', Math.round(w.fog * 100) + '%', w.fog) : '') +
         meter('Cloud cover', Math.round(w.cloudCover * 100) + '%', w.cloudCover) +
         meter('Peak wind', Math.round(w.radar ? w.radar.peakWind : w.windSpeed) + ' studs/s · from ' + from, (w.radar ? w.radar.peakWind : w.windSpeed) / 56) +
         meter('Peak swell amplitude', (w.radar ? w.radar.peakWave : w.waveAmplitude).toFixed(2) + ' studs', (w.radar ? w.radar.peakWave : w.waveAmplitude) / (w.maxWaveAmplitude || 0.72)) +

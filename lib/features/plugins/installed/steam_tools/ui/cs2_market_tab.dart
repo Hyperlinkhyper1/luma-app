@@ -80,6 +80,7 @@ class _Cs2MarketTabState extends State<Cs2MarketTab> {
     await showCs2InventoryDialog(
       context,
       steamId: _inventory.steamId,
+      hiddenCount: () => _inventory.hiddenCount,
       onConnect: (profile) async {
         final success = await _inventory.connect(profile);
         if (success && mounted) setState(() => _view = _Cs2MarketView.tracked);

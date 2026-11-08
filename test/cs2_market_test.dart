@@ -110,6 +110,26 @@ void main() {
     expect(await db.addImportedCs2Item(item, '123:1'), isFalse);
   });
 
+  test('a fresh snapshot drops only that profile\'s copies that left Steam', () async {
+    final db = SteamDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    Cs2MarketItemsCompanion item(String hash) => Cs2MarketItemsCompanion.insert(
+      marketHashName: hash, skinId: hash, displayName: hash, weaponName: 'AK-47',
+      rarityName: 'Classified', rarityColor: '#d32ce6', imageUrl: '',
+    );
+    await db.addImportedCs2Item(item('Sold'), '123:1');
+    await db.addImportedCs2Item(item('Kept'), '123:2');
+    await db.addImportedCs2Item(item('Other profile'), '456:1');
+    await db.addTrackedCs2Item(item('By hand'));
+    await db.addCs2Entry(Cs2MarketEntriesCompanion.insert(marketHashName: 'By hand'));
+
+    expect(await db.removeCs2InventoryAssetsNotIn('123', {'123:2'}), 1);
+    expect((await db.allCs2InventoryAssetKeys()).values.toSet(), {'123:2', '456:1'});
+    final names = {for (final e in await db.allCs2Entries()) e.marketHashName};
+    expect(names, {'Kept', 'Other profile', 'By hand'});
+    expect((await db.allCs2Items()).map((i) => i.marketHashName), isNot(contains('Sold')));
+  });
+
   test('legacy snapshots do not guess identities for indistinguishable copies', () async {
     final db = SteamDatabase(NativeDatabase.memory());
     addTearDown(db.close);

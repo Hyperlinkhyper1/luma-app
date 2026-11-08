@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../../../l10n/app_localizations.dart';
+
 /// Connects a public Steam profile to the CS2 inventory importer.
 ///
 /// The callbacks return a user-facing error, or null when the operation
@@ -11,6 +13,7 @@ Future<void> showCs2InventoryDialog(
   required Future<String?> Function(String profile) onConnect,
   required Future<String?> Function() onRefresh,
   required Future<void> Function() onDisconnect,
+  int Function()? hiddenCount,
 }) => showDialog<void>(
   context: context,
   builder: (_) => Cs2InventoryDialog(
@@ -18,6 +21,7 @@ Future<void> showCs2InventoryDialog(
     onConnect: onConnect,
     onRefresh: onRefresh,
     onDisconnect: onDisconnect,
+    hiddenCount: hiddenCount,
   ),
 );
 
@@ -28,12 +32,17 @@ class Cs2InventoryDialog extends StatefulWidget {
     required this.onConnect,
     required this.onRefresh,
     required this.onDisconnect,
+    this.hiddenCount,
   });
 
   final String? steamId;
   final Future<String?> Function(String profile) onConnect;
   final Future<String?> Function() onRefresh;
   final Future<void> Function() onDisconnect;
+
+  /// Trade-protected items the last read could not see; re-read after
+  /// every operation so the note follows the latest snapshot.
+  final int Function()? hiddenCount;
 
   @override
   State<Cs2InventoryDialog> createState() => _Cs2InventoryDialogState();
@@ -152,10 +161,17 @@ class _Cs2InventoryDialogState extends State<Cs2InventoryDialog> {
               const SizedBox(height: 12),
               Text(
                 'While CS2 Market is open, luma checks your inventory every '
-                'six hours. Items removed from Steam stay tracked until you '
-                'remove them yourself. Disconnecting also keeps imported items.',
+                'six hours. Items you sell or trade away are removed when it '
+                'next checks. Disconnecting keeps imported items.',
                 style: theme.textTheme.bodySmall,
               ),
+              if (_connected && (widget.hiddenCount?.call() ?? 0) > 0) ...[
+                const SizedBox(height: 12),
+                Text(
+                  L.of(context).steamCs2InventoryHidden(widget.hiddenCount!()),
+                  style: theme.textTheme.bodySmall,
+                ),
+              ],
               if (_error != null) ...[
                 const SizedBox(height: 12),
                 Text(_error!, style: TextStyle(color: theme.colorScheme.error)),

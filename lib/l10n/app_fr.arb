@@ -6925,6 +6925,7 @@
   "steamCs2MarketUnreadable": "Le marché communautaire Steam a renvoyé une réponse illisible.",
   "steamCs2OfflineLoadFailed": "Impossible de charger l'épargne de marché hors ligne : {error}",
   "steamCs2OfflineSaveFailed": "Impossible d'enregistrer le réglage du marché hors ligne : {error}",
+  "steamCs2InventoryHidden": "{count, plural, =1{1 objet obtenu récemment est masqué par Steam.} other{{count} objets obtenus récemment sont masqués par Steam.}} Steam retire de l'inventaire public les objets sous protection d'échange pendant 7 jours au maximum ; luma les ajoute dès la fin de la protection.",
   "steamCs2OfflineSyncFailed": "Impossible de synchroniser l'épargne de marché hors ligne : {error}",
   "steamCs2CatalogUpdateFailed": "Impossible de mettre à jour le catalogue d'objets : {error}",
   "steamCs2CheckPriceFailed": "Impossible de vérifier ce prix : {error}",

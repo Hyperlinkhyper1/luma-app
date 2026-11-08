@@ -29,10 +29,21 @@ class Cs2InventoryController extends ChangeNotifier {
   bool _busy = false;
   bool _disposed = false;
   Timer? _timer;
+  int _hiddenCount = 0;
 
   String? get steamId => _steamId;
   String? get lastError => _lastError;
   bool get busy => _busy;
+
+  /// Trade-protected items the last snapshot could not see.
+  int get hiddenCount => _hiddenCount;
+
+  Future<void> _fetchAndImport(String id) async {
+    final snapshot = await _api.fetchSnapshot(id);
+    if (_disposed) return;
+    await _importInventory(id, snapshot.items);
+    _hiddenCount = snapshot.hiddenCount;
+  }
 
   static Future<File> _defaultProfileFile() async {
     final dir = await getApplicationSupportDirectory();
@@ -68,10 +79,7 @@ class Cs2InventoryController extends ChangeNotifier {
       }
       _lastError = null;
       final id = _steamId;
-      if (id != null && !_disposed) {
-        final items = await _api.fetchInventory(id);
-        if (!_disposed) await _importInventory(id, items);
-      }
+      if (id != null && !_disposed) await _fetchAndImport(id);
     } catch (error) {
       _lastError = error.toString();
     } finally {
@@ -89,9 +97,7 @@ class Cs2InventoryController extends ChangeNotifier {
     _notify();
     try {
       final id = await _api.resolveSteamId(input);
-      final items = await _api.fetchInventory(id);
-      if (_disposed) return false;
-      await _importInventory(id, items);
+      await _fetchAndImport(id);
       if (_disposed) return false;
       final file = await _profileFile();
       await file.parent.create(recursive: true);
@@ -118,10 +124,8 @@ class Cs2InventoryController extends ChangeNotifier {
     _lastError = null;
     _notify();
     try {
-      final items = await _api.fetchInventory(id);
-      if (_disposed) return false;
-      await _importInventory(id, items);
-      return true;
+      await _fetchAndImport(id);
+      return !_disposed;
     } catch (error) {
       _lastError = error.toString();
       return false;

@@ -632,8 +632,10 @@ class Cs2MarketRepository extends ChangeNotifier {
     return found.length == hashes.length;
   }
 
-  /// Adds inventory copies by Steam asset identity. A missing cost is kept
-  /// unknown until the user supplies the price they paid or a key cost.
+  /// Syncs inventory copies by Steam asset identity: new assets are added,
+  /// and copies whose asset left the inventory are dropped. [inventory] must
+  /// be a complete snapshot. A missing cost is kept unknown until the user
+  /// supplies the price they paid or a key cost.
   Future<int> importInventory(String steamId, List<Cs2InventoryItem> inventory) async {
     var added = 0;
     for (final asset in inventory) {
@@ -672,6 +674,13 @@ class Cs2MarketRepository extends ChangeNotifier {
         steamId + ':' + asset.assetId,
       );
       if (inserted) added++;
+    }
+    final removed = await _db.removeCs2InventoryAssetsNotIn(
+      steamId, {for (final asset in inventory) steamId + ':' + asset.assetId},
+    );
+    if (removed > 0 && added == 0) {
+      StorageGuard.instance.scheduleRefresh();
+      _queueOfflinePush();
     }
     if (added > 0) {
       StorageGuard.instance.scheduleRefresh();

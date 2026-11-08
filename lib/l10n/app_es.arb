@@ -6925,6 +6925,7 @@
   "steamCs2MarketUnreadable": "El Mercado de la Comunidad de Steam devolvió una respuesta ilegible.",
   "steamCs2OfflineLoadFailed": "No se pudo cargar el guardado de mercado sin conexión: {error}",
   "steamCs2OfflineSaveFailed": "No se pudo guardar el ajuste del mercado sin conexión: {error}",
+  "steamCs2InventoryHidden": "{count, plural, =1{Steam oculta 1 objeto que conseguiste hace poco.} other{Steam oculta {count} objetos que conseguiste hace poco.}} Steam no muestra en el inventario público los objetos con protección de intercambio durante hasta 7 días, así que luma los añadirá cuando termine la protección.",
   "steamCs2OfflineSyncFailed": "No se pudo sincronizar el guardado de mercado sin conexión: {error}",
   "steamCs2CatalogUpdateFailed": "No se pudo actualizar el catálogo de objetos: {error}",
   "steamCs2CheckPriceFailed": "No se pudo comprobar ese precio: {error}",

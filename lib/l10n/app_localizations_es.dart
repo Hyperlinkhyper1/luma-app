@@ -26788,6 +26788,17 @@ class LEs extends L {
   }
 
   @override
+  String steamCs2InventoryHidden(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Steam oculta $count objetos que conseguiste hace poco.',
+      one: 'Steam oculta 1 objeto que conseguiste hace poco.',
+    );
+    return '$_temp0 Steam no muestra en el inventario público los objetos con protección de intercambio durante hasta 7 días, así que luma los añadirá cuando termine la protección.';
+  }
+
+  @override
   String steamCs2OfflineSyncFailed(String error) {
     return 'No se pudo sincronizar el guardado de mercado sin conexión: $error';
   }

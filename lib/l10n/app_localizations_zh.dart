@@ -25251,6 +25251,16 @@ class LZh extends L {
   }
 
   @override
+  String steamCs2InventoryHidden(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '你最近获得的 $count 件物品被 Steam 隐藏。',
+    );
+    return '$_temp0 Steam 会将处于交易保护期的物品从公开库存中隐藏最多 7 天，保护期结束后 luma 会自动添加它们。';
+  }
+
+  @override
   String steamCs2OfflineSyncFailed(String error) {
     return '无法同步离线市场存档：$error';
   }

@@ -605,6 +605,20 @@ class SteamDatabase extends _$SteamDatabase {
     return true;
   });
 
+  /// Drops the copies imported from [steamId] whose asset is no longer in
+  /// its inventory — sold, traded or consumed. Copies tracked by hand, or
+  /// imported from another profile, are left alone. Returns how many went.
+  Future<int> removeCs2InventoryAssetsNotIn(String steamId, Set<String> keepKeys) async {
+    var removed = 0;
+    final prefix = '$steamId:';
+    for (final entry in (await allCs2InventoryAssetKeys()).entries) {
+      if (!entry.value.startsWith(prefix) || keepKeys.contains(entry.value)) continue;
+      await removeCs2Entry(entry.key);
+      removed++;
+    }
+    return removed;
+  }
+
   /// Stops tracking one copy. If it was the last entry for its listing, the
   /// listing itself and the local price history built for it are dropped
   /// too — there is nowhere else that history lives, and there is no reason

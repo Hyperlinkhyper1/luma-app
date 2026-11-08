@@ -26521,6 +26521,17 @@ class LEn extends L {
   }
 
   @override
+  String steamCs2InventoryHidden(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count items you got recently are hidden by Steam.',
+      one: '1 item you got recently is hidden by Steam.',
+    );
+    return '$_temp0 Steam keeps trade-protected items out of the public inventory for up to 7 days, so luma adds them once protection ends.';
+  }
+
+  @override
   String steamCs2OfflineSyncFailed(String error) {
     return 'Could not sync offline market saving: $error';
   }

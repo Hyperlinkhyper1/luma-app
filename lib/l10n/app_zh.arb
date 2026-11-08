@@ -6925,6 +6925,7 @@
   "steamCs2MarketUnreadable": "Steam 社区市场返回了无法读取的响应。",
   "steamCs2OfflineLoadFailed": "无法加载离线市场存档：{error}",
   "steamCs2OfflineSaveFailed": "无法保存离线市场设置：{error}",
+  "steamCs2InventoryHidden": "{count, plural, other{你最近获得的 {count} 件物品被 Steam 隐藏。}} Steam 会将处于交易保护期的物品从公开库存中隐藏最多 7 天，保护期结束后 luma 会自动添加它们。",
   "steamCs2OfflineSyncFailed": "无法同步离线市场存档：{error}",
   "steamCs2CatalogUpdateFailed": "无法更新物品目录：{error}",
   "steamCs2CheckPriceFailed": "无法查询该价格：{error}",

@@ -127,6 +127,39 @@ void main() {
     expect(body['weatherOverride'], isNull);
   });
 
+  test('Foggy is selectable and its dry-weather intensity reaches the dashboard',
+      () async {
+    final (_, initial) =
+        await send('GET', '/admin/fishing-waters/state', admin: true);
+    expect((initial['weather'] as Map)['kinds'], contains('Foggy'));
+    final body = heartbeatBody()
+      ..['kinds'] = ['Clear', 'Foggy', 'LightRain', 'Rain', 'Storm']
+      ..['weather'] = {
+        'kind': 'Foggy', 'fog': 1, 'rain': 0, 'storm': 0,
+        'cloudCover': 0.9, 'windSpeed': 4,
+      };
+    final (reported, _) = await send('POST', '/api/v1/fishing-waters/heartbeat',
+        json: body, gameKey: 'game-secret');
+    expect(reported, 200);
+    final (selected, state) = await send('POST', '/admin/fishing-waters/weather',
+        admin: true, json: {'kind': 'Foggy'});
+    expect(selected, 200);
+    expect((state['weather'] as Map)['override'], 'Foggy');
+    final live = ((state['servers'] as List).single as Map)['weather'] as Map;
+    expect(live['kind'], 'Foggy');
+    expect(live['fog'], 1);
+    expect(live['rain'], 0);
+    final (_, reply) = await send('POST', '/api/v1/fishing-waters/heartbeat',
+        json: body, gameKey: 'game-secret');
+    expect(reply['weatherOverride'], 'Foggy');
+    final (cleared, _) = await send('POST', '/admin/fishing-waters/weather',
+        admin: true, json: {'kind': 'Auto'});
+    expect(cleared, 200);
+    final (_, automatic) = await send('POST', '/api/v1/fishing-waters/heartbeat',
+        json: body, gameKey: 'game-secret');
+    expect(automatic['weatherOverride'], isNull);
+  });
+
   test('regional weather samples round-trip and malformed grids are discarded',
       () async {
     final body = heartbeatBody();
