@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../../l10n/app_localizations.dart';
+import '../cs2_inventory_controller.dart';
+import 'cs2_steam_session_browser.dart';
 
 /// Connects a public Steam profile to the CS2 inventory importer.
 ///
@@ -14,6 +16,10 @@ Future<void> showCs2InventoryDialog(
   required Future<String?> Function() onRefresh,
   required Future<void> Function() onDisconnect,
   int Function()? hiddenCount,
+  Future<String?> Function(String signedInId)? onSignIn,
+  Future<String?> Function()? onSignOut,
+  bool Function()? sessionEnabled,
+  Cs2SteamSessionStatus Function()? sessionStatus,
 }) => showDialog<void>(
   context: context,
   builder: (_) => Cs2InventoryDialog(
@@ -22,6 +28,10 @@ Future<void> showCs2InventoryDialog(
     onRefresh: onRefresh,
     onDisconnect: onDisconnect,
     hiddenCount: hiddenCount,
+    onSignIn: onSignIn,
+    onSignOut: onSignOut,
+    sessionEnabled: sessionEnabled,
+    sessionStatus: sessionStatus,
   ),
 );
 
@@ -33,6 +43,10 @@ class Cs2InventoryDialog extends StatefulWidget {
     required this.onRefresh,
     required this.onDisconnect,
     this.hiddenCount,
+    this.onSignIn,
+    this.onSignOut,
+    this.sessionEnabled,
+    this.sessionStatus,
   });
 
   final String? steamId;
@@ -43,6 +57,14 @@ class Cs2InventoryDialog extends StatefulWidget {
   /// Trade-protected items the last read could not see; re-read after
   /// every operation so the note follows the latest snapshot.
   final int Function()? hiddenCount;
+
+  /// The optional Steam sign-in that reads trade-protected items too. Both
+  /// callbacks return a user-facing error, or null on success; the getters
+  /// are re-read on every build. Absent, the section is not shown.
+  final Future<String?> Function(String signedInId)? onSignIn;
+  final Future<String?> Function()? onSignOut;
+  final bool Function()? sessionEnabled;
+  final Cs2SteamSessionStatus Function()? sessionStatus;
 
   @override
   State<Cs2InventoryDialog> createState() => _Cs2InventoryDialogState();
@@ -110,6 +132,70 @@ class _Cs2InventoryDialogState extends State<Cs2InventoryDialog> {
     }, 'Steam inventory disconnected.');
   }
 
+  Future<void> _signIn() async {
+    final onSignIn = widget.onSignIn;
+    if (onSignIn == null) return;
+    final l = L.of(context);
+    final id = await showCs2SteamSignIn(context);
+    if (id == null || !mounted) return;
+    await _run(() async {
+      final error = await onSignIn(id);
+      if (error == null && mounted) {
+        setState(() {
+          _connected = true;
+          _profile.text = id;
+        });
+      }
+      return error;
+    }, l.steamCs2SessionActive);
+  }
+
+  Future<void> _signOut() async {
+    final onSignOut = widget.onSignOut;
+    if (onSignOut == null) return;
+    await _run(onSignOut, L.of(context).steamCs2SignedOut);
+  }
+
+  List<Widget> _sessionSection(ThemeData theme) {
+    if (widget.onSignIn == null || !cs2SteamSessionSupported) return const [];
+    final l = L.of(context);
+    final enabled = widget.sessionEnabled?.call() ?? false;
+    final status = widget.sessionStatus?.call() ?? Cs2SteamSessionStatus.off;
+    final note = !enabled
+        ? l.steamCs2SignInExplain
+        : switch (status) {
+            Cs2SteamSessionStatus.off ||
+            Cs2SteamSessionStatus.active => l.steamCs2SessionActive,
+            Cs2SteamSessionStatus.signedOut => l.steamCs2SessionExpired,
+            Cs2SteamSessionStatus.otherAccount => l.steamCs2SessionOtherAccount,
+            Cs2SteamSessionStatus.failed => l.steamCs2SessionFailed,
+          };
+    final healthy = enabled &&
+        (status == Cs2SteamSessionStatus.active || status == Cs2SteamSessionStatus.off);
+    return [
+      const SizedBox(height: 12),
+      Text(note, style: theme.textTheme.bodySmall),
+      const SizedBox(height: 4),
+      Wrap(
+        spacing: 8,
+        children: [
+          if (!healthy)
+            OutlinedButton.icon(
+              onPressed: _busy ? null : _signIn,
+              icon: const Icon(Icons.login, size: 16),
+              label: Text(l.steamCs2SignInButton),
+            ),
+          if (enabled)
+            TextButton.icon(
+              onPressed: _busy ? null : _signOut,
+              icon: const Icon(Icons.logout, size: 16),
+              label: Text(l.steamCs2SignOutButton),
+            ),
+        ],
+      ),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -172,6 +258,7 @@ class _Cs2InventoryDialogState extends State<Cs2InventoryDialog> {
                   style: theme.textTheme.bodySmall,
                 ),
               ],
+              ..._sessionSection(theme),
               if (_error != null) ...[
                 const SizedBox(height: 12),
                 Text(_error!, style: TextStyle(color: theme.colorScheme.error)),

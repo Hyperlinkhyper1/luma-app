@@ -122,4 +122,30 @@ void main() {
     expect(snapshot.hiddenCount, 2);
     api.close();
   });
+
+  test('reads through a loader and keeps owner-only protected items', () async {
+    final api = Cs2InventoryApi(client: MockClient((_) async => fail('used the plain client')));
+    final snapshot = await api.fetchSnapshot(steamId, loader: (uri) async {
+      expect(uri.path, '/inventory/$steamId/730/2');
+      return Cs2InventoryPage(200, jsonEncode({
+        'success': 1,
+        'total_inventory_count': 2,
+        'assets': [asset('1', 'a'), asset('2', 'p')],
+        'descriptions': [
+          {...description('a', 'CSGO_Type_Rifle', 'AK-47 | Redline (Field-Tested)'), 'tradable': 1},
+          {
+            ...description('p', 'CSGO_Tool_Sticker', 'Sticker | Protected', marketable: 0),
+            'tradable': 0,
+            'owner_descriptions': [
+              {'type': 'html', 'value': 'Trade Protected'},
+            ],
+          },
+        ],
+      }));
+    });
+    expect(snapshot.items.map((item) => item.assetId), ['1', '2']);
+    expect(snapshot.items.map((item) => item.tradeLocked), [false, true]);
+    expect(snapshot.hiddenCount, 0);
+    api.close();
+  });
 }

@@ -13,6 +13,7 @@ import '../cs2_models.dart';
 import 'cs2_inventory_dialog.dart';
 import 'cs2_item_detail_page.dart';
 import 'cs2_shared.dart';
+import 'cs2_steam_session_browser.dart';
 import 'cs2_tracked_tab.dart';
 
 /// The CS2 Market tool's own internal views — Browse is the whole catalog,
@@ -81,6 +82,17 @@ class _Cs2MarketTabState extends State<Cs2MarketTab> {
       context,
       steamId: _inventory.steamId,
       hiddenCount: () => _inventory.hiddenCount,
+      sessionEnabled: () => _inventory.sessionEnabled,
+      sessionStatus: () => _inventory.sessionStatus,
+      onSignIn: (id) async {
+        final success = await _inventory.signIn(id);
+        if (success && mounted) setState(() => _view = _Cs2MarketView.tracked);
+        return success ? null : (_inventory.lastError ?? 'Could not sign in to Steam.');
+      },
+      onSignOut: () async {
+        final success = await _inventory.signOut();
+        return success ? null : (_inventory.lastError ?? 'Could not sign out of Steam.');
+      },
       onConnect: (profile) async {
         final success = await _inventory.connect(profile);
         if (success && mounted) setState(() => _view = _Cs2MarketView.tracked);
@@ -129,6 +141,16 @@ class _Cs2MarketTabState extends State<Cs2MarketTab> {
           inventory: _inventory,
           inventoryReady: _inventoryReady,
           onInventory: _showInventory,
+        ),
+        // The Steam session browser exists only while sign-in is on.
+        ListenableBuilder(
+          listenable: _inventory,
+          builder: (context, _) => _inventory.sessionEnabled
+              ? Align(
+                  alignment: Alignment.topLeft,
+                  child: Cs2SteamSessionBrowser(onReady: _inventory.attachSession),
+                )
+              : const SizedBox.shrink(),
         ),
         const _OfflineSavingCard(),
         ListenableBuilder(

@@ -26857,6 +26857,39 @@ class LFr extends L {
   }
 
   @override
+  String get steamCs2SignInExplain =>
+      'Steam masque de l\'inventaire public les objets obtenus au cours des 7 derniers jours. Connectez-vous à Steam pour les inclure tout de suite. La connexion se fait sur la page de Steam : luma ne voit jamais votre mot de passe et la session reste sur cet appareil.';
+
+  @override
+  String get steamCs2SignInButton => 'Se connecter à Steam';
+
+  @override
+  String get steamCs2SignOutButton => 'Se déconnecter de Steam';
+
+  @override
+  String get steamCs2SessionActive =>
+      'Connecté à Steam. Les objets protégés contre l\'échange sont inclus.';
+
+  @override
+  String get steamCs2SessionExpired =>
+      'Votre session Steam a expiré, seul l\'inventaire public a donc été lu. Reconnectez-vous pour inclure les objets protégés contre l\'échange.';
+
+  @override
+  String get steamCs2SessionOtherAccount =>
+      'Vous êtes connecté à Steam avec un autre compte que ce profil, les objets protégés contre l\'échange n\'ont donc pas pu être lus.';
+
+  @override
+  String get steamCs2SessionFailed =>
+      'luma n\'a pas pu lire via votre session Steam cette fois-ci et a utilisé l\'inventaire public.';
+
+  @override
+  String get steamCs2SignedOut => 'Déconnecté de Steam.';
+
+  @override
+  String get steamCs2SignInWindowNote =>
+      'Connectez-vous ci-dessous sur la page de Steam. luma ne voit jamais votre mot de passe ; la session reste sur cet appareil et sert uniquement à lire votre inventaire CS2.';
+
+  @override
   String steamCs2OfflineSyncFailed(String error) {
     return 'Impossible de synchroniser l\'épargne de marché hors ligne : $error';
   }

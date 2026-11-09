@@ -25261,6 +25261,37 @@ class LZh extends L {
   }
 
   @override
+  String get steamCs2SignInExplain =>
+      'Steam 会在公开库存中隐藏你最近 7 天内获得的物品。登录 Steam 即可立即包含这些物品。你是在 Steam 自己的页面上登录：luma 永远看不到你的密码，登录状态只保存在本设备上。';
+
+  @override
+  String get steamCs2SignInButton => '登录 Steam';
+
+  @override
+  String get steamCs2SignOutButton => '退出 Steam';
+
+  @override
+  String get steamCs2SessionActive => '已登录 Steam。已包含交易保护中的物品。';
+
+  @override
+  String get steamCs2SessionExpired =>
+      '你的 Steam 登录已失效，因此只读取了公开库存。重新登录即可包含交易保护中的物品。';
+
+  @override
+  String get steamCs2SessionOtherAccount =>
+      '你登录的 Steam 账户与此个人资料不同，因此无法读取交易保护中的物品。';
+
+  @override
+  String get steamCs2SessionFailed => 'luma 这次无法通过你的 Steam 登录读取，因此使用了公开库存。';
+
+  @override
+  String get steamCs2SignedOut => '已退出 Steam。';
+
+  @override
+  String get steamCs2SignInWindowNote =>
+      '请在下方 Steam 自己的页面上登录。luma 永远看不到你的密码；登录状态只保存在本设备上，仅用于读取你的 CS2 库存。';
+
+  @override
   String steamCs2OfflineSyncFailed(String error) {
     return '无法同步离线市场存档：$error';
   }

@@ -26733,6 +26733,39 @@ class LNl extends L {
   }
 
   @override
+  String get steamCs2SignInExplain =>
+      'Steam verbergt items die je de afgelopen 7 dagen kreeg voor de openbare inventaris. Log in bij Steam om ze meteen mee te nemen. Je logt in op de eigen pagina van Steam: luma ziet je wachtwoord nooit en de aanmelding blijft op dit apparaat.';
+
+  @override
+  String get steamCs2SignInButton => 'Inloggen bij Steam';
+
+  @override
+  String get steamCs2SignOutButton => 'Uitloggen bij Steam';
+
+  @override
+  String get steamCs2SessionActive =>
+      'Ingelogd bij Steam. Items met handelsbescherming worden meegenomen.';
+
+  @override
+  String get steamCs2SessionExpired =>
+      'Je Steam-aanmelding is verlopen, dus alleen de openbare inventaris is gelezen. Log opnieuw in om items met handelsbescherming mee te nemen.';
+
+  @override
+  String get steamCs2SessionOtherAccount =>
+      'Je bent bij Steam ingelogd met een ander account dan dit profiel, dus items met handelsbescherming konden niet worden gelezen.';
+
+  @override
+  String get steamCs2SessionFailed =>
+      'luma kon deze keer niet via je Steam-aanmelding lezen en heeft de openbare inventaris gebruikt.';
+
+  @override
+  String get steamCs2SignedOut => 'Uitgelogd bij Steam.';
+
+  @override
+  String get steamCs2SignInWindowNote =>
+      'Log hieronder in op de eigen pagina van Steam. luma ziet je wachtwoord nooit; de aanmelding blijft op dit apparaat en wordt alleen gebruikt om je CS2-inventaris te lezen.';
+
+  @override
   String steamCs2OfflineSyncFailed(String error) {
     return 'Offline marktopslag kon niet worden gesynchroniseerd: $error';
   }

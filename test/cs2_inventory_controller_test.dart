@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:luma/features/plugins/installed/steam_tools/cs2_inventory_api.dart';
 import 'package:luma/features/plugins/installed/steam_tools/cs2_inventory_controller.dart';
+import 'package:luma/features/plugins/installed/steam_tools/cs2_steam_session.dart';
 
 const _id = '76561198012345678';
 final _inventory = jsonEncode({
@@ -25,6 +26,85 @@ final _inventory = jsonEncode({
     },
   ],
 });
+
+/// The owner's view: the visible rifle plus a sticker Steam still holds
+/// under trade protection, which the public listing leaves out.
+final _ownerInventory = jsonEncode({
+  'success': 1,
+  'total_inventory_count': 2,
+  'assets': [
+    {'assetid': '1', 'classid': 'a', 'instanceid': '0'},
+    {'assetid': '2', 'classid': 'p', 'instanceid': '0'},
+  ],
+  'descriptions': [
+    {
+      'classid': 'a',
+      'instanceid': '0',
+      'market_hash_name': 'AK-47 | Redline (Field-Tested)',
+      'tradable': 1,
+      'marketable': 1,
+      'tags': [
+        {'category': 'Type', 'internal_name': 'CSGO_Type_Rifle'},
+      ],
+    },
+    {
+      'classid': 'p',
+      'instanceid': '0',
+      'market_hash_name': 'Sticker | Protected',
+      'tradable': 0,
+      'marketable': 0,
+      'owner_descriptions': [
+        {'type': 'html', 'value': 'Trade Protected'},
+      ],
+      'tags': [
+        {'category': 'Type', 'internal_name': 'CSGO_Tool_Sticker'},
+      ],
+    },
+  ],
+});
+
+/// The public view of the same inventory: one item listed, two counted.
+final _publicInventory = jsonEncode({
+  'success': 1,
+  'total_inventory_count': 2,
+  'assets': [
+    {'assetid': '1', 'classid': 'a', 'instanceid': '0'},
+  ],
+  'descriptions': [
+    {
+      'classid': 'a',
+      'instanceid': '0',
+      'market_hash_name': 'AK-47 | Redline (Field-Tested)',
+      'tradable': 1,
+      'marketable': 1,
+      'tags': [
+        {'category': 'Type', 'internal_name': 'CSGO_Type_Rifle'},
+      ],
+    },
+  ],
+});
+
+class _FakeSession implements Cs2SteamSession {
+  String? who = _id;
+  int loads = 0;
+  bool signedOut = false;
+
+  @override
+  Future<String?> signedInSteamId() async => who;
+
+  @override
+  Future<Cs2InventoryPage> load(Uri uri) async {
+    loads++;
+    expect(uri.host, 'steamcommunity.com');
+    return Cs2InventoryPage(200, _ownerInventory);
+  }
+
+  @override
+  Future<void> signOut() async {
+    signedOut = true;
+    who = null;
+  }
+}
 
 void main() {
   late Directory directory;
@@ -117,5 +197,93 @@ void main() {
     expect(await file.exists(), isFalse);
     controller.dispose();
     api.close();
+  });
+
+  group('Steam sign-in', () {
+    late _FakeSession session;
+    late Cs2InventoryApi api;
+    late DateTime now;
+    late List<List<String>> imports;
+    late Cs2InventoryController controller;
+
+    Cs2InventoryController build() => Cs2InventoryController(
+      api: api,
+      profileFile: () async => file,
+      refreshInterval: Duration.zero,
+      sessionWait: const Duration(milliseconds: 50),
+      now: () => now,
+      importInventory: (_, items) async {
+        imports.add([for (final item in items) item.assetId]);
+      },
+    );
+
+    setUp(() {
+      session = _FakeSession();
+      api = Cs2InventoryApi(
+        client: MockClient((_) async => http.Response(_publicInventory, 200)),
+      );
+      now = DateTime.utc(2026, 11, 9);
+      imports = [];
+      controller = build()..attachSession(session);
+    });
+
+    tearDown(() {
+      controller.dispose();
+      api.close();
+    });
+
+    test('reads trade-protected items as the owner', () async {
+      expect(await controller.signIn(_id), isTrue);
+      expect(session.loads, 1);
+      expect(imports.last, ['1', '2']);
+      expect(controller.sessionStatus, Cs2SteamSessionStatus.active);
+      expect(controller.hiddenCount, 0);
+      final saved = jsonDecode(await file.readAsString()) as Map;
+      expect(saved['steamSession'], isTrue);
+      expect((saved['protected'] as List).single['assetId'], '2');
+    });
+
+    test('keeps protected items when the sign-in lapses, until protection ends', () async {
+      expect(await controller.signIn(_id), isTrue);
+      session.who = null;
+      expect(await controller.refresh(), isTrue);
+      expect(controller.sessionStatus, Cs2SteamSessionStatus.signedOut);
+      expect(imports.last, ['1', '2']);
+      expect(controller.hiddenCount, 0);
+
+      now = now.add(const Duration(days: 9));
+      expect(await controller.refresh(), isTrue);
+      expect(imports.last, ['1']);
+      expect(controller.hiddenCount, 1);
+    });
+
+    test('restores the sign-in and protected items after a restart', () async {
+      expect(await controller.signIn(_id), isTrue);
+      final restarted = build();
+      await restarted.startup();
+      expect(restarted.sessionEnabled, isTrue);
+      expect(restarted.sessionStatus, Cs2SteamSessionStatus.failed);
+      expect(imports.last, ['1', '2']);
+      restarted.dispose();
+    });
+
+    test('falls back to the public listing for a different account', () async {
+      expect(await controller.connect(_id), isTrue);
+      session.who = '76561198000000001';
+      expect(await controller.signIn(_id), isTrue);
+      expect(controller.sessionStatus, Cs2SteamSessionStatus.otherAccount);
+      expect(session.loads, 0);
+      expect(imports.last, ['1']);
+      expect(controller.hiddenCount, 1);
+    });
+
+    test('signing out ends the session and goes back to public reads', () async {
+      expect(await controller.signIn(_id), isTrue);
+      expect(await controller.signOut(), isTrue);
+      expect(session.signedOut, isTrue);
+      expect(controller.sessionEnabled, isFalse);
+      expect(controller.sessionStatus, Cs2SteamSessionStatus.off);
+      expect((jsonDecode(await file.readAsString()) as Map)['steamSession'], isNull);
+    });
   });
 }

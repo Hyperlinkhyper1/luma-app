@@ -26532,6 +26532,39 @@ class LEn extends L {
   }
 
   @override
+  String get steamCs2SignInExplain =>
+      'Steam hides items you got in the last 7 days from the public inventory. Sign in to Steam to include them right away. You sign in on Steam\'s own page: luma never sees your password, and the sign-in stays on this device.';
+
+  @override
+  String get steamCs2SignInButton => 'Sign in to Steam';
+
+  @override
+  String get steamCs2SignOutButton => 'Sign out of Steam';
+
+  @override
+  String get steamCs2SessionActive =>
+      'Signed in to Steam. Trade-protected items are included.';
+
+  @override
+  String get steamCs2SessionExpired =>
+      'Your Steam sign-in has ended, so only the public inventory was read. Sign in again to include trade-protected items.';
+
+  @override
+  String get steamCs2SessionOtherAccount =>
+      'You are signed in to Steam as a different account than this profile, so trade-protected items could not be read.';
+
+  @override
+  String get steamCs2SessionFailed =>
+      'luma could not read through your Steam sign-in this time, so it used the public inventory.';
+
+  @override
+  String get steamCs2SignedOut => 'Signed out of Steam.';
+
+  @override
+  String get steamCs2SignInWindowNote =>
+      'Sign in on Steam\'s own page below. luma never sees your password; the sign-in stays on this device and is only used to read your CS2 inventory.';
+
+  @override
   String steamCs2OfflineSyncFailed(String error) {
     return 'Could not sync offline market saving: $error';
   }

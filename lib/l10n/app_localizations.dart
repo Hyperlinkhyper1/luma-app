@@ -42996,6 +42996,60 @@ abstract class L {
   /// **'{count, plural, =1{1 item you got recently is hidden by Steam.} other{{count} items you got recently are hidden by Steam.}} Steam keeps trade-protected items out of the public inventory for up to 7 days, so luma adds them once protection ends.'**
   String steamCs2InventoryHidden(int count);
 
+  /// No description provided for @steamCs2SignInExplain.
+  ///
+  /// In en, this message translates to:
+  /// **'Steam hides items you got in the last 7 days from the public inventory. Sign in to Steam to include them right away. You sign in on Steam\'s own page: luma never sees your password, and the sign-in stays on this device.'**
+  String get steamCs2SignInExplain;
+
+  /// No description provided for @steamCs2SignInButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to Steam'**
+  String get steamCs2SignInButton;
+
+  /// No description provided for @steamCs2SignOutButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out of Steam'**
+  String get steamCs2SignOutButton;
+
+  /// No description provided for @steamCs2SessionActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed in to Steam. Trade-protected items are included.'**
+  String get steamCs2SessionActive;
+
+  /// No description provided for @steamCs2SessionExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'Your Steam sign-in has ended, so only the public inventory was read. Sign in again to include trade-protected items.'**
+  String get steamCs2SessionExpired;
+
+  /// No description provided for @steamCs2SessionOtherAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'You are signed in to Steam as a different account than this profile, so trade-protected items could not be read.'**
+  String get steamCs2SessionOtherAccount;
+
+  /// No description provided for @steamCs2SessionFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'luma could not read through your Steam sign-in this time, so it used the public inventory.'**
+  String get steamCs2SessionFailed;
+
+  /// No description provided for @steamCs2SignedOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed out of Steam.'**
+  String get steamCs2SignedOut;
+
+  /// No description provided for @steamCs2SignInWindowNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in on Steam\'s own page below. luma never sees your password; the sign-in stays on this device and is only used to read your CS2 inventory.'**
+  String get steamCs2SignInWindowNote;
+
   /// No description provided for @steamCs2OfflineSyncFailed.
   ///
   /// In en, this message translates to:

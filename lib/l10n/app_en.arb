@@ -16992,6 +16992,15 @@
   },
   "steamCs2InventoryHidden": "{count, plural, =1{1 item you got recently is hidden by Steam.} other{{count} items you got recently are hidden by Steam.}} Steam keeps trade-protected items out of the public inventory for up to 7 days, so luma adds them once protection ends.",
   "@steamCs2InventoryHidden": {"placeholders":{"count":{"type":"int"}}},
+  "steamCs2SignInExplain": "Steam hides items you got in the last 7 days from the public inventory. Sign in to Steam to include them right away. You sign in on Steam's own page: luma never sees your password, and the sign-in stays on this device.",
+  "steamCs2SignInButton": "Sign in to Steam",
+  "steamCs2SignOutButton": "Sign out of Steam",
+  "steamCs2SessionActive": "Signed in to Steam. Trade-protected items are included.",
+  "steamCs2SessionExpired": "Your Steam sign-in has ended, so only the public inventory was read. Sign in again to include trade-protected items.",
+  "steamCs2SessionOtherAccount": "You are signed in to Steam as a different account than this profile, so trade-protected items could not be read.",
+  "steamCs2SessionFailed": "luma could not read through your Steam sign-in this time, so it used the public inventory.",
+  "steamCs2SignedOut": "Signed out of Steam.",
+  "steamCs2SignInWindowNote": "Sign in on Steam's own page below. luma never sees your password; the sign-in stays on this device and is only used to read your CS2 inventory.",
   "steamCs2OfflineSyncFailed": "Could not sync offline market saving: {error}",
   "@steamCs2OfflineSyncFailed": {
     "placeholders": {

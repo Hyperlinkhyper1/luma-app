@@ -26799,6 +26799,39 @@ class LEs extends L {
   }
 
   @override
+  String get steamCs2SignInExplain =>
+      'Steam oculta del inventario público los objetos que conseguiste en los últimos 7 días. Inicia sesión en Steam para incluirlos ya. Inicias sesión en la propia página de Steam: luma nunca ve tu contraseña y la sesión se queda en este dispositivo.';
+
+  @override
+  String get steamCs2SignInButton => 'Iniciar sesión en Steam';
+
+  @override
+  String get steamCs2SignOutButton => 'Cerrar sesión de Steam';
+
+  @override
+  String get steamCs2SessionActive =>
+      'Sesión iniciada en Steam. Se incluyen los objetos con protección de intercambio.';
+
+  @override
+  String get steamCs2SessionExpired =>
+      'Tu sesión de Steam ha terminado, así que solo se leyó el inventario público. Vuelve a iniciar sesión para incluir los objetos con protección de intercambio.';
+
+  @override
+  String get steamCs2SessionOtherAccount =>
+      'Has iniciado sesión en Steam con una cuenta distinta a este perfil, así que no se pudieron leer los objetos con protección de intercambio.';
+
+  @override
+  String get steamCs2SessionFailed =>
+      'luma no pudo leer a través de tu sesión de Steam esta vez, así que usó el inventario público.';
+
+  @override
+  String get steamCs2SignedOut => 'Sesión de Steam cerrada.';
+
+  @override
+  String get steamCs2SignInWindowNote =>
+      'Inicia sesión abajo en la propia página de Steam. luma nunca ve tu contraseña; la sesión se queda en este dispositivo y solo se usa para leer tu inventario de CS2.';
+
+  @override
   String steamCs2OfflineSyncFailed(String error) {
     return 'No se pudo sincronizar el guardado de mercado sin conexión: $error';
   }

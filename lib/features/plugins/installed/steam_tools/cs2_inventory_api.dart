@@ -11,7 +11,28 @@ class Cs2InventoryItem {
     this.typeName = '',
     this.rarityName = '',
     this.rarityColor,
+    this.tradeLocked = false,
   });
+
+  factory Cs2InventoryItem.fromJson(Map json) => Cs2InventoryItem(
+    assetId: json['assetId'] as String,
+    marketHashName: json['marketHashName'] as String,
+    iconUrl: json['iconUrl'] as String? ?? '',
+    typeName: json['typeName'] as String? ?? '',
+    rarityName: json['rarityName'] as String? ?? '',
+    rarityColor: json['rarityColor'] as String?,
+    tradeLocked: json['tradeLocked'] == true,
+  );
+
+  Map<String, Object?> toJson() => {
+    'assetId': assetId,
+    'marketHashName': marketHashName,
+    'iconUrl': iconUrl,
+    'typeName': typeName,
+    'rarityName': rarityName,
+    'rarityColor': rarityColor,
+    'tradeLocked': tradeLocked,
+  };
 
   final String assetId;
   final String marketHashName;
@@ -24,7 +45,25 @@ class Cs2InventoryItem {
 
   /// "#rrggbb", or null when Steam sent no rarity colour.
   final String? rarityColor;
+
+  /// Steam says this copy cannot be traded right now. Read through the
+  /// owner's own session, that is how a trade-protected item shows up — the
+  /// same item the public listing leaves out entirely.
+  final bool tradeLocked;
 }
+
+/// The raw answer to one inventory page request.
+class Cs2InventoryPage {
+  const Cs2InventoryPage(this.statusCode, this.body);
+
+  final int statusCode;
+  final String body;
+}
+
+/// Fetches one inventory page. The default goes straight to Steam without a
+/// session; the signed-in Steam browser supplies one that reads as the
+/// owner, which is the only way trade-protected items are listed.
+typedef Cs2InventoryPageLoader = Future<Cs2InventoryPage> Function(Uri uri);
 
 /// One complete read of an inventory.
 class Cs2InventorySnapshot {
@@ -77,8 +116,25 @@ class Cs2InventoryApi {
         description['market_marketable_restriction'] != null) {
       return true;
     }
+    if (_ownerSaysProtected(description)) return true;
     return tags != null && tags.any((tag) =>
         tag is Map && tag['category'] == 'Type' && _weaponTypes.contains(tag['internal_name']));
+  }
+
+  /// The owner's own view marks a trade-protected copy with a note like
+  /// "Trade Protected" or "Tradable/Marketable After …" while dropping its
+  /// marketable flag, so a protected sticker or case would otherwise look
+  /// like a medal.
+  static bool _ownerSaysProtected(Map description) {
+    final notes = description['owner_descriptions'];
+    if (notes is! List) return false;
+    return notes.any((note) {
+      final value = note is Map ? note['value'] : null;
+      if (value is! String) return false;
+      final text = value.toLowerCase();
+      return text.contains('protected') || text.contains('tradable after') ||
+          text.contains('marketable after');
+    });
   }
 
   static Map? _tag(List? tags, String category) {
@@ -143,7 +199,17 @@ class Cs2InventoryApi {
   Future<List<Cs2InventoryItem>> fetchInventory(String steamId) async =>
       (await fetchSnapshot(steamId)).items;
 
-  Future<Cs2InventorySnapshot> fetchSnapshot(String steamId) async {
+  Future<Cs2InventoryPage> _load(Uri uri) async {
+    final response = await _client.get(uri).timeout(_timeout);
+    return Cs2InventoryPage(response.statusCode, response.body);
+  }
+
+  /// [loader] replaces the plain request, e.g. with the signed-in Steam
+  /// browser; parsing and every completeness check stay the same.
+  Future<Cs2InventorySnapshot> fetchSnapshot(
+    String steamId, {
+    Cs2InventoryPageLoader? loader,
+  }) async {
     if (!RegExp(r'^\d{17}$').hasMatch(steamId)) {
       throw const Cs2InventoryException('Enter a valid 17-digit Steam ID.');
     }
@@ -162,9 +228,9 @@ class Cs2InventoryApi {
         'count': '2000',
         if (cursor != null) 'start_assetid': cursor,
       });
-      http.Response response;
+      Cs2InventoryPage response;
       try {
-        response = await _client.get(uri).timeout(_timeout);
+        response = await (loader ?? _load)(uri);
       } catch (_) {
         throw const Cs2InventoryException('Could not reach Steam. Try again later.');
       }
@@ -233,6 +299,7 @@ class Cs2InventoryApi {
         final name = description['market_hash_name'];
         if (name is! String || name.isEmpty || !_isPriceable(description, tags)) continue;
         final icon = description['icon_url'];
+        final tradable = description['tradable'];
         final type = _tag(tags, 'Type')?['localized_tag_name'];
         final rarity = _tag(tags, 'Rarity');
         final rarityName = rarity?['localized_tag_name'];
@@ -248,6 +315,7 @@ class Cs2InventoryApi {
           rarityColor: color is String && RegExp(r'^[0-9a-fA-F]{6}$').hasMatch(color)
               ? '#$color'
               : null,
+          tradeLocked: tradable == 0 || tradable == false,
         ));
       }
       final more = decoded['more_items'] == 1 || decoded['more_items'] == true;
