@@ -281,7 +281,9 @@ class SyncService extends ChangeNotifier {
       await s.save();
     }
     _applyServerAccess();
-    if (s.serverReady) {
+    if (s.signedIn) {
+      // Also for a signed-in device whose gate is shut: its only allowed
+      // call is [_recheckApproval], and the gated transport enforces that.
       _api = SyncApi(s.serverUrl!, token: s.token);
     }
     for (final collection in collections) {
@@ -290,7 +292,11 @@ class SyncService extends ChangeNotifier {
       );
     }
     _periodic = Timer.periodic(_periodicInterval, (_) {
-      if (serverReady) syncNow(silent: true);
+      if (serverReady) {
+        syncNow(silent: true);
+      } else {
+        unawaited(_recheckApproval());
+      }
     });
     notifyListeners();
     if (serverReady) {
@@ -299,8 +305,68 @@ class SyncService extends ChangeNotifier {
       // account state reach the UI as soon as possible instead of showing
       // stale/default values for the first few seconds after launch.
       syncNow(silent: true);
+    } else {
+      unawaited(_recheckApproval());
     }
   }
+
+  static const _approvalRecheckInterval = Duration(minutes: 1);
+  DateTime? _lastApprovalCheck;
+  bool _approvalCheckRunning = false;
+
+  /// True while this device holds a session token but has its gate shut
+  /// because the server once said the account was waiting for approval.
+  bool get waitingForReapproval =>
+      signedIn && !accountApproved && !_requiresReauth;
+
+  /// Asks the server whether an account it once put back to "waiting for
+  /// approval" has been approved again, and reopens the gate if so. Sync
+  /// itself can't notice: it never runs while the gate is shut, so without
+  /// this the device stayed cut off until the user signed out and back in.
+  Future<void> _recheckApproval({bool force = false}) async {
+    final s = _state;
+    final api = _api;
+    if (s == null || api == null || !waitingForReapproval) return;
+    if (_approvalCheckRunning) return;
+    final last = _lastApprovalCheck;
+    if (!force &&
+        last != null &&
+        DateTime.now().difference(last) < _approvalRecheckInterval) {
+      return;
+    }
+    _approvalCheckRunning = true;
+    _lastApprovalCheck = DateTime.now();
+    try {
+      final remote = await api.approvalCheck();
+      if (!remote.approved || !identical(_state, s) || s.token == null) return;
+      _account = remote;
+      onServerPlan?.call(remote.planId);
+      s.accountApproved = true;
+      await s.save();
+      _lastError = null;
+      _applyServerAccess();
+      notifyListeners();
+      unawaited(syncNow(silent: true));
+    } on SyncApiException catch (e) {
+      if (e.isUnauthorized) {
+        _requiresReauth = true;
+        s.token = null;
+        await s.save();
+        _applyServerAccess();
+        notifyListeners();
+      } else if (e.isAccountBlocked) {
+        _lastError = e.message;
+        notifyListeners();
+      }
+    } catch (_) {
+      // Offline or the server is down: try again on a later tick.
+    } finally {
+      _approvalCheckRunning = false;
+    }
+  }
+
+  /// Checks right now whether this device's account was approved again.
+  Future<void> recheckApproval() => _recheckApproval(force: true);
 
   @override
   void dispose() {

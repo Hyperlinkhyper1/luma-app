@@ -29028,6 +29028,17 @@ class LZh extends L {
   }
 
   @override
+  String get syncSettingsWaitingForReapproval => '等待批准。此设备每分钟会重新检查一次';
+
+  @override
+  String get syncSettingsCheckApprovalNow => '立即检查';
+
+  @override
+  String syncSettingsSyncError(String error) {
+    return '同步出现问题：$error';
+  }
+
+  @override
   String get syncSettingsProviderSeparator => ' 或 ';
 
   @override

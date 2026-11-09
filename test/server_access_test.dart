@@ -1,7 +1,11 @@
-import 'dart:typed_data';
+import 'dart:convert';
+import 'dart:io';
 
+import 'package:flutter/services.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:luma/sync/server_access.dart';
 import 'package:luma/sync/sync_api.dart';
 import 'package:luma/sync/sync_service.dart';
@@ -125,6 +129,113 @@ void main() {
         expect(inner.sent, isEmpty);
       },
     );
+
+    test('the approval check reaches only the account endpoint', () async {
+      final inner = _RecordingClient();
+      final api = SyncApi(
+        'https://sync.luma-app.cc',
+        token: 't',
+        client: inner,
+      );
+
+      await api.approvalCheck();
+      expect(inner.sent.map((u) => u.path), ['/api/v1/account']);
+
+      // The regular client is still shut for the same path.
+      await expectLater(
+        api.account(),
+        throwsA(isA<ServerAccessDeniedException>()),
+      );
+      expect(inner.sent, hasLength(1));
+    });
+  });
+
+  group('A device the server once put back to "waiting for approval"', () {
+    const channel = MethodChannel('plugins.flutter.io/path_provider');
+    late Directory dir;
+
+    setUp(() async {
+      TestWidgetsFlutterBinding.ensureInitialized();
+      FlutterSecureStorage.setMockInitialValues({});
+      dir = await Directory.systemTemp.createTemp('luma-approval-recheck-');
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (_) async => dir.path);
+      await File('${dir.path}${Platform.pathSeparator}luma_sync.json')
+          .writeAsString(
+            jsonEncode({
+              'serverUrl': 'https://sync.luma-app.cc',
+              'email': 'stuck@example.invalid',
+              'token': 'still-valid-token',
+              'encryptionKey': base64Encode(Uint8List(32)),
+              'accountApproved': false,
+              'localAccountMigrated': true,
+            }),
+          );
+    });
+
+    tearDown(() async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, null);
+      await dir.delete(recursive: true);
+    });
+
+    Future<(SyncService, List<String>, String?)> start(
+      http.Response Function() account,
+    ) {
+      final paths = <String>[];
+      String? plan;
+      return http.runWithClient(() async {
+        final sync = SyncService(
+          collections: const [],
+          onServerPlan: (id) => plan = id,
+        );
+        await sync.init();
+        for (var i = 0; i < 20; i++) {
+          await pumpEventQueue();
+        }
+        sync.dispose();
+        // dispose() starts a last save; let it land before tearDown deletes
+        // the directory under it.
+        await Future<void>.delayed(const Duration(milliseconds: 200));
+        return (sync, paths, plan);
+      }, () => MockClient((request) async {
+        paths.add(request.url.path);
+        return request.url.path == '/api/v1/account'
+            ? account()
+            : http.Response('{}', 200);
+      }));
+    }
+
+    test('reopens its gate on its own once the server approves it', () async {
+      final (sync, paths, plan) = await start(
+        () => http.Response(
+          jsonEncode({'email': 'stuck@example.invalid', 'status': 'active',
+              'planId': 'nova', 'quotaBytes': 1, 'usedBytes': 0}),
+          200,
+        ),
+      );
+
+      expect(paths.first, '/api/v1/account');
+      expect(sync.accountApproved, isTrue);
+      expect(sync.serverReady, isTrue);
+      expect(sync.waitingForReapproval, isFalse);
+      expect(plan, 'nova');
+    });
+
+    test('stays shut, asking nothing else, while still pending', () async {
+      final (sync, paths, _) = await start(
+        () => http.Response(
+          jsonEncode({'error': 'account_not_approved',
+              'message': 'This account is waiting to be approved.'}),
+          403,
+        ),
+      );
+
+      expect(paths, ['/api/v1/account']);
+      expect(sync.serverReady, isFalse);
+      expect(sync.waitingForReapproval, isTrue);
+      expect(ServerAccessGate.instance.approved, isFalse);
+    });
   });
 
   group('SyncService approval state', () {

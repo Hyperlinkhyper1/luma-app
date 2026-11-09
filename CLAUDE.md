@@ -21,9 +21,11 @@ introducing a new state-management approach.
 - **Never let anything reach a luma server without checking the gate.** Call
   sites check `SyncService.serverReady` (not `signedIn`), and HTTP goes
   through `GatedServerClient` in `lib/sync/server_access.dart`. The only
-  exception is the account handshake in
-  `ServerAccessGate.accountSetupPaths`. `test/server_access_test.dart`
-  guards this.
+  exceptions are the account handshake in
+  `ServerAccessGate.accountSetupPaths`, and `SyncApi.approvalCheck`
+  (`ServerAccessGate.approvalCheckPath`): a device that still holds a token
+  but was put back to "waiting for approval" asks once a minute whether it
+  is approved again. `test/server_access_test.dart` guards this.
 - **`--no-tree-shake-icons` is required on every release build.** Icon
   codepoints are built at runtime, so tree-shaking silently blanks them.
 - **Drift schema changes need `dart run build_runner build`.** Commit the

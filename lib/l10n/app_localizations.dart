@@ -49228,6 +49228,24 @@ abstract class L {
   /// **'Synced to the cloud. Sign in with {providers}'**
   String syncSettingsSyncedToCloudWith(String providers);
 
+  /// No description provided for @syncSettingsWaitingForReapproval.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for approval. This device checks again every minute'**
+  String get syncSettingsWaitingForReapproval;
+
+  /// No description provided for @syncSettingsCheckApprovalNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Check now'**
+  String get syncSettingsCheckApprovalNow;
+
+  /// No description provided for @syncSettingsSyncError.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync problem: {error}'**
+  String syncSettingsSyncError(String error);
+
   /// No description provided for @syncSettingsProviderSeparator.
   ///
   /// In en, this message translates to:

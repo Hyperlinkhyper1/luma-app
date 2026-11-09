@@ -30701,6 +30701,18 @@ class LNl extends L {
   }
 
   @override
+  String get syncSettingsWaitingForReapproval =>
+      'Wacht op goedkeuring. Dit apparaat controleert het elke minuut opnieuw';
+
+  @override
+  String get syncSettingsCheckApprovalNow => 'Nu controleren';
+
+  @override
+  String syncSettingsSyncError(String error) {
+    return 'Probleem met synchroniseren: $error';
+  }
+
+  @override
   String get syncSettingsProviderSeparator => ' of ';
 
   @override

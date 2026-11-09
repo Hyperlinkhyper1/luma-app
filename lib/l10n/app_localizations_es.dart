@@ -30782,6 +30782,18 @@ class LEs extends L {
   }
 
   @override
+  String get syncSettingsWaitingForReapproval =>
+      'Esperando aprobación. Este dispositivo vuelve a comprobarlo cada minuto';
+
+  @override
+  String get syncSettingsCheckApprovalNow => 'Comprobar ahora';
+
+  @override
+  String syncSettingsSyncError(String error) {
+    return 'Problema de sincronización: $error';
+  }
+
+  @override
   String get syncSettingsProviderSeparator => ' o ';
 
   @override

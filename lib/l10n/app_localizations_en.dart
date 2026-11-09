@@ -30467,6 +30467,18 @@ class LEn extends L {
   }
 
   @override
+  String get syncSettingsWaitingForReapproval =>
+      'Waiting for approval. This device checks again every minute';
+
+  @override
+  String get syncSettingsCheckApprovalNow => 'Check now';
+
+  @override
+  String syncSettingsSyncError(String error) {
+    return 'Sync problem: $error';
+  }
+
+  @override
   String get syncSettingsProviderSeparator => ' or ';
 
   @override

@@ -221,16 +221,40 @@ class _SignedInBody extends StatelessWidget {
                           fontSize: 14,
                           fontWeight: FontWeight.w600)),
                   Text(
-                    cloud
-                        ? _cloudSubtitle(t, account?.linkedProviders)
-                        : t.syncSettingsLocalOnly,
-                    style: TextStyle(color: luma.textMuted, fontSize: 12),
+                    !cloud
+                        ? t.syncSettingsLocalOnly
+                        : sync.waitingForReapproval
+                        ? t.syncSettingsWaitingForReapproval
+                        : _cloudSubtitle(t, account?.linkedProviders),
+                    style: TextStyle(
+                        color: cloud && sync.waitingForReapproval
+                            ? luma.warning
+                            : luma.textMuted,
+                        fontSize: 12),
                     overflow: TextOverflow.ellipsis,
                   ),
-],
+                  if (cloud &&
+                      sync.status == SyncStatus.error &&
+                      sync.lastError != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        t.syncSettingsSyncError(sync.lastError!),
+                        style: TextStyle(color: luma.danger, fontSize: 12),
+                      ),
+                    ),
+                ],
               ),
             ),
             const SizedBox(width: 12),
+            if (cloud && sync.waitingForReapproval) ...[
+              LumaGhostButton(
+                label: t.syncSettingsCheckApprovalNow,
+                icon: Icons.refresh_rounded,
+                onTap: () => sync.recheckApproval(),
+              ),
+              const SizedBox(width: 8),
+            ],
             if (cloud)
               LumaGhostButton(
                 label: t.commonSignOut,

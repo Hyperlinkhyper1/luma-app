@@ -30845,6 +30845,18 @@ class LFr extends L {
   }
 
   @override
+  String get syncSettingsWaitingForReapproval =>
+      'En attente d\'approbation. Cet appareil vérifie à nouveau chaque minute';
+
+  @override
+  String get syncSettingsCheckApprovalNow => 'Vérifier maintenant';
+
+  @override
+  String syncSettingsSyncError(String error) {
+    return 'Problème de synchronisation : $error';
+  }
+
+  @override
   String get syncSettingsProviderSeparator => ' ou ';
 
   @override

@@ -374,16 +374,27 @@ class SyncApiException implements Exception {
 /// handshake ones ([ServerAccessGate.accountSetupPaths]) — everything else
 /// throws [ServerAccessDeniedException] before a socket is opened.
 class SyncApi {
-  SyncApi(String baseUrl, {this.token, http.Client? client})
-    : baseUrl = normalizeBaseUrl(baseUrl),
-      _client = GatedServerClient(
-        inner: client,
+  factory SyncApi(String baseUrl, {String? token, http.Client? client}) =>
+      SyncApi._(normalizeBaseUrl(baseUrl), client ?? http.Client())
+        ..token = token;
+
+  SyncApi._(this.baseUrl, http.Client inner)
+    : _client = GatedServerClient(
+        inner: inner,
         allowBeforeApproval: ServerAccessGate.accountSetupPaths,
+      ),
+      _approvalClient = GatedServerClient(
+        inner: inner,
+        allowBeforeApproval: const {ServerAccessGate.approvalCheckPath},
       );
 
   final String baseUrl;
   String? token;
   final http.Client _client;
+
+  /// Reaches only [ServerAccessGate.approvalCheckPath] while the gate is
+  /// shut; see [approvalCheck].
+  final http.Client _approvalClient;
 
   static const _jsonTimeout = Duration(seconds: 30);
   static const _blobTimeout = Duration(minutes: 5);
@@ -808,6 +819,16 @@ class SyncApi {
 
   Future<RemoteAccount> account() async {
     final response = await _client
+        .get(_uri('/account'), headers: _authHeaders)
+        .timeout(_jsonTimeout);
+    return RemoteAccount.fromJson(_decodeOrThrow(response));
+  }
+
+  /// [account] for a device that holds a token but has its gate shut because
+  /// the server once said the account was waiting for approval. A still
+  /// pending account gets a [SyncApiException] with `account_not_approved`.
+  Future<RemoteAccount> approvalCheck() async {
+    final response = await _approvalClient
         .get(_uri('/account'), headers: _authHeaders)
         .timeout(_jsonTimeout);
     return RemoteAccount.fromJson(_decodeOrThrow(response));

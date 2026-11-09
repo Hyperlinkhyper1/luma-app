@@ -64,6 +64,15 @@ class ServerAccessGate extends ChangeNotifier {
     '/api/v1/auth/oauth/complete',
   };
 
+  /// The one extra call a device may make while the gate is shut, and only
+  /// when it already holds a session token from an earlier approval: asking
+  /// whether its account has been approved again. The server answers a
+  /// still-pending account with `account_not_approved` and nothing else, so
+  /// no data moves before approval. Without it, a device the server once put
+  /// back to "waiting for approval" could only learn it was let back in by
+  /// signing out and in again. Used only by [SyncApi.approvalCheck].
+  static const approvalCheckPath = '/api/v1/account';
+
   bool _approved = false;
 
   /// Whether this device currently holds a signed-in, approved account.

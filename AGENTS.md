@@ -78,8 +78,13 @@ from the admin dashboard). Two layers enforce it:
 1. Call sites check `SyncService.serverReady` — never `signedIn` — before
    doing any server-backed work.
 2. Their HTTP goes through `GatedServerClient` (`lib/sync/server_access.dart`),
-   which refuses to open a socket while the gate is shut. The only exception
-   is the account handshake itself (`ServerAccessGate.accountSetupPaths`).
+   which refuses to open a socket while the gate is shut. The only exceptions
+   are the account handshake itself (`ServerAccessGate.accountSetupPaths`)
+   and the approval re-check (`SyncApi.approvalCheck`, path
+   `ServerAccessGate.approvalCheckPath`), which a device that still holds a
+   token but was put back to "waiting for approval" sends once a minute so it
+   reopens on its own once approved. The server answers a pending account
+   with `account_not_approved` and nothing else.
 
 Plugins that are useless without the server are listed in
 `AppShell.serverOnlyPlugins` and render a `ServerAccountGate` instead of their

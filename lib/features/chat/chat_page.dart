@@ -216,7 +216,7 @@ class _ChatBody extends StatefulWidget {
 
 class _ChatBodyState extends State<_ChatBody> {
   late String _providerId = widget.settings.aiProviderId;
-  late Future<bool> _keyAvailableFuture = _checkKeyAvailable();
+  late Future<bool> _keyAvailableFuture = _trackCheck(_checkKeyAvailable());
 
   /// Whether the assistant can be used with the current provider: either a
   /// key is saved locally on this device, or (for Luma Support/Mistral and
@@ -241,18 +241,58 @@ class _ChatBodyState extends State<_ChatBody> {
     return false;
   }
 
+  late bool _serverReady = widget.syncService.serverReady;
+  bool _checking = false;
+  bool _available = false;
+
   @override
   void initState() {
     super.initState();
     widget.settings.addListener(_onSettingsChanged);
     LocalModelStore.instance.addListener(_onLocalModelChanged);
+    widget.syncService.addListener(_onSyncChanged);
   }
 
   @override
   void dispose() {
     widget.settings.removeListener(_onSettingsChanged);
     LocalModelStore.instance.removeListener(_onLocalModelChanged);
+    widget.syncService.removeListener(_onSyncChanged);
     super.dispose();
+  }
+
+  /// The server-key check above can fail for reasons that pass on their own:
+  /// the page opened before the account finished loading, the device was
+  /// briefly offline, or its account was waiting for approval. Without a
+  /// recheck that one failure stuck to every chat until the app restarted.
+  /// Sync notifies on every run (at least every few seconds while signed
+  /// in), so retrying here while unavailable heals it shortly after.
+  void _onSyncChanged() {
+    final ready = widget.syncService.serverReady;
+    final readyChanged = ready != _serverReady;
+    _serverReady = ready;
+    final serverBacked = _providerId == AiProviderId.google.name ||
+        _providerId == AiProviderId.mistral.name;
+    if (!serverBacked || _checking) return;
+    final last = _lastCheck;
+    final due = last == null ||
+        DateTime.now().difference(last) >= const Duration(seconds: 15);
+    if (readyChanged || (ready && !_available && due)) _recheckKey();
+  }
+
+  DateTime? _lastCheck;
+
+  Future<bool> _trackCheck(Future<bool> check) async {
+    _checking = true;
+    _lastCheck = DateTime.now();
+    try {
+      return _available = await check;
+    } catch (_) {
+      _available = false;
+      rethrow;
+    } finally {
+      _checking = false;
+    }
   }
 
   void _onLocalModelChanged() {
@@ -268,8 +308,9 @@ class _ChatBodyState extends State<_ChatBody> {
     }
   }
 
-  void _recheckKey() =>
-      setState(() => _keyAvailableFuture = _checkKeyAvailable());
+  void _recheckKey() => setState(
+    () => _keyAvailableFuture = _trackCheck(_checkKeyAvailable()),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -279,7 +320,7 @@ class _ChatBodyState extends State<_ChatBody> {
         if (snap.hasError) {
           return _LoadError(error: snap.error!);
         }
-        if (snap.connectionState != ConnectionState.done) {
+        if (snap.connectionState != ConnectionState.done && !snap.hasData) {
           return const Center(
             child: SizedBox(
               width: 22,

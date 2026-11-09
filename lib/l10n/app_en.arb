@@ -19727,6 +19727,16 @@
       }
     }
   },
+  "syncSettingsWaitingForReapproval": "Waiting for approval. This device checks again every minute",
+  "syncSettingsCheckApprovalNow": "Check now",
+  "syncSettingsSyncError": "Sync problem: {error}",
+  "@syncSettingsSyncError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "syncSettingsProviderSeparator": " or ",
   "syncSettingsLocalOnly": "Local only. Syncs directly between your devices, no server",
   "syncSettingsBackUpToServer": "Back up to a server…",
