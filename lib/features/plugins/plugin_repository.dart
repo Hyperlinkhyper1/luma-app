@@ -109,6 +109,15 @@ class PluginRepository {
     ];
   }
 
+  /// Whether the plugin [id] is installed on this device right now.
+  Future<bool> isInstalled(String id) async {
+    if (kGrantedOnlyPlugins.containsKey(id)) return granted.value.contains(id);
+    final row = await (_db.select(_db.installedPlugins)
+          ..where((t) => t.pluginId.equals(id)))
+        .getSingleOrNull();
+    return row != null;
+  }
+
   Future<void> install(PluginCatalogEntry entry) async {
     if (kGrantedOnlyPlugins.containsKey(entry.id)) {
       throw StateError('${entry.id} is granted by the admin, not downloaded.');

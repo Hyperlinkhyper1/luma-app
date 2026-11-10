@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../app/widgets.dart';
+import '../../../../account/plan.dart';
+import '../../../../settings/settings_scope.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../../theme/luma_theme.dart';
+import 'chef/meal_chef_page.dart';
 import 'recipe_book_controller.dart';
 import 'recipe_models.dart';
 import 'recipe_widgets.dart';
@@ -121,6 +124,8 @@ class _RecipePlannerViewState extends State<RecipePlannerView> {
         return ListView(
           padding: const EdgeInsets.only(bottom: 32),
           children: [
+            _MealChefBanner(controller: _controller),
+            const SizedBox(height: 10),
             _weekNav(t, luma, weekEnd, showsToday),
             const SizedBox(height: 10),
             _weekStartRow(t, luma),
@@ -253,6 +258,66 @@ class _RecipePlannerViewState extends State<RecipePlannerView> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Opens the meal chef. Shown to every plan; free plans see the upgrade
+/// prompt once inside.
+class _MealChefBanner extends StatelessWidget {
+  const _MealChefBanner({required this.controller});
+  final RecipeBookController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final t = L.of(context);
+    final paid = planAtLeast(SettingsScope.of(context).selectedPlanId, 'orbit');
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () => showMealChef(context, controller),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: luma.accentSubtle,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: luma.accent.withValues(alpha: 0.35)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: luma.accent,
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: Icon(Icons.auto_awesome_rounded,
+                    size: 22, color: luma.onAccent),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(t.mealChefOpen,
+                        style: TextStyle(
+                            color: luma.textPrimary,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 2),
+                    Text(paid ? t.mealChefSubtitle : t.mealChefPaidOnly,
+                        style: TextStyle(
+                            color: luma.textSecondary, fontSize: 12)),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right_rounded, color: luma.accent),
+            ],
+          ),
+        ),
       ),
     );
   }

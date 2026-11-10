@@ -68,18 +68,16 @@ class AiUsageRepository extends ChangeNotifier {
       final account = _backendAccount?.call();
       final deviceId = account == null ? null : 'backend:$account';
       if (_sweptBackendFor == null || _sweptBackendFor!.account != account) {
-        // A range rather than LIKE 'backend:%', so the device_id index
+        // A range rather than LIKE 'backend:%', so the strings index
         // serves it.
-        final swept =
-            await (_db.delete(_db.aiUsageTurns)..where(
-                  (t) =>
-                      t.deviceId.isBiggerOrEqualValue('backend:') &
-                      t.deviceId.isSmallerThanValue('backend;') &
-                      (deviceId == null
-                          ? const Constant(true)
-                          : t.deviceId.equals(deviceId).not()),
-                ))
-                .go();
+        final swept = await _db.deleteTurns(
+          (t) =>
+              t.deviceId.isBiggerOrEqualValue('backend:') &
+              t.deviceId.isSmallerThanValue('backend;') &
+              (deviceId == null
+                  ? const Constant(true)
+                  : t.deviceId.equals(deviceId).not()),
+        );
         _sweptBackendFor = (account: account);
         if (swept > 0) changed = true;
       }

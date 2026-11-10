@@ -240,6 +240,26 @@ class AiUsageStore {
     return id;
   }
 
+  /// Replaces a reservation's units with what the call really cost, keeping
+  /// its timestamp. Still weekly-only: the five-hour window and credits stay
+  /// untouched, and a call may land slightly above the weekly cap.
+  Future<void> settleWeeklyOnly(
+    String userId,
+    String reservationId,
+    double units,
+  ) async {
+    if (!units.isFinite || units <= 0) {
+      return releaseWeeklyOnly(userId, reservationId);
+    }
+    final entry = Map<String, dynamic>.from(_entry(userId));
+    entry['weeklyOnly'] = [
+      for (final event in _weeklyOnlyEvents(userId))
+        [event.$1, event.$2, event.$2 == reservationId ? units : event.$3],
+    ];
+    _data[userId] = entry;
+    await _save();
+  }
+
   Future<void> releaseWeeklyOnly(String userId, String reservationId) async {
     final entry = Map<String, dynamic>.from(_entry(userId));
     entry['weeklyOnly'] = [

@@ -67306,6 +67306,300 @@ abstract class L {
   /// In en, this message translates to:
   /// **'Plan navigator'**
   String get mapMakerCityNavigator;
+
+  /// No description provided for @mealChefTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Meal chef'**
+  String get mealChefTitle;
+
+  /// No description provided for @mealChefOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan a meal with AI'**
+  String get mealChefOpen;
+
+  /// No description provided for @mealChefSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Nebula picks a meal and tells you what to buy'**
+  String get mealChefSubtitle;
+
+  /// No description provided for @mealChefPaidOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Included with Orbit and Nova'**
+  String get mealChefPaidOnly;
+
+  /// No description provided for @mealChefUsageNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Nebula · uses your weekly Luma AI limit'**
+  String get mealChefUsageNote;
+
+  /// No description provided for @mealChefGateTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'The meal chef is a paid feature'**
+  String get mealChefGateTitle;
+
+  /// No description provided for @mealChefGateSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Upgrade to Orbit or Nova and Nebula plans meals and grocery lists for you. It uses your weekly Luma AI limit.'**
+  String get mealChefGateSubtitle;
+
+  /// No description provided for @mealChefUpgradeTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Upgrade to {plan}'**
+  String mealChefUpgradeTo(String plan);
+
+  /// No description provided for @mealChefSignInTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to use the meal chef'**
+  String get mealChefSignInTitle;
+
+  /// No description provided for @mealChefSignInSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'The chef runs on the luma server. Sign in under Settings → Sync & account with an approved account.'**
+  String get mealChefSignInSubtitle;
+
+  /// No description provided for @mealChefGreeting.
+  ///
+  /// In en, this message translates to:
+  /// **'Hi! I\'m your meal chef. I\'ll plan a meal and tell you exactly what to buy. First: does anyone who\'s eating have allergies or intolerances?'**
+  String get mealChefGreeting;
+
+  /// No description provided for @mealChefAskPeople.
+  ///
+  /// In en, this message translates to:
+  /// **'How many people are eating?'**
+  String get mealChefAskPeople;
+
+  /// No description provided for @mealChefAskDeals.
+  ///
+  /// In en, this message translates to:
+  /// **'Should I mainly use products that are on sale right now?'**
+  String get mealChefAskDeals;
+
+  /// No description provided for @mealChefAskStores.
+  ///
+  /// In en, this message translates to:
+  /// **'Which supermarkets do you shop at? Pick one or more.'**
+  String get mealChefAskStores;
+
+  /// No description provided for @mealChefAskNotes.
+  ///
+  /// In en, this message translates to:
+  /// **'Anything else I should know? Diet, cuisine, how much time you have, budget, no oven…'**
+  String get mealChefAskNotes;
+
+  /// No description provided for @mealChefNoAllergies.
+  ///
+  /// In en, this message translates to:
+  /// **'No allergies'**
+  String get mealChefNoAllergies;
+
+  /// No description provided for @mealChefNoNotes.
+  ///
+  /// In en, this message translates to:
+  /// **'No notes'**
+  String get mealChefNoNotes;
+
+  /// No description provided for @mealChefYesDeals.
+  ///
+  /// In en, this message translates to:
+  /// **'Yes, use deals'**
+  String get mealChefYesDeals;
+
+  /// No description provided for @mealChefNoDeals.
+  ///
+  /// In en, this message translates to:
+  /// **'No, doesn\'t matter'**
+  String get mealChefNoDeals;
+
+  /// No description provided for @mealChefContinue.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get mealChefContinue;
+
+  /// No description provided for @mealChefPeopleInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter a number from 1 to 20.'**
+  String get mealChefPeopleInvalid;
+
+  /// No description provided for @mealChefInputHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Type your answer…'**
+  String get mealChefInputHint;
+
+  /// No description provided for @mealChefFeedbackHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask for changes, e.g. no fish or quicker…'**
+  String get mealChefFeedbackHint;
+
+  /// No description provided for @mealChefSend.
+  ///
+  /// In en, this message translates to:
+  /// **'Send'**
+  String get mealChefSend;
+
+  /// No description provided for @mealChefFindingDeals.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking this week\'s deals…'**
+  String get mealChefFindingDeals;
+
+  /// No description provided for @mealChefCooking.
+  ///
+  /// In en, this message translates to:
+  /// **'Cooking up a meal…'**
+  String get mealChefCooking;
+
+  /// No description provided for @mealChefIngredients.
+  ///
+  /// In en, this message translates to:
+  /// **'Ingredients'**
+  String get mealChefIngredients;
+
+  /// No description provided for @mealChefSteps.
+  ///
+  /// In en, this message translates to:
+  /// **'Steps'**
+  String get mealChefSteps;
+
+  /// No description provided for @mealChefOnSale.
+  ///
+  /// In en, this message translates to:
+  /// **'on sale'**
+  String get mealChefOnSale;
+
+  /// No description provided for @mealChefPantry.
+  ///
+  /// In en, this message translates to:
+  /// **'pantry'**
+  String get mealChefPantry;
+
+  /// No description provided for @mealChefAskGroceries.
+  ///
+  /// In en, this message translates to:
+  /// **'Shall I put the ingredients on a grocery list in Groceries List?'**
+  String get mealChefAskGroceries;
+
+  /// No description provided for @mealChefMakeList.
+  ///
+  /// In en, this message translates to:
+  /// **'Make grocery list'**
+  String get mealChefMakeList;
+
+  /// No description provided for @mealChefNoList.
+  ///
+  /// In en, this message translates to:
+  /// **'No thanks'**
+  String get mealChefNoList;
+
+  /// No description provided for @mealChefBuildingList.
+  ///
+  /// In en, this message translates to:
+  /// **'Finding the products…'**
+  String get mealChefBuildingList;
+
+  /// No description provided for @mealChefListCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'Added {count, plural, =1{1 product} other{{count} products}} to the list \"{name}\" in Groceries List.'**
+  String mealChefListCreated(int count, String name);
+
+  /// No description provided for @mealChefListMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Not found in your stores: {items}. You\'ll want to add those yourself.'**
+  String mealChefListMissing(String items);
+
+  /// No description provided for @mealChefListFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'I couldn\'t find any of these products in the groceries database, so no list was made.'**
+  String get mealChefListFailed;
+
+  /// No description provided for @mealChefListInstallHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Install Groceries List from the plugin store to open it.'**
+  String get mealChefListInstallHint;
+
+  /// No description provided for @mealChefAddToPlanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to planner'**
+  String get mealChefAddToPlanner;
+
+  /// No description provided for @mealChefSaveRecipe.
+  ///
+  /// In en, this message translates to:
+  /// **'Save recipe'**
+  String get mealChefSaveRecipe;
+
+  /// No description provided for @mealChefSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved to your recipes.'**
+  String get mealChefSaved;
+
+  /// No description provided for @mealChefPlanned.
+  ///
+  /// In en, this message translates to:
+  /// **'Added to your planner on {date}.'**
+  String mealChefPlanned(String date);
+
+  /// No description provided for @mealChefAnother.
+  ///
+  /// In en, this message translates to:
+  /// **'Try another meal'**
+  String get mealChefAnother;
+
+  /// No description provided for @mealChefAnotherFeedback.
+  ///
+  /// In en, this message translates to:
+  /// **'Something completely different, please.'**
+  String get mealChefAnotherFeedback;
+
+  /// No description provided for @mealChefAfterMeal.
+  ///
+  /// In en, this message translates to:
+  /// **'Want changes? Just tell me what to adjust.'**
+  String get mealChefAfterMeal;
+
+  /// No description provided for @mealChefStartOver.
+  ///
+  /// In en, this message translates to:
+  /// **'Start over'**
+  String get mealChefStartOver;
+
+  /// No description provided for @mealChefRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get mealChefRetry;
+
+  /// No description provided for @mealChefSignInError.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with an approved account to use the meal chef.'**
+  String get mealChefSignInError;
+
+  /// No description provided for @mealChefUnreachable.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t reach the chef. Check your connection and try again.'**
+  String get mealChefUnreachable;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

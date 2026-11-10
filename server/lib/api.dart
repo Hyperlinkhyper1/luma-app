@@ -44,6 +44,7 @@ import 'fishing_waters.dart';
 import 'update_check.dart';
 import 'family_store.dart';
 import 'mail.dart';
+import 'meal_chef.dart';
 import 'metrics.dart';
 import 'process_metrics.dart';
 import 'oauth.dart';
@@ -65,6 +66,7 @@ part 'api_benchmark_repair.dart';
 part 'api_classroom.dart';
 part 'api_cs2_voice_translate.dart';
 part 'api_decider_tests.dart';
+part 'api_meal_chef.dart';
 part 'api_tts_tests.dart';
 part 'api_wiki_tests.dart';
 part 'api_school_tests.dart';
@@ -445,6 +447,7 @@ class Api {
       this.benchmarkRepairPrice,
       this.benchmarkRepairCall,
       this.cs2VoiceCall,
+      this.mealChefCall,
       BenchmarkGithubPublisher? benchmarkGithub})
       : _oauthClient = oauthClient ?? OAuthClient(),
         benchmarkGithub = benchmarkGithub ?? BenchmarkGithubPublisher(),
@@ -546,6 +549,11 @@ class Api {
   late final Cs2VoiceConfigStore cs2VoiceConfig =
       Cs2VoiceConfigStore(config.dataDir);
   final Set<String> _cs2VoicePending = {};
+
+  /// Stands in for the upstream call in the meal chef tests.
+  final Future<(int, String)> Function(AiModeRoute, Map<String, dynamic>)?
+      mealChefCall;
+  final Set<String> _mealChefPending = {};
   final SubwayRelay _subwayRelay = SubwayRelay();
   final SubwayTicketStore _subwayTickets = SubwayTicketStore();
 
@@ -729,6 +737,7 @@ class Api {
       ..post('/api/v1/ai/web-search', _requireAuth(_webSearch))
       ..post('/api/v1/ai/detect', _requireAuth(_aiDetect))
       ..post('/api/v1/ai/book-review', _requireAuth(_aiBookReview))
+      ..post('/api/v1/ai/meal-chef', _requireAuth(_aiMealChef))
       ..get('/api/v1/classroom', _requireAuth(_classroomState))
       ..post('/api/v1/classroom/country', _requireAuth(_classroomSetCountry))
       ..post('/api/v1/classroom/question', _requireAuth(_classroomQuestion))
@@ -1252,7 +1261,8 @@ class Api {
     if ((path.startsWith('api/v1/ai/') &&
             (path.endsWith('/chat') ||
                 path == 'api/v1/ai/detect' ||
-                path == 'api/v1/ai/book-review')) ||
+                path == 'api/v1/ai/book-review' ||
+                path == 'api/v1/ai/meal-chef')) ||
         path == 'api/v1/classroom/question' ||
         path == 'api/v1/classroom/review' ||
         path == 'api/v1/cs2/voice-translate') {
@@ -14631,6 +14641,8 @@ window.lumaAskReason = function (form, message) {
   /// Control panel tab: loads the groceries server's sync status through
   /// this server's /admin/groceries/status proxy and renders it; refreshes
   /// every 3 seconds while a sync is running so the counters fill in live.
+  /// The sync/reload forms are submitted with fetch so starting a sync
+  /// doesn't reload the dashboard; without JS they still post and redirect.
   static const _adminGroceriesScript = r'''
 (function () {
   const summary = document.getElementById('groceriesSummary');
@@ -14703,6 +14715,34 @@ window.lumaAskReason = function (form, message) {
         summary.textContent = 'Could not reach the groceries server.';
       });
   }
+
+  document.querySelectorAll(
+    'form[action="/admin/groceries/sync"], form[action="/admin/groceries/reload"]'
+  ).forEach((form) => form.addEventListener('submit', (e) => {
+    if (e.defaultPrevented) return;
+    e.preventDefault();
+    const btn = form.querySelector('button[type="submit"]');
+    if (btn) btn.disabled = true;
+    fetch(form.action, {
+      method: 'POST',
+      body: new URLSearchParams(new FormData(form)),
+      redirect: 'manual',
+    })
+      .then((r) => {
+        if (r.type !== 'opaqueredirect' && !r.ok) {
+          return r.json().catch(() => ({})).then((j) => {
+            summary.textContent = 'Could not start the sync ('
+              + (j.message || j.error || r.status) + ')';
+          });
+        }
+        setTimeout(load, 500);
+      })
+      .catch(() => {
+        summary.textContent = 'Could not reach the groceries server.';
+      })
+      .finally(() => { if (btn) btn.disabled = false; });
+  }));
+
   load();
 })();
 ''';

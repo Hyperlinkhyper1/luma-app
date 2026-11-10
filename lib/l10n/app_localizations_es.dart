@@ -41490,4 +41490,180 @@ class LEs extends L {
 
   @override
   String get mapMakerCityNavigator => 'Navegador del plano';
+
+  @override
+  String get mealChefTitle => 'Chef de comidas';
+
+  @override
+  String get mealChefOpen => 'Planifica una comida con IA';
+
+  @override
+  String get mealChefSubtitle =>
+      'Nebula elige una comida y te dice qué comprar';
+
+  @override
+  String get mealChefPaidOnly => 'Incluido con Orbit y Nova';
+
+  @override
+  String get mealChefUsageNote => 'Nebula · usa tu límite semanal de Luma AI';
+
+  @override
+  String get mealChefGateTitle => 'El chef de comidas es una función de pago';
+
+  @override
+  String get mealChefGateSubtitle =>
+      'Pásate a Orbit o Nova y Nebula planificará tus comidas y listas de la compra. Usa tu límite semanal de Luma AI.';
+
+  @override
+  String mealChefUpgradeTo(String plan) {
+    return 'Pasar a $plan';
+  }
+
+  @override
+  String get mealChefSignInTitle =>
+      'Inicia sesión para usar el chef de comidas';
+
+  @override
+  String get mealChefSignInSubtitle =>
+      'El chef funciona en el servidor de luma. Inicia sesión en Ajustes → Sincronización y cuenta con una cuenta aprobada.';
+
+  @override
+  String get mealChefGreeting =>
+      '¡Hola! Soy tu chef de comidas. Planificaré una comida y te diré exactamente qué comprar. Primero: ¿alguien que va a comer tiene alergias o intolerancias?';
+
+  @override
+  String get mealChefAskPeople => '¿Cuántas personas van a comer?';
+
+  @override
+  String get mealChefAskDeals =>
+      '¿Uso sobre todo productos que estén en oferta ahora mismo?';
+
+  @override
+  String get mealChefAskStores =>
+      '¿En qué supermercados compras? Elige uno o varios.';
+
+  @override
+  String get mealChefAskNotes =>
+      '¿Algo más que deba saber? Dieta, tipo de cocina, cuánto tiempo tienes, presupuesto, sin horno…';
+
+  @override
+  String get mealChefNoAllergies => 'Sin alergias';
+
+  @override
+  String get mealChefNoNotes => 'Nada más';
+
+  @override
+  String get mealChefYesDeals => 'Sí, usa ofertas';
+
+  @override
+  String get mealChefNoDeals => 'No, da igual';
+
+  @override
+  String get mealChefContinue => 'Continuar';
+
+  @override
+  String get mealChefPeopleInvalid => 'Introduce un número del 1 al 20.';
+
+  @override
+  String get mealChefInputHint => 'Escribe tu respuesta…';
+
+  @override
+  String get mealChefFeedbackHint =>
+      'Pide cambios, p. ej. sin pescado o más rápido…';
+
+  @override
+  String get mealChefSend => 'Enviar';
+
+  @override
+  String get mealChefFindingDeals => 'Mirando las ofertas de esta semana…';
+
+  @override
+  String get mealChefCooking => 'Preparando una comida…';
+
+  @override
+  String get mealChefIngredients => 'Ingredientes';
+
+  @override
+  String get mealChefSteps => 'Pasos';
+
+  @override
+  String get mealChefOnSale => 'oferta';
+
+  @override
+  String get mealChefPantry => 'despensa';
+
+  @override
+  String get mealChefAskGroceries =>
+      '¿Pongo los ingredientes en una lista de Lista de la compra?';
+
+  @override
+  String get mealChefMakeList => 'Crear lista de la compra';
+
+  @override
+  String get mealChefNoList => 'No, gracias';
+
+  @override
+  String get mealChefBuildingList => 'Buscando los productos…';
+
+  @override
+  String mealChefListCreated(int count, String name) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count productos añadidos',
+      one: '1 producto añadido',
+    );
+    return '$_temp0 a la lista «$name» en Lista de la compra.';
+  }
+
+  @override
+  String mealChefListMissing(String items) {
+    return 'No encontrado en tus tiendas: $items. Tendrás que añadirlos tú.';
+  }
+
+  @override
+  String get mealChefListFailed =>
+      'No encontré ninguno de estos productos en la base de datos de la compra, así que no se creó ninguna lista.';
+
+  @override
+  String get mealChefListInstallHint =>
+      'Instala Lista de la compra desde la tienda de plugins para abrirla.';
+
+  @override
+  String get mealChefAddToPlanner => 'Añadir al planificador';
+
+  @override
+  String get mealChefSaveRecipe => 'Guardar receta';
+
+  @override
+  String get mealChefSaved => 'Guardada en tus recetas.';
+
+  @override
+  String mealChefPlanned(String date) {
+    return 'Añadido a tu planificador el $date.';
+  }
+
+  @override
+  String get mealChefAnother => 'Otra comida';
+
+  @override
+  String get mealChefAnotherFeedback =>
+      'Algo completamente distinto, por favor.';
+
+  @override
+  String get mealChefAfterMeal => '¿Quieres cambios? Dime qué ajustar.';
+
+  @override
+  String get mealChefStartOver => 'Empezar de nuevo';
+
+  @override
+  String get mealChefRetry => 'Reintentar';
+
+  @override
+  String get mealChefSignInError =>
+      'Inicia sesión con una cuenta aprobada para usar el chef de comidas.';
+
+  @override
+  String get mealChefUnreachable =>
+      'No se pudo contactar con el chef. Revisa tu conexión e inténtalo de nuevo.';
 }

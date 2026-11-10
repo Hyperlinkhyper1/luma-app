@@ -25092,5 +25092,85 @@
   },
   "mapMakerCityDuplicateFailed": "No room for a copy nearby. Make space or disable road frontage.",
   "mapMakerCitySelection": "Selected feature",
-  "mapMakerCityNavigator": "Plan navigator"
+  "mapMakerCityNavigator": "Plan navigator",
+  "mealChefTitle": "Meal chef",
+  "mealChefOpen": "Plan a meal with AI",
+  "mealChefSubtitle": "Nebula picks a meal and tells you what to buy",
+  "mealChefPaidOnly": "Included with Orbit and Nova",
+  "mealChefUsageNote": "Nebula · uses your weekly Luma AI limit",
+  "mealChefGateTitle": "The meal chef is a paid feature",
+  "mealChefGateSubtitle": "Upgrade to Orbit or Nova and Nebula plans meals and grocery lists for you. It uses your weekly Luma AI limit.",
+  "mealChefUpgradeTo": "Upgrade to {plan}",
+  "@mealChefUpgradeTo": {
+    "placeholders": {
+      "plan": {
+        "type": "String"
+      }
+    }
+  },
+  "mealChefSignInTitle": "Sign in to use the meal chef",
+  "mealChefSignInSubtitle": "The chef runs on the luma server. Sign in under Settings → Sync & account with an approved account.",
+  "mealChefGreeting": "Hi! I'm your meal chef. I'll plan a meal and tell you exactly what to buy. First: does anyone who's eating have allergies or intolerances?",
+  "mealChefAskPeople": "How many people are eating?",
+  "mealChefAskDeals": "Should I mainly use products that are on sale right now?",
+  "mealChefAskStores": "Which supermarkets do you shop at? Pick one or more.",
+  "mealChefAskNotes": "Anything else I should know? Diet, cuisine, how much time you have, budget, no oven…",
+  "mealChefNoAllergies": "No allergies",
+  "mealChefNoNotes": "No notes",
+  "mealChefYesDeals": "Yes, use deals",
+  "mealChefNoDeals": "No, doesn't matter",
+  "mealChefContinue": "Continue",
+  "mealChefPeopleInvalid": "Please enter a number from 1 to 20.",
+  "mealChefInputHint": "Type your answer…",
+  "mealChefFeedbackHint": "Ask for changes, e.g. no fish or quicker…",
+  "mealChefSend": "Send",
+  "mealChefFindingDeals": "Checking this week's deals…",
+  "mealChefCooking": "Cooking up a meal…",
+  "mealChefIngredients": "Ingredients",
+  "mealChefSteps": "Steps",
+  "mealChefOnSale": "on sale",
+  "mealChefPantry": "pantry",
+  "mealChefAskGroceries": "Shall I put the ingredients on a grocery list in Groceries List?",
+  "mealChefMakeList": "Make grocery list",
+  "mealChefNoList": "No thanks",
+  "mealChefBuildingList": "Finding the products…",
+  "mealChefListCreated": "Added {count, plural, =1{1 product} other{{count} products}} to the list \"{name}\" in Groceries List.",
+  "@mealChefListCreated": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "mealChefListMissing": "Not found in your stores: {items}. You'll want to add those yourself.",
+  "@mealChefListMissing": {
+    "placeholders": {
+      "items": {
+        "type": "String"
+      }
+    }
+  },
+  "mealChefListFailed": "I couldn't find any of these products in the groceries database, so no list was made.",
+  "mealChefListInstallHint": "Install Groceries List from the plugin store to open it.",
+  "mealChefAddToPlanner": "Add to planner",
+  "mealChefSaveRecipe": "Save recipe",
+  "mealChefSaved": "Saved to your recipes.",
+  "mealChefPlanned": "Added to your planner on {date}.",
+  "@mealChefPlanned": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "mealChefAnother": "Try another meal",
+  "mealChefAnotherFeedback": "Something completely different, please.",
+  "mealChefAfterMeal": "Want changes? Just tell me what to adjust.",
+  "mealChefStartOver": "Start over",
+  "mealChefRetry": "Try again",
+  "mealChefSignInError": "Sign in with an approved account to use the meal chef.",
+  "mealChefUnreachable": "Couldn't reach the chef. Check your connection and try again."
 }

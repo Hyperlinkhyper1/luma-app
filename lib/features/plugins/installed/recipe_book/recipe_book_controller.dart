@@ -503,6 +503,17 @@ class RecipeBookController extends ChangeNotifier {
     return null;
   }
 
+  /// Saves an already-built private recipe, such as one the meal chef
+  /// planned. A recipe with the same id is replaced rather than duplicated.
+  Future<void> addLocalRecipe(LocalRecipe recipe) async {
+    _local
+      ..removeWhere((r) => r.id == recipe.id)
+      ..insert(0, recipe);
+    notifyListeners();
+    await _persist();
+    StorageGuard.instance.scheduleRefresh();
+  }
+
   /// Edits an existing local recipe. [photoBytes] null keeps the current
   /// photo; [removePhoto] clears it. If the recipe is already published, the
   /// change is pushed to the server too.

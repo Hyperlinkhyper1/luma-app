@@ -202,9 +202,7 @@ class AiUsageCloudSync {
 
   Future<void> _replaceDevice(AiUsageDeviceUpload upload, int version) async {
     await _db.transaction(() async {
-      await (_db.delete(
-        _db.aiUsageTurns,
-      )..where((t) => t.deviceId.equals(upload.deviceId))).go();
+      await _db.deleteTurns((t) => t.deviceId.equals(upload.deviceId));
       await _db.batch((b) {
         b.insertAll(_db.aiUsageTurns, [
           for (final turn in upload.turns)
@@ -232,9 +230,7 @@ class AiUsageCloudSync {
 
   Future<void> _removeDevice(String deviceId) async {
     await _db.transaction(() async {
-      await (_db.delete(
-        _db.aiUsageTurns,
-      )..where((t) => t.deviceId.equals(deviceId))).go();
+      await _db.deleteTurns((t) => t.deviceId.equals(deviceId));
       await (_db.delete(
         _db.aiUsageRemoteDevices,
       )..where((d) => d.deviceId.equals(deviceId))).go();
@@ -256,10 +252,9 @@ class AiUsageCloudSync {
             .getSingle();
     if (devices.isEmpty && orphaned == 0) return;
     await _db.transaction(() async {
-      await (_db.delete(_db.aiUsageTurns)..where(
-            (t) => t.deviceId.isNotNull() & t.deviceId.like('backend:%').not(),
-          ))
-          .go();
+      await _db.deleteTurns(
+        (t) => t.deviceId.isNotNull() & t.deviceId.like('backend:%').not(),
+      );
       await _db.delete(_db.aiUsageRemoteDevices).go();
     });
   }

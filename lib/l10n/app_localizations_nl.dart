@@ -41340,4 +41340,179 @@ class LNl extends L {
 
   @override
   String get mapMakerCityNavigator => 'Plannavigator';
+
+  @override
+  String get mealChefTitle => 'Maaltijdchef';
+
+  @override
+  String get mealChefOpen => 'Plan een maaltijd met AI';
+
+  @override
+  String get mealChefSubtitle =>
+      'Nebula kiest een maaltijd en vertelt wat je moet kopen';
+
+  @override
+  String get mealChefPaidOnly => 'Inbegrepen bij Orbit en Nova';
+
+  @override
+  String get mealChefUsageNote =>
+      'Nebula · gebruikt je wekelijkse Luma AI-limiet';
+
+  @override
+  String get mealChefGateTitle => 'De maaltijdchef is een betaalde functie';
+
+  @override
+  String get mealChefGateSubtitle =>
+      'Upgrade naar Orbit of Nova en Nebula plant maaltijden en boodschappenlijsten voor je. Dit gebruikt je wekelijkse Luma AI-limiet.';
+
+  @override
+  String mealChefUpgradeTo(String plan) {
+    return 'Upgrade naar $plan';
+  }
+
+  @override
+  String get mealChefSignInTitle => 'Log in om de maaltijdchef te gebruiken';
+
+  @override
+  String get mealChefSignInSubtitle =>
+      'De chef draait op de luma-server. Log in onder Instellingen → Sync en account met een goedgekeurd account.';
+
+  @override
+  String get mealChefGreeting =>
+      'Hoi! Ik ben je maaltijdchef. Ik plan een maaltijd en vertel precies wat je moet kopen. Eerst: heeft iemand die mee-eet allergieën of intoleranties?';
+
+  @override
+  String get mealChefAskPeople => 'Met hoeveel personen eten jullie?';
+
+  @override
+  String get mealChefAskDeals =>
+      'Zal ik vooral producten gebruiken die nu in de aanbieding zijn?';
+
+  @override
+  String get mealChefAskStores =>
+      'Bij welke supermarkten doe je boodschappen? Kies er één of meer.';
+
+  @override
+  String get mealChefAskNotes =>
+      'Nog iets wat ik moet weten? Dieet, keuken, hoeveel tijd je hebt, budget, geen oven…';
+
+  @override
+  String get mealChefNoAllergies => 'Geen allergieën';
+
+  @override
+  String get mealChefNoNotes => 'Geen opmerkingen';
+
+  @override
+  String get mealChefYesDeals => 'Ja, gebruik aanbiedingen';
+
+  @override
+  String get mealChefNoDeals => 'Nee, maakt niet uit';
+
+  @override
+  String get mealChefContinue => 'Doorgaan';
+
+  @override
+  String get mealChefPeopleInvalid => 'Vul een getal van 1 tot 20 in.';
+
+  @override
+  String get mealChefInputHint => 'Typ je antwoord…';
+
+  @override
+  String get mealChefFeedbackHint =>
+      'Vraag om aanpassingen, bijv. geen vis of sneller…';
+
+  @override
+  String get mealChefSend => 'Versturen';
+
+  @override
+  String get mealChefFindingDeals => 'Aanbiedingen van deze week bekijken…';
+
+  @override
+  String get mealChefCooking => 'Maaltijd bedenken…';
+
+  @override
+  String get mealChefIngredients => 'Ingrediënten';
+
+  @override
+  String get mealChefSteps => 'Bereiding';
+
+  @override
+  String get mealChefOnSale => 'aanbieding';
+
+  @override
+  String get mealChefPantry => 'voorraad';
+
+  @override
+  String get mealChefAskGroceries =>
+      'Zal ik de ingrediënten op een lijst in Boodschappenlijst zetten?';
+
+  @override
+  String get mealChefMakeList => 'Maak boodschappenlijst';
+
+  @override
+  String get mealChefNoList => 'Nee, bedankt';
+
+  @override
+  String get mealChefBuildingList => 'Producten zoeken…';
+
+  @override
+  String mealChefListCreated(int count, String name) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count producten',
+      one: '1 product',
+    );
+    return '$_temp0 toegevoegd aan de lijst \"$name\" in Boodschappenlijst.';
+  }
+
+  @override
+  String mealChefListMissing(String items) {
+    return 'Niet gevonden in je winkels: $items. Die moet je zelf toevoegen.';
+  }
+
+  @override
+  String get mealChefListFailed =>
+      'Ik kon geen van deze producten vinden in de boodschappendatabase, dus er is geen lijst gemaakt.';
+
+  @override
+  String get mealChefListInstallHint =>
+      'Installeer Boodschappenlijst via de pluginwinkel om hem te openen.';
+
+  @override
+  String get mealChefAddToPlanner => 'Zet in planner';
+
+  @override
+  String get mealChefSaveRecipe => 'Recept opslaan';
+
+  @override
+  String get mealChefSaved => 'Opgeslagen bij je recepten.';
+
+  @override
+  String mealChefPlanned(String date) {
+    return 'Toegevoegd aan je planner op $date.';
+  }
+
+  @override
+  String get mealChefAnother => 'Andere maaltijd';
+
+  @override
+  String get mealChefAnotherFeedback => 'Iets heel anders graag.';
+
+  @override
+  String get mealChefAfterMeal => 'Iets aanpassen? Vertel me gewoon wat.';
+
+  @override
+  String get mealChefStartOver => 'Opnieuw beginnen';
+
+  @override
+  String get mealChefRetry => 'Opnieuw proberen';
+
+  @override
+  String get mealChefSignInError =>
+      'Log in met een goedgekeurd account om de maaltijdchef te gebruiken.';
+
+  @override
+  String get mealChefUnreachable =>
+      'Kon de chef niet bereiken. Controleer je verbinding en probeer het opnieuw.';
 }

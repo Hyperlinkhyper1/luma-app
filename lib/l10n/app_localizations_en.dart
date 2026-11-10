@@ -41047,4 +41047,179 @@ class LEn extends L {
 
   @override
   String get mapMakerCityNavigator => 'Plan navigator';
+
+  @override
+  String get mealChefTitle => 'Meal chef';
+
+  @override
+  String get mealChefOpen => 'Plan a meal with AI';
+
+  @override
+  String get mealChefSubtitle =>
+      'Nebula picks a meal and tells you what to buy';
+
+  @override
+  String get mealChefPaidOnly => 'Included with Orbit and Nova';
+
+  @override
+  String get mealChefUsageNote => 'Nebula · uses your weekly Luma AI limit';
+
+  @override
+  String get mealChefGateTitle => 'The meal chef is a paid feature';
+
+  @override
+  String get mealChefGateSubtitle =>
+      'Upgrade to Orbit or Nova and Nebula plans meals and grocery lists for you. It uses your weekly Luma AI limit.';
+
+  @override
+  String mealChefUpgradeTo(String plan) {
+    return 'Upgrade to $plan';
+  }
+
+  @override
+  String get mealChefSignInTitle => 'Sign in to use the meal chef';
+
+  @override
+  String get mealChefSignInSubtitle =>
+      'The chef runs on the luma server. Sign in under Settings → Sync & account with an approved account.';
+
+  @override
+  String get mealChefGreeting =>
+      'Hi! I\'m your meal chef. I\'ll plan a meal and tell you exactly what to buy. First: does anyone who\'s eating have allergies or intolerances?';
+
+  @override
+  String get mealChefAskPeople => 'How many people are eating?';
+
+  @override
+  String get mealChefAskDeals =>
+      'Should I mainly use products that are on sale right now?';
+
+  @override
+  String get mealChefAskStores =>
+      'Which supermarkets do you shop at? Pick one or more.';
+
+  @override
+  String get mealChefAskNotes =>
+      'Anything else I should know? Diet, cuisine, how much time you have, budget, no oven…';
+
+  @override
+  String get mealChefNoAllergies => 'No allergies';
+
+  @override
+  String get mealChefNoNotes => 'No notes';
+
+  @override
+  String get mealChefYesDeals => 'Yes, use deals';
+
+  @override
+  String get mealChefNoDeals => 'No, doesn\'t matter';
+
+  @override
+  String get mealChefContinue => 'Continue';
+
+  @override
+  String get mealChefPeopleInvalid => 'Please enter a number from 1 to 20.';
+
+  @override
+  String get mealChefInputHint => 'Type your answer…';
+
+  @override
+  String get mealChefFeedbackHint =>
+      'Ask for changes, e.g. no fish or quicker…';
+
+  @override
+  String get mealChefSend => 'Send';
+
+  @override
+  String get mealChefFindingDeals => 'Checking this week\'s deals…';
+
+  @override
+  String get mealChefCooking => 'Cooking up a meal…';
+
+  @override
+  String get mealChefIngredients => 'Ingredients';
+
+  @override
+  String get mealChefSteps => 'Steps';
+
+  @override
+  String get mealChefOnSale => 'on sale';
+
+  @override
+  String get mealChefPantry => 'pantry';
+
+  @override
+  String get mealChefAskGroceries =>
+      'Shall I put the ingredients on a grocery list in Groceries List?';
+
+  @override
+  String get mealChefMakeList => 'Make grocery list';
+
+  @override
+  String get mealChefNoList => 'No thanks';
+
+  @override
+  String get mealChefBuildingList => 'Finding the products…';
+
+  @override
+  String mealChefListCreated(int count, String name) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count products',
+      one: '1 product',
+    );
+    return 'Added $_temp0 to the list \"$name\" in Groceries List.';
+  }
+
+  @override
+  String mealChefListMissing(String items) {
+    return 'Not found in your stores: $items. You\'ll want to add those yourself.';
+  }
+
+  @override
+  String get mealChefListFailed =>
+      'I couldn\'t find any of these products in the groceries database, so no list was made.';
+
+  @override
+  String get mealChefListInstallHint =>
+      'Install Groceries List from the plugin store to open it.';
+
+  @override
+  String get mealChefAddToPlanner => 'Add to planner';
+
+  @override
+  String get mealChefSaveRecipe => 'Save recipe';
+
+  @override
+  String get mealChefSaved => 'Saved to your recipes.';
+
+  @override
+  String mealChefPlanned(String date) {
+    return 'Added to your planner on $date.';
+  }
+
+  @override
+  String get mealChefAnother => 'Try another meal';
+
+  @override
+  String get mealChefAnotherFeedback =>
+      'Something completely different, please.';
+
+  @override
+  String get mealChefAfterMeal => 'Want changes? Just tell me what to adjust.';
+
+  @override
+  String get mealChefStartOver => 'Start over';
+
+  @override
+  String get mealChefRetry => 'Try again';
+
+  @override
+  String get mealChefSignInError =>
+      'Sign in with an approved account to use the meal chef.';
+
+  @override
+  String get mealChefUnreachable =>
+      'Couldn\'t reach the chef. Check your connection and try again.';
 }

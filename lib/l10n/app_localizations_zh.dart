@@ -39177,4 +39177,162 @@ class LZh extends L {
 
   @override
   String get mapMakerCityNavigator => '规划导航器';
+
+  @override
+  String get mealChefTitle => '餐食大厨';
+
+  @override
+  String get mealChefOpen => '用 AI 规划一餐';
+
+  @override
+  String get mealChefSubtitle => 'Nebula 为你挑选一餐并告诉你该买什么';
+
+  @override
+  String get mealChefPaidOnly => 'Orbit 和 Nova 套餐包含';
+
+  @override
+  String get mealChefUsageNote => 'Nebula · 使用你每周的 Luma AI 额度';
+
+  @override
+  String get mealChefGateTitle => '餐食大厨是付费功能';
+
+  @override
+  String get mealChefGateSubtitle =>
+      '升级到 Orbit 或 Nova，Nebula 就会为你规划餐食和购物清单。这会使用你每周的 Luma AI 额度。';
+
+  @override
+  String mealChefUpgradeTo(String plan) {
+    return '升级到 $plan';
+  }
+
+  @override
+  String get mealChefSignInTitle => '登录以使用餐食大厨';
+
+  @override
+  String get mealChefSignInSubtitle =>
+      '大厨运行在 luma 服务器上。请在“设置 → 同步与账户”中使用已批准的账户登录。';
+
+  @override
+  String get mealChefGreeting =>
+      '你好！我是你的餐食大厨。我会规划一餐，并告诉你具体要买什么。首先：用餐的人中有人有过敏或不耐受吗？';
+
+  @override
+  String get mealChefAskPeople => '有几个人用餐？';
+
+  @override
+  String get mealChefAskDeals => '要我主要使用目前正在打折的商品吗？';
+
+  @override
+  String get mealChefAskStores => '你在哪些超市购物？可选择一个或多个。';
+
+  @override
+  String get mealChefAskNotes => '还有什么需要我知道的吗？饮食、菜系、有多少时间、预算、没有烤箱……';
+
+  @override
+  String get mealChefNoAllergies => '没有过敏';
+
+  @override
+  String get mealChefNoNotes => '没有了';
+
+  @override
+  String get mealChefYesDeals => '好，用打折商品';
+
+  @override
+  String get mealChefNoDeals => '不用，无所谓';
+
+  @override
+  String get mealChefContinue => '继续';
+
+  @override
+  String get mealChefPeopleInvalid => '请输入 1 到 20 之间的数字。';
+
+  @override
+  String get mealChefInputHint => '输入你的回答……';
+
+  @override
+  String get mealChefFeedbackHint => '提出修改，例如不要鱼或更快一点……';
+
+  @override
+  String get mealChefSend => '发送';
+
+  @override
+  String get mealChefFindingDeals => '正在查看本周折扣……';
+
+  @override
+  String get mealChefCooking => '正在构思一餐……';
+
+  @override
+  String get mealChefIngredients => '食材';
+
+  @override
+  String get mealChefSteps => '步骤';
+
+  @override
+  String get mealChefOnSale => '打折';
+
+  @override
+  String get mealChefPantry => '常备';
+
+  @override
+  String get mealChefAskGroceries => '要我把这些食材加入“购物清单”中的一个清单吗？';
+
+  @override
+  String get mealChefMakeList => '生成购物清单';
+
+  @override
+  String get mealChefNoList => '不用了，谢谢';
+
+  @override
+  String get mealChefBuildingList => '正在查找商品……';
+
+  @override
+  String mealChefListCreated(int count, String name) {
+    return '已将 $count 件商品加入“购物清单”中的清单“$name”。';
+  }
+
+  @override
+  String mealChefListMissing(String items) {
+    return '在你选择的商店中没有找到：$items。请自行添加。';
+  }
+
+  @override
+  String get mealChefListFailed => '在商品数据库中找不到这些商品，因此没有创建清单。';
+
+  @override
+  String get mealChefListInstallHint => '从插件商店安装“购物清单”即可打开它。';
+
+  @override
+  String get mealChefAddToPlanner => '加入计划';
+
+  @override
+  String get mealChefSaveRecipe => '保存食谱';
+
+  @override
+  String get mealChefSaved => '已保存到你的食谱。';
+
+  @override
+  String mealChefPlanned(String date) {
+    return '已加入你 $date 的计划。';
+  }
+
+  @override
+  String get mealChefAnother => '换一道菜';
+
+  @override
+  String get mealChefAnotherFeedback => '请换一道完全不同的菜。';
+
+  @override
+  String get mealChefAfterMeal => '想要修改吗？告诉我要调整什么就行。';
+
+  @override
+  String get mealChefStartOver => '重新开始';
+
+  @override
+  String get mealChefRetry => '重试';
+
+  @override
+  String get mealChefSignInError => '请使用已批准的账户登录以使用餐食大厨。';
+
+  @override
+  String get mealChefUnreachable => '无法连接到大厨。请检查网络连接后重试。';
 }
