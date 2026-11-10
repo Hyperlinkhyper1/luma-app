@@ -414,6 +414,92 @@ void main() {
     expect((second.stateJson()['weather'] as Map)['supercell'], isNull);
   });
 
+  test('leaderboards from the game are public, freshest-wins and persist',
+      () async {
+    Map<String, dynamic> board(int readAt, List<List<Object>> rows,
+            {int? week}) =>
+        {
+          'readAt': readAt,
+          if (week != null) 'week': week,
+          'rows': [
+            for (final r in rows) {'userId': r[0], 'name': r[1], 'score': r[2]}
+          ],
+        };
+
+    final (empty, emptyBody) =
+        await send('GET', '/api/v1/fishing-waters/leaderboards');
+    expect(empty, 200);
+    final ids = [for (final b in emptyBody['boards'] as List) b['id']];
+    expect(ids, contains('Playtime'));
+    expect((emptyBody['boards'] as List).every((b) => (b['rows'] as List).isEmpty),
+        isTrue);
+
+    await send('POST', '/api/v1/fishing-waters/heartbeat',
+        json: {
+          ...heartbeatBody(),
+          'leaderboards': {
+            'Playtime': board(2000, [
+              [42, 'angler', 7200],
+              [0, 'bad id', 5],
+              [43, 'second', 60],
+            ]),
+            'WeeklyXP': board(2000, [
+              [42, 'angler', 900]
+            ], week: 500),
+            'Injected': board(2000, [
+              [1, 'x', 1]
+            ]),
+          },
+        },
+        gameKey: 'game-secret');
+    // An older read from another server must not replace the newer rows,
+    // and last week's weekly board must not come back.
+    await send('POST', '/api/v1/fishing-waters/heartbeat',
+        json: {
+          ...heartbeatBody(),
+          'jobId': 'job-2',
+          'leaderboards': {
+            'Playtime': board(1000, [
+              [99, 'stale', 1]
+            ]),
+            'WeeklyXP': board(3000, [
+              [99, 'old week', 5]
+            ], week: 400),
+          },
+        },
+        gameKey: 'game-secret');
+    // Studio sessions only ever see their own server.
+    await send('POST', '/api/v1/fishing-waters/heartbeat',
+        json: {
+          ...heartbeatBody(),
+          'jobId': 'studio-1',
+          'studio': true,
+          'leaderboards': {
+            'Playtime': board(9000, [
+              [7, 'studio', 1]
+            ]),
+          },
+        },
+        gameKey: 'game-secret');
+
+    Map<String, dynamic> byId(Map<String, dynamic> body, String id) =>
+        (body['boards'] as List).cast<Map<String, dynamic>>()
+            .firstWhere((b) => b['id'] == id);
+
+    final (_, body) = await send('GET', '/api/v1/fishing-waters/leaderboards');
+    final playtime = byId(body, 'Playtime');
+    expect(playtime['title'], 'Most time played');
+    expect([for (final r in playtime['rows'] as List) r['userId']], [42, 43]);
+    expect((playtime['rows'] as List).last['rank'], 2);
+    expect(byId(body, 'WeeklyXP')['week'], 500);
+    expect((byId(body, 'WeeklyXP')['rows'] as List).single['score'], 900);
+    expect(ids, isNot(contains('Injected')));
+
+    final restarted = FishingWaters(dir.path, gameKey: 'game-secret');
+    final again = restarted.leaderboardsJson();
+    expect(((byId(again, 'Playtime'))['rows'] as List).first['score'], 7200);
+  });
+
   test('a closing server drops off the dashboard', () async {
     await send('POST', '/api/v1/fishing-waters/heartbeat',
         json: heartbeatBody(), gameKey: 'game-secret');

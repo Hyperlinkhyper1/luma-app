@@ -859,6 +859,8 @@ class Api {
       ..get('/api/v1/subway/room/<room>', _subwayRoomSocket)
       ..post('/api/v1/fishing-waters/heartbeat',
           (Request r) => fishingWaters.heartbeat(r))
+      ..get('/api/v1/fishing-waters/leaderboards',
+          (Request r) => fishingWaters.leaderboards(r))
       ..get('/admin/login', _adminLoginPage)
       ..post('/admin/login', _adminLoginSubmit)
       ..post('/admin/login/enroll', _adminTotpEnrollSubmit)

@@ -71,6 +71,25 @@ class FishingWaters {
   List<Map<String, dynamic>> _schedule = [];
   List<String> _kinds = List.of(_defaultKinds);
 
+  /// The game's global top-10 boards by id, as the freshest server read
+  /// reported them: {readAt, week, rows: [{rank, userId, name, score}]}.
+  /// Public on the website through GET /api/v1/fishing-waters/leaderboards.
+  Map<String, Map<String, dynamic>> _boards = {};
+
+  /// The boards the game may report, in website order. Titles and units live
+  /// here so a game server can't put arbitrary text on the website. Playtime
+  /// has no noticeboard in the game; the website is the only place it shows.
+  static const boardDefinitions = [
+    {'id': 'Level', 'title': 'Highest level', 'unit': 'level', 'weekly': false},
+    {'id': 'WeeklyXP', 'title': 'Most XP this week', 'unit': 'xp', 'weekly': true},
+    {'id': 'Caught', 'title': 'Most fish caught', 'unit': 'fish', 'weekly': false},
+    {'id': 'WeeklyCaught', 'title': 'Fish this week', 'unit': 'fish', 'weekly': true},
+    {'id': 'Earned', 'title': 'Most money earned', 'unit': 'money', 'weekly': false},
+    {'id': 'WeeklyEarned', 'title': 'Money this week', 'unit': 'money', 'weekly': true},
+    {'id': 'Playtime', 'title': 'Most time played', 'unit': 'seconds', 'weekly': false},
+  ];
+  static const _boardRows = 10;
+
   File get _file => File('$dataDir/fishing_waters.json');
   int get _nowMs => _clock().millisecondsSinceEpoch;
 
@@ -102,6 +121,14 @@ class FishingWaters {
       if (kinds is List && kinds.isNotEmpty) {
         _kinds = {...kinds.whereType<String>(), 'BlackHole'}.toList();
       }
+      final boards = decoded['boards'];
+      if (boards is Map) {
+        _boards = {
+          for (final e in boards.entries)
+            if (e.key is String && e.value is Map)
+              e.key as String: Map<String, dynamic>.from(e.value as Map)
+        };
+      }
     } catch (_) {
       // A damaged optional file must not stop the server starting; the
       // dashboard simply starts from defaults.
@@ -124,6 +151,7 @@ class FishingWaters {
         'passes': _passes,
         'schedule': _schedule,
         'kinds': _kinds,
+        'boards': _boards,
       }));
 
   void _expireServers() {
@@ -209,6 +237,10 @@ class FishingWaters {
       _kinds = kinds;
       changed = true;
     }
+    // Studio sessions keep server-only boards of their own; never publish them.
+    if (body['studio'] != true && _mergeBoards(body['leaderboards'])) {
+      changed = true;
+    }
     if (changed) await _save();
 
     final now = _nowMs;
@@ -267,6 +299,75 @@ class FishingWaters {
       },
     });
   }
+
+  /// Takes each reported board that is at least as fresh as the one held. A
+  /// later week always wins, so last week's weekly rows never come back.
+  /// True when any rows changed and the file needs saving.
+  bool _mergeBoards(Object? raw) {
+    if (raw is! Map) return false;
+    var changed = false;
+    for (final def in boardDefinitions) {
+      final id = def['id'] as String;
+      final weekly = def['weekly'] == true;
+      final board = raw[id];
+      if (board is! Map) continue;
+      final readAt = _int(board['readAt']);
+      final week = weekly ? _int(board['week']) : null;
+      if (readAt == null || readAt <= 0 || (weekly && week == null)) continue;
+      final held = _boards[id];
+      if (held != null) {
+        final heldWeek = _int(held['week']) ?? 0;
+        if (week != null && week < heldWeek) continue;
+        if ((week == null || week == heldWeek) &&
+            readAt < (_int(held['readAt']) ?? 0)) {
+          continue;
+        }
+      }
+      final rows = <Map<String, dynamic>>[];
+      for (final row in _maps(board['rows']).take(_boardRows)) {
+        final userId = _int(row['userId']);
+        final score = _num(row['score']);
+        if (userId == null || userId <= 0 || score == null || score < 0) {
+          continue;
+        }
+        rows.add({
+          'rank': rows.length + 1,
+          'userId': userId,
+          'name': _str(row['name'], 40),
+          'score': score,
+        });
+      }
+      if (held == null ||
+          held['week'] != week ||
+          jsonEncode(held['rows']) != jsonEncode(rows)) {
+        changed = true;
+      }
+      _boards[id] = {'readAt': readAt, 'week': week, 'rows': rows};
+    }
+    return changed;
+  }
+
+  Map<String, dynamic> leaderboardsJson() {
+    _load();
+    return {
+      'game': 'Fishing Waters',
+      'boards': [
+        for (final def in boardDefinitions)
+          {
+            ...def,
+            'week': _boards[def['id']]?['week'],
+            'readAt': _boards[def['id']]?['readAt'],
+            'rows': _boards[def['id']]?['rows'] ?? const [],
+          },
+      ],
+    };
+  }
+
+  /// Public, for the website: the names, Roblox user ids and scores the
+  /// game's noticeboards already show, plus playtime.
+  Future<Response> leaderboards(Request request) async => jsonResponse(
+          200, leaderboardsJson())
+      .change(headers: {'cache-control': 'public, max-age=60'});
 
   // ---- Admin endpoints ---------------------------------------------------
 
