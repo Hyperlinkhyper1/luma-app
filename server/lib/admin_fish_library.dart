@@ -642,8 +642,11 @@ class AdminFishLibrary {
     var cls = BUSY[j.status] ? 'busy' : j.status;
     return '<span class="fl-status ' + esc(cls) + '">' + esc(j.status) + '</span>';
   }
+  function dismissedJob(j) {
+    try { return localStorage.getItem('fl-dismissed-' + j.id) === String(j.updatedAt); } catch (_) { return false; }
+  }
   function renderJobs() {
-    var visible = jobs.filter(function (j) { return j.status !== 'discarded' && (j.status !== 'committed' || Date.now() - j.updatedAt < 6 * 3600 * 1000); }).slice(0, 8);
+    var visible = jobs.filter(function (j) { return j.status !== 'discarded' && !dismissedJob(j) && (j.status !== 'committed' || Date.now() - j.updatedAt < 6 * 3600 * 1000); }).slice(0, 8);
     var box = $('flJobs');
     box.hidden = !visible.length;
     box.innerHTML = visible.map(function (j) {
@@ -652,10 +655,21 @@ class AdminFishLibrary {
       return '<div class="fl-job">' + statusChip(j) + '<b>' + esc(what) + '</b><span class="stage" title="' + esc(stage) + '">' + esc(stage) + '</span>' +
         '<span class="fl-hint">' + esc(j.model) + '</span>' +
         (j.commitUrl ? '<a class="btn btn-ghost" href="' + esc(j.commitUrl) + '" target="_blank" rel="noopener">Commit</a>' : '') +
-        '<button type="button" class="btn ' + (j.status === 'ready' ? 'btn-primary' : 'btn-ghost') + '" data-review="' + esc(j.id) + '">' + (j.status === 'ready' ? 'Review' : 'Open') + '</button></div>';
+        '<button type="button" class="btn ' + (j.status === 'ready' ? 'btn-primary' : 'btn-ghost') + '" data-review="' + esc(j.id) + '">' + (j.status === 'ready' ? 'Review' : 'Open') + '</button>' +
+        (!BUSY[j.status] ? '<button type="button" class="btn btn-ghost" data-dismiss="' + esc(j.id) + '" aria-label="Dismiss message" title="Dismiss">&times;</button>' : '') + '</div>';
     }).join('');
   }
   $('flJobs').addEventListener('click', function (e) {
+    var dismiss = e.target.closest('[data-dismiss]');
+    if (dismiss) {
+      var job = jobs.find(function (j) { return j.id === dismiss.dataset.dismiss; });
+      if (job) {
+        try { localStorage.setItem('fl-dismissed-' + job.id, String(job.updatedAt)); } catch (_) {}
+        jobs = jobs.filter(function (j) { return j.id !== job.id; });
+        renderJobs();
+      }
+      return;
+    }
     var b = e.target.closest('[data-review]');
     if (b) openEditor({ step: 'job', job: b.dataset.review });
   });
@@ -760,7 +774,7 @@ class AdminFishLibrary {
       '<label class="fl-field">Fight (0 – 0.3)<input name="fight" type="number" min="0" max="0.3" step="0.01" value="' + esc(f.fight) + '"></label>' +
       seasonsField(f.seasons) + conditionFields(f.requires) +
       (f.pools.length || !kindOf(f) ? '<div class="fl-field wide"><span>Where it bites</span>' + pills('pools', poolOptions(), f.pools) +
-        '<span class="fl-hint">Dashed areas are biomes with their own pool; they also bite every Open Sea fish.</span></div>' : '') +
+        '<span class="fl-hint">Gullhaven Sound includes the main lake. Dashed areas also bite every Open Sea fish.</span></div>' : '') +
       '</div><div class="fl-row"><span class="fl-msg grow" id="flQuickMsg" role="status"></span>' +
       '<button type="submit" class="btn btn-primary" id="flQuickSave">Save &amp; commit</button></div></form>' +
       '<form class="fl-section" id="flAiEdit" novalidate><h3>AI edit</h3><p>For anything else — a new look, a reworked model, rebalancing. You review a 3D preview and the diff before anything is committed.</p>' +
@@ -923,6 +937,7 @@ class AdminFishLibrary {
       var parts = [];
       if (m && m.input != null) parts.push('$' + m.input + ' in / $' + m.output + ' out per M tokens');
       if (m && m.images === false) parts.push('this model cannot read images');
+      if (prov.value === 'openrouter' && /:batch$/.test(model.value.trim())) parts.push('Batch runs in the background; replies can take hours');
       if (!m && model.value) parts.push('not in the catalogue; sent as typed');
       hint.textContent = parts.join(' · ');
     }

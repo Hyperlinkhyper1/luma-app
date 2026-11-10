@@ -160,7 +160,7 @@ const _shark = '''return {
 
 const _catalog = '''local JUNK = { "WoodenBranch" }
 Catalog.Pools = {
-	MainLake = { Name = "Main Lake", Area = "lake", Junk = JUNK },
+	MainLake = { Name = "Gullhaven Sound", Area = "lake", Inherits = "OpenSea", Junk = JUNK },
 	OpenSea = { Name = "Open Sea", Area = "open", Junk = JUNK },
 	CoralShallows = { Name = "Coral Shallows", Area = "tropical", Inherits = "OpenSea", Junk = JUNK },
 }
@@ -217,6 +217,7 @@ void main() {
   FishLibrary library({
     List<String>? replies,
     List<String>? prompts,
+    AiTransport? ai,
     LuauRunner? luau,
     String? token = 'gh-token',
     String? wikiDir,
@@ -237,8 +238,9 @@ void main() {
       },
       github: github.call,
       aiKey: (u) => u == AiUpstream.openrouter ? 'or-key' : null,
-      ai: (url, headers, body) async {
-        prompts?.add(body);
+      batchPollInterval: Duration.zero,
+      ai: ai ?? (method, url, headers, body) async {
+        prompts?.add(body!);
         if (queue.isEmpty) return (status: 500, body: '{"error":"no reply"}');
         return (status: 200, body: _reply(queue.removeAt(0)));
       },
@@ -317,6 +319,8 @@ void main() {
     expect(json['canCommit'], isTrue);
     expect((json['pools'] as List).map((p) => p['id']),
         ['MainLake', 'OpenSea', 'CoralShallows']);
+    expect((json['pools'] as List).first['name'], 'Gullhaven Sound');
+    expect((json['pools'] as List).first['inherits'], 'OpenSea');
     expect((json['pools'] as List).last['inherits'], 'OpenSea');
     final fish = {for (final f in json['fish'] as List) f['id']: f};
     expect(fish.keys, containsAll(['Trout', 'SharkMeat']));
@@ -546,18 +550,301 @@ void main() {
     expect(await status({...base, 'host': 'Wafer US!'}), 400);
   });
 
+  test('a batch model uses the OpenRouter Batch API', () async {
+    final paths = <String>[];
+    final lib = library(ai: (method, url, headers, body) async {
+      paths.add(url.path);
+      if (url.path == '/api/v1/chat/completions') {
+        return (
+          status: 404,
+          body: jsonEncode({
+            'error': {
+              'message':
+                  'deepseek/deepseek-v4.1-flash-1017:batch cannot be used with the chat/completions endpoint (adapter MorphBatchAdapter).',
+            }
+          })
+        );
+      }
+      expect(method, 'POST');
+      final sent = jsonDecode(body!) as Map;
+      expect(sent['endpoint'], '/v1/chat/completions');
+      expect(sent['model'], 'deepseek/deepseek-v4.1-flash-1017');
+      expect(sent['provider'], {
+        'only': ['morph'],
+        'allow_fallbacks': false
+      });
+      final request = (sent['requests'] as List).single as Map;
+      final input = request['body'] as Map;
+      expect(input['reasoning'], {'effort': 'high'});
+      expect(input.containsKey('provider'), isFalse);
+      return (
+        status: 202,
+        body: jsonEncode({
+          'id': 'batch_123',
+          'status': 'completed',
+          'usage': {
+            'prompt_tokens': 100,
+            'completion_tokens': 50,
+            'cost': 0.01
+          },
+          'results': [
+            {
+              'custom_id': request['custom_id'],
+              'response': {
+                'status_code': 200,
+                'body': {
+                  ...jsonDecode(_reply(_trout)) as Map,
+                  'usage': {
+                    'prompt_tokens': 100,
+                    'completion_tokens': 50,
+                    'cost': null
+                  },
+                }
+              },
+            }
+          ],
+        })
+      );
+    });
+    final created = await _json(lib.createJob(_post('/', {
+      'mode': 'edit',
+      'fishId': 'Trout',
+      'provider': 'openrouter',
+      'model': 'deepseek/deepseek-v4.1-flash-1017:batch',
+      'effort': 'high',
+      'prompt': 'Improve the fins.',
+      'host': 'morph',
+    })));
+    await _settle(lib, created['id'] as String);
+    final job = await _json(lib.job(_get('/'), created['id'] as String));
+    expect(job['status'], 'ready', reason: '${job['error']}');
+    expect(job['tokens'], 150);
+    expect(job['cost'], 0.01);
+    expect(job['model'], 'deepseek/deepseek-v4.1-flash-1017:batch');
+    expect(paths, ['/api/v1/batches']);
+  });
+
   test('a picked OpenRouter host is pinned without fallbacks', () async {
     final prompts = <String>[];
-    final lib = library(replies: [_trout.replaceFirst('BaseValue = 10', 'BaseValue = 12')], prompts: prompts);
+    final lib = library(
+        replies: [_trout.replaceFirst('BaseValue = 10', 'BaseValue = 12')],
+        prompts: prompts);
     final created = await _json(lib.createJob(_post('/', {
-      'mode': 'edit', 'fishId': 'Trout', 'provider': 'openrouter',
-      'model': 'vendor/model:batch', 'effort': '', 'prompt': 'x', 'host': 'wafer/fp8',
+      'mode': 'edit',
+      'fishId': 'Trout',
+      'provider': 'openrouter',
+      'model': 'vendor/model',
+      'effort': '',
+      'prompt': 'x',
+      'host': 'wafer/fp8',
     })));
     expect(created['host'], 'wafer/fp8');
     await _settle(lib, created['id'] as String);
     final sent = jsonDecode(prompts.first) as Map;
-    expect(sent['model'], 'vendor/model:batch');
-    expect(sent['provider'], {'order': ['wafer/fp8'], 'allow_fallbacks': false});
+    expect(sent['model'], 'vendor/model');
+    expect(sent['provider'], {
+      'order': ['wafer/fp8'],
+      'allow_fallbacks': false
+    });
+  });
+
+  test('a queued batch is polled through retries and then previewed', () async {
+    final calls = <String>[];
+    String? requestId;
+    var polls = 0;
+    final waiting = Completer<void>();
+    final resume = Completer<void>();
+    final lib = library(ai: (method, url, headers, body) async {
+      calls.add('$method ${url.path}');
+      expect(headers['Authorization'], 'Bearer or-key');
+      expect(headers['X-Title'], 'luma fish editor');
+      if (method == 'POST') {
+        requestId = ((jsonDecode(body!) as Map)['requests'] as List)
+            .single['custom_id'] as String;
+        return (
+          status: 202,
+          body: '{"id":"batch_queued","status":"validating"}'
+        );
+      }
+      expect(body, isNull);
+      switch (++polls) {
+        case 1:
+          waiting.complete();
+          await resume.future;
+          return (status: 429, body: 'Too many requests');
+        case 2:
+          return (status: 503, body: 'Temporarily unavailable');
+        case 3:
+          throw const SocketException('Connection reset');
+        case 4:
+          return (
+            status: 200,
+            body: '{"id":"batch_queued","status":"in_progress"}'
+          );
+        case 5:
+          return (
+            status: 200,
+            body: '{"id":"batch_queued","status":"completed","results":null}'
+          );
+        default:
+          return (
+            status: 200,
+            body: jsonEncode({
+              'id': 'batch_queued',
+              'status': 'completed',
+              'results': [
+                {
+                  'custom_id': 'another-request',
+                  'error': {'message': 'Ignore this result'}
+                },
+                {
+                  'custom_id': requestId,
+                  'response': {
+                    'status_code': 200,
+                    'body': jsonDecode(_reply(_trout.replaceFirst(
+                        'BaseValue = 10', 'BaseValue = 12')))
+                  }
+                },
+              ],
+            })
+          );
+      }
+    });
+    final created = await _json(lib.createJob(_post('/', {
+      'mode': 'edit',
+      'fishId': 'Trout',
+      'provider': 'openrouter',
+      'model': 'deepseek/deepseek-v4.1-flash-1017:batch',
+      'effort': '',
+      'prompt': 'x',
+    })));
+    await waiting.future;
+    final pending = await _json(lib.job(_get('/'), created['id'] as String));
+    expect(pending['status'], 'generating');
+    expect(pending['stage'], contains('batch_queued'));
+    expect(github.files['src/shared/Fish/Trout.luau'], _trout);
+    resume.complete();
+    await _settle(lib, created['id'] as String);
+    final job = await _json(lib.job(_get('/'), created['id'] as String));
+    expect(job['status'], 'ready', reason: '${job['error']}');
+    expect(job['tokens'], 150);
+    expect(job['hasPreview'], isTrue);
+    expect(calls, [
+      'POST /api/v1/batches',
+      ...List.filled(6, 'GET /api/v1/batches/batch_queued')
+    ]);
+    final approved =
+        await _json(lib.approveJob(_post('/', {}), created['id'] as String));
+    expect(approved['status'], 'committed');
+    expect(
+        github.files['src/shared/Fish/Trout.luau'], contains('BaseValue = 12'));
+  });
+
+  for (final status in [
+    'failed',
+    'expired',
+    'cancelled',
+    'request-error',
+    'http-error',
+    'missing-result'
+  ]) {
+    test('a batch $status surfaces as a failed fish job', () async {
+      String? requestId;
+      final lib = library(ai: (method, url, headers, body) async {
+        if (method == 'POST') {
+          requestId = ((jsonDecode(body!) as Map)['requests'] as List)
+              .single['custom_id'] as String;
+          return (
+            status: 202,
+            body: '{"id":"batch_bad","status":"validating"}'
+          );
+        }
+        if (status == 'http-error')
+          return (
+            status: 402,
+            body: '{"error":{"message":"Insufficient credits"}}'
+          );
+        if (status == 'request-error' || status == 'missing-result') {
+          return (
+            status: 200,
+            body: jsonEncode({
+              'id': 'batch_bad',
+              'status': 'completed',
+              'results': [
+                if (status == 'request-error')
+                  {
+                    'custom_id': requestId,
+                    'error': {'message': 'Model refused this request'},
+                  }
+              ],
+            })
+          );
+        }
+        return (
+          status: 200,
+          body: jsonEncode({'id': 'batch_bad', 'status': status})
+        );
+      });
+      final created = await _json(lib.createJob(_post('/', {
+        'mode': 'edit',
+        'fishId': 'Trout',
+        'provider': 'openrouter',
+        'model': 'deepseek/deepseek-v4.1-flash-1017:batch',
+        'effort': '',
+        'prompt': 'x',
+      })));
+      await _settle(lib, created['id'] as String);
+      final job = await _json(lib.job(_get('/'), created['id'] as String));
+      expect(job['status'], 'failed');
+      expect(
+          job['error'],
+          contains(switch (status) {
+            'request-error' => 'Model refused this request',
+            'http-error' => 'Insufficient credits',
+            'missing-result' => 'did not return this fish request',
+            _ => status,
+          }));
+      expect(github.files['src/shared/Fish/Trout.luau'], _trout);
+    });
+  }
+
+  test('discarding a queued batch stops polling and prevents a preview',
+      () async {
+    final polling = Completer<void>();
+    final resume = Completer<void>();
+    var polls = 0;
+    final lib = library(ai: (method, url, headers, body) async {
+      if (method == 'POST')
+        return (
+          status: 202,
+          body: '{"id":"batch_discard","status":"validating"}'
+        );
+      polls++;
+      polling.complete();
+      await resume.future;
+      return (
+        status: 200,
+        body: '{"id":"batch_discard","status":"in_progress"}'
+      );
+    });
+    final created = await _json(lib.createJob(_post('/', {
+      'mode': 'edit',
+      'fishId': 'Trout',
+      'provider': 'openrouter',
+      'model': 'deepseek/deepseek-v4.1-flash-1017:batch',
+      'effort': '',
+      'prompt': 'x',
+    })));
+    await polling.future;
+    final discarded =
+        await _json(lib.discardJob(_post('/', {}), created['id'] as String));
+    expect(discarded['status'], 'discarded');
+    resume.complete();
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    final job = await _json(lib.job(_get('/'), created['id'] as String));
+    expect(job['status'], 'discarded');
+    expect(job['hasPreview'], isFalse);
+    expect(polls, 1);
   });
 
   final game = Platform.environment['LUMA_TEST_FISHING_WATERS'] ??
@@ -582,7 +869,7 @@ void main() {
       File('$wikiSource/scripts/fish-models/$name').copySync('${wiki.path}/$name');
     }
     // Every species in the game passes the module checks.
-    final pools = {'MainLake', 'OpenSea', 'GullhavenSound', 'SoddenMire', 'CoralShallows', 'CinderIsles', 'FrostmereExpanse'};
+    final pools = {'MainLake', 'OpenSea', 'SoddenMire', 'CoralShallows', 'CinderIsles', 'FrostmereExpanse'};
     for (final e in files.entries.where((e) => e.key.startsWith('src/shared/Fish/'))) {
       final id = e.key.split('/').last.replaceAll('.luau', '');
       expect(FishSpeciesFile(id, e.value).problem(pools), isNull, reason: id);
@@ -596,7 +883,7 @@ void main() {
       environment: const {'LUMA_FISHING_WATERS_GITHUB_TOKEN': 't'},
       github: github.call,
       aiKey: (_) => 'k',
-      ai: (url, headers, body) async => (status: 200, body: _reply(pike)),
+      ai: (method, url, headers, body) async => (status: 200, body: _reply(pike)),
       luau: (source) async {
         final file = File('${dir.path}/bundle.luau')..writeAsStringSync(source);
         final run = await Process.run(lute, ['run', file.path]);

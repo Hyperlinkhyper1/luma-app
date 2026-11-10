@@ -15,9 +15,9 @@ import 'util.dart';
 typedef LuauRunner = Future<({int code, String stdout, String stderr})>
     Function(String source);
 
-/// One chat-completion POST to an AI provider.
+/// One HTTP request to an AI provider.
 typedef AiTransport = Future<({int status, String body})> Function(
-    Uri url, Map<String, String> headers, String body);
+    String method, Uri url, Map<String, String> headers, String? body);
 
 /// The admin dashboard's Fishing Waters fish library and editor.
 ///
@@ -55,10 +55,12 @@ class FishLibrary {
     this.aiKey,
     this.publicUrl = '',
     DateTime Function()? clock,
+    Duration batchPollInterval = const Duration(minutes: 1),
   })  : _environment = environment ?? Platform.environment,
         _github = github ?? _ioTransport,
         _ai = ai ?? _ioAi,
         _luauOverride = luau,
+        _batchPollInterval = batchPollInterval,
         _clock = clock ?? DateTime.now;
 
   final String dataDir;
@@ -66,6 +68,7 @@ class FishLibrary {
   final Map<String, String> _environment;
   final GithubTransport _github;
   final AiTransport _ai;
+  final Duration _batchPollInterval;
   final LuauRunner? _luauOverride;
   final DateTime Function() _clock;
   final String publicUrl;
@@ -841,8 +844,10 @@ class FishLibrary {
   Future<String> _chat(FishJob job, List<Map<String, dynamic>> messages) async {
     final upstream = AiUpstream.parse(job.provider)!;
     final key = aiKey?.call(upstream) ?? '';
+    final batch =
+        upstream == AiUpstream.openrouter && job.model.endsWith(':batch');
     final body = <String, dynamic>{
-      'model': job.model,
+      if (!batch) 'model': job.model,
       'messages': messages,
       'max_tokens': 32000,
     };
@@ -858,37 +863,31 @@ class FishLibrary {
     }
     // A picked host is pinned: OpenRouter fails the call rather than
     // quietly answering from a pricier or differently quantised endpoint.
-    if (upstream == AiUpstream.openrouter && job.host.isNotEmpty) {
+    if (!batch && upstream == AiUpstream.openrouter && job.host.isNotEmpty) {
       body['provider'] = {
         'order': [job.host],
         'allow_fallbacks': false,
       };
     }
-    final result = await _ai(
-        Uri.parse(upstream.endpoint),
-        {
-          'Authorization': 'Bearer $key',
-          'Content-Type': 'application/json',
-          if (upstream == AiUpstream.openrouter) ...{
-            'HTTP-Referer': publicUrl,
-            'X-Title': 'luma fish editor',
-          },
-        },
-        jsonEncode(body));
-    Map<String, dynamic>? decoded;
-    try {
-      decoded = jsonDecode(result.body) as Map<String, dynamic>;
-    } catch (_) {}
-    if (result.status != 200 || decoded == null) {
-      final error = decoded?['error'];
-      final message = error is Map ? error['message'] : error;
-      throw _JobError('${upstream.label} answered ${result.status}'
-          '${message != null ? ': $message' : ''}.');
-    }
+    final headers = {
+      'Authorization': 'Bearer $key',
+      'Content-Type': 'application/json',
+      if (upstream == AiUpstream.openrouter) ...{
+        'HTTP-Referer': publicUrl,
+        'X-Title': 'luma fish editor',
+      },
+    };
+    final decoded = batch
+        ? await _batchChat(job, body, headers)
+        : _decodeAi(
+            await _ai('POST', Uri.parse(upstream.endpoint), headers,
+                jsonEncode(body)),
+            upstream.label);
     final usage = decoded['usage'];
     if (usage is Map) {
       job.promptTokens += (usage['prompt_tokens'] as num?)?.toInt() ?? 0;
-      job.completionTokens += (usage['completion_tokens'] as num?)?.toInt() ?? 0;
+      job.completionTokens +=
+          (usage['completion_tokens'] as num?)?.toInt() ?? 0;
       final cost = usage['cost'];
       if (cost is num) job.cost += cost.toDouble();
     }
@@ -900,15 +899,119 @@ class FishLibrary {
     final text = content is String
         ? content
         : content is List
-            ? content
-                .whereType<Map>()
-                .map((p) => p['text'] ?? '')
-                .join()
+            ? content.whereType<Map>().map((p) => p['text'] ?? '').join()
             : '';
     if (text.trim().isEmpty) {
       throw _JobError('${upstream.label} sent back an empty answer.');
     }
     return text;
+  }
+
+  static Map<String, dynamic> _decodeAi(
+      ({int status, String body}) result, String label) {
+    Map<String, dynamic>? decoded;
+    try {
+      decoded = jsonDecode(result.body) as Map<String, dynamic>;
+    } catch (_) {}
+    if (result.status < 200 ||
+        result.status >= 300 ||
+        decoded == null ||
+        decoded['error'] != null) {
+      final error = decoded?['error'];
+      final message = error is Map ? error['message'] : error;
+      throw _JobError('$label answered ${result.status}'
+          '${message != null ? ': $message' : ''}.');
+    }
+    return decoded;
+  }
+
+  Future<Map<String, dynamic>> _batchChat(FishJob job,
+      Map<String, dynamic> body, Map<String, String> headers) async {
+    final url = Uri.parse('https://openrouter.ai/api/v1/batches');
+    final requestId = job.id;
+    final payload = {
+      'endpoint': '/v1/chat/completions',
+      'model': job.model.substring(0, job.model.length - ':batch'.length),
+      if (job.host.isNotEmpty)
+        'provider': {
+          'only': [job.host],
+          'allow_fallbacks': false,
+        },
+      'completion_window': '24h',
+      'requests': [
+        {'custom_id': requestId, 'body': body}
+      ],
+    };
+    if (job.cancelled) throw const _Cancelled();
+    var batch = _decodeAi(await _ai('POST', url, headers, jsonEncode(payload)),
+        'OpenRouter batch');
+    final id = batch['id'];
+    if (id is! String || id.isEmpty) {
+      throw _JobError('OpenRouter did not return a batch ID.');
+    }
+    final statusUrl =
+        url.replace(path: '${url.path}/${Uri.encodeComponent(id)}');
+    var delay = _batchPollInterval;
+    for (;;) {
+      if (job.cancelled) throw const _Cancelled();
+      final status = batch['status'];
+      if (const {'failed', 'expired', 'cancelled'}.contains(status)) {
+        final error = batch['error'];
+        final message = error is Map ? error['message'] : error;
+        throw _JobError('OpenRouter batch $status'
+            '${message != null ? ': $message' : ''}.');
+      }
+      if (status == 'completed' && batch['results'] is List) break;
+      job.stage = 'Waiting for OpenRouter batch $id (${status ?? 'queued'})…';
+      job.updatedAt = _clock().millisecondsSinceEpoch;
+      await _saveJobs();
+      await Future<void>.delayed(delay);
+      if (job.cancelled) throw const _Cancelled();
+      late ({int status, String body}) result;
+      try {
+        result = await _ai('GET', statusUrl, headers, null);
+      } on IOException {
+        continue;
+      }
+      if (result.status == 429 || result.status >= 500) {
+        delay =
+            result.status == 429 ? _batchPollInterval * 2 : _batchPollInterval;
+        continue;
+      }
+      batch = _decodeAi(result, 'OpenRouter batch');
+      delay = _batchPollInterval;
+    }
+    final results = (batch['results'] as List)
+        .whereType<Map>()
+        .where((r) => r['custom_id'] == requestId);
+    if (results.length != 1) {
+      throw _JobError('OpenRouter batch did not return this fish request.');
+    }
+    final result = results.single;
+    final error = result['error'];
+    if (error != null) {
+      throw _JobError('OpenRouter batch request failed: '
+          '${error is Map ? error['message'] ?? error : error}.');
+    }
+    final response = result['response'];
+    if (response is! Map ||
+        response['body'] is! Map ||
+        response['status_code'] is! num) {
+      throw _JobError('OpenRouter batch returned an invalid response.');
+    }
+    final decoded = _decodeAi((
+      status: (response['status_code'] as num).toInt(),
+      body: jsonEncode(response['body']),
+    ), 'OpenRouter batch request');
+    // Single-request batches may report billing only on the batch object.
+    final usage = <String, dynamic>{
+      if (decoded['usage'] is Map)
+        ...Map<String, dynamic>.from(decoded['usage']),
+      if (batch['usage'] is Map)
+        for (final entry in (batch['usage'] as Map).entries)
+          if (entry.value != null) entry.key as String: entry.value,
+    };
+    return {...decoded, 'usage': usage};
   }
 
   /// The module from a reply: its last ```lua block, else the whole reply
@@ -1217,12 +1320,12 @@ $table''';
   }
 
   static Future<({int status, String body})> _ioAi(
-      Uri url, Map<String, String> headers, String body) async {
+      String method, Uri url, Map<String, String> headers, String? body) async {
     final client = HttpClient();
     try {
-      final request = await client.postUrl(url);
+      final request = await client.openUrl(method, url);
       headers.forEach(request.headers.set);
-      request.add(utf8.encode(body));
+      if (body != null) request.add(utf8.encode(body));
       // Reasoning models can think for minutes over a whole module.
       final response = await request.close().timeout(const Duration(minutes: 12));
       return (
