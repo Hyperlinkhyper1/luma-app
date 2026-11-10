@@ -26539,6 +26539,19 @@ class LEn extends L {
   String get steamCs2SignInButton => 'Sign in to Steam';
 
   @override
+  String get steamCs2PurchaseHistoryExplain =>
+      'Sign in to Steam to import Community Market purchase prices, including buying fees, for matching inventory copies and see their profit or loss. Other currencies are converted to USD at the current exchange rate. Costs you enter stay unchanged. Set costs for gifts, trades and case openings yourself.';
+
+  @override
+  String get steamCs2PurchaseHistoryLoading =>
+      'Importing Steam purchase prices…';
+
+  @override
+  String steamCs2PurchaseHistoryFailed(String error) {
+    return 'Purchase history: $error Your inventory and previously saved costs are kept.';
+  }
+
+  @override
   String get steamCs2SignOutButton => 'Sign out of Steam';
 
   @override

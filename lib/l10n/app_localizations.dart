@@ -43008,6 +43008,24 @@ abstract class L {
   /// **'Sign in to Steam'**
   String get steamCs2SignInButton;
 
+  /// No description provided for @steamCs2PurchaseHistoryExplain.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to Steam to import Community Market purchase prices, including buying fees, for matching inventory copies and see their profit or loss. Other currencies are converted to USD at the current exchange rate. Costs you enter stay unchanged. Set costs for gifts, trades and case openings yourself.'**
+  String get steamCs2PurchaseHistoryExplain;
+
+  /// No description provided for @steamCs2PurchaseHistoryLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Importing Steam purchase prices…'**
+  String get steamCs2PurchaseHistoryLoading;
+
+  /// No description provided for @steamCs2PurchaseHistoryFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Purchase history: {error} Your inventory and previously saved costs are kept.'**
+  String steamCs2PurchaseHistoryFailed(String error);
+
   /// No description provided for @steamCs2SignOutButton.
   ///
   /// In en, this message translates to:

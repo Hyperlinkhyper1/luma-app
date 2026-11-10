@@ -183,6 +183,10 @@ class ServerConfig {
   /// The shortest LUMA_ADMIN_KEY [ServerConfig.fromEnvironment] accepts.
   static const minAdminKeyLength = 32;
 
+  /// The shortest LUMA_FISHING_WATERS_KEY [ServerConfig.fromEnvironment]
+  /// accepts.
+  static const minFishingWatersKeyLength = 32;
+
   /// A Mistral ("Luma" in the app's UI) API key configured once by the
   /// operator, so individual users don't each have to paste their own — see
   /// Api._mistralKey. Optional; when unset, the app falls back to its
@@ -322,6 +326,24 @@ class ServerConfig {
     return key;
   }
 
+  /// The game endpoint is reachable without an account and its only lock is
+  /// this key: whoever holds it can pose as a game server and collect the
+  /// gamepass grants and weather commands queued for one. A guessable key
+  /// switches the bridge off instead of being used.
+  static String? _strongFishingWatersKey(String? raw) {
+    final key = raw?.trim();
+    if (key == null || key.isEmpty) return null;
+    if (key.length < minFishingWatersKeyLength) {
+      stderr.writeln('[luma] LUMA_FISHING_WATERS_KEY is shorter than '
+          '$minFishingWatersKeyLength characters, so the Fishing Waters '
+          'bridge is DISABLED. Generate a strong one with '
+          '`openssl rand -hex 32` and put the same value in the Roblox '
+          'secret.');
+      return null;
+    }
+    return key;
+  }
+
   factory ServerConfig.fromEnvironment(Map<String, String> env) {
     int intOf(String key, int fallback) =>
         int.tryParse(env[key] ?? '') ?? fallback;
@@ -360,7 +382,7 @@ class ServerConfig {
       mistralApiKey: env['LUMA_MISTRAL_API_KEY'],
       googleApiKey: env['LUMA_GOOGLE_API_KEY'],
       openRouterApiKey: env['LUMA_OPENROUTER_API_KEY'],
-      fishingWatersKey: env['LUMA_FISHING_WATERS_KEY'],
+      fishingWatersKey: _strongFishingWatersKey(env['LUMA_FISHING_WATERS_KEY']),
       itadApiKey: env['LUMA_ITAD_API_KEY'],
       groceriesUrl:
           env['LUMA_GROCERIES_URL'] ?? 'https://groceries.luma-app.cc',
@@ -1643,9 +1665,24 @@ class Api {
     return '$minutes minute${minutes == 1 ? '' : 's'}';
   }
 
+  static const _adminFavicon =
+      '<link rel="icon" type="image/png" href="data:image/png;base64,'
+      'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABwklEQVR4nJWTTUsCQRjH/0Oz'
+      'pkEltCuB6KXwVEoaHvNS5FexS1FdLD9Cb1DnutaxznUtPdQHSC9SoKwb1LqS65obM+tOL65E'
+      'Dww78+z8f/P2/GkqvmKOECoRQgj+EbZt2x9216JMrCgy0bSXgUkMKcsyGg3N4x8hI6ASZR0v'
+      'sbMKPMUspqdDqNdVQt1EKCRDVTWXjsXUIqgk4e7ulud8Ph/8/lHoepOP63WVfwXAFQcCAezu'
+      'FBCNRpBby4kVO50Ob7+D/k5sbW4jHo/j/OIcrVbLc/tDAbMzs0in07z//PT0p1gAJibG0W6b'
+      'iMVi4oeiKENFweAkXl/fvgDuxdjfJi0vr+Dy6hLdbncAYBhfR/txhHL5UfTD4TDW1zdwcnIM'
+      '0zRFXpIkWJblDahUKrh/uEcqmeLjzFIGiUQCxWIRRrOJSCSC07NT1Go1bwCL/f095PM7mJ+b'
+      'd847GUR2Nctf5PDogItleQpu8QlAv7JgGAYKhV3+GsmFJEb9flSrVdzcXEPXdT73e+UKgFtZ'
+      'cIyCUqnEG4uxsQB6vd7AZXIAc9UwJ4YUGWpDw/t721PMtJRZkrnKC6L2jcR2JKB9zzh2/rA+'
+      'ASX6vpF9KxmpAAAAAElFTkSuQmCC'
+      '">';
+
   String _adminPageHtml(String title, String body) =>
       '<!doctype html><html><head><meta charset="utf-8">'
       '<meta name="viewport" content="width=device-width, initial-scale=1">'
+      '$_adminFavicon'
       '<title>luma admin — ${_htmlEscape(title)}</title>'
       '<style>$_adminCss</style></head><body><div class="wrap" '
       'style="max-width:380px;padding-top:15vh">'
@@ -5030,7 +5067,7 @@ class Api {
     }
     final existing = offline.forUser(user.id);
     if (existing != null && existing['enabled'] == true) {
-      final intervalHours = user.planId == 'nova' ? 1 : 6;
+      const intervalHours = 1;
       if (existing['intervalHours'] != intervalHours) {
         existing['intervalHours'] = intervalHours;
         existing['nextCheckAtMs'] = _nextCs2OfflineBoundary(
@@ -5044,7 +5081,7 @@ class Api {
     // but it only changes on a scheduled check or a device's push. The price
     // history alone runs to hundreds of kilobytes, so a device that is
     // already current gets a 304 instead of the whole snapshot again.
-    final body = jsonEncode(_cs2OfflineJson(existing));
+    final body = jsonEncode(_cs2OfflineJson(existing, intervalHours: 1));
     final etag = '"${c.sha256.convert(utf8.encode(body))}"';
     // Cloudflare weakens a strong ETag when it compresses the response, so
     // the device may echo it back as W/"...".
@@ -5129,7 +5166,7 @@ class Api {
       points.add(Map<String, dynamic>.from(point));
     }
 
-    final intervalHours = user.planId == 'nova' ? 1 : 6;
+    const intervalHours = 1;
     final previous = offline.forUser(user.id);
     final config = previous == null
         ? <String, dynamic>{}
@@ -5154,17 +5191,19 @@ class Api {
       );
     }
     await offline.put(user.id, config);
-    return jsonResponse(200, _cs2OfflineJson(config));
+    return jsonResponse(
+        200, _cs2OfflineJson(config, intervalHours: intervalHours));
   }
 
   bool _cs2OfflinePlanAllowed(StoredUser user) =>
       user.planId == 'orbit' || user.planId == 'nova';
 
-  Map<String, dynamic> _cs2OfflineJson(Map<String, dynamic>? raw) {
+  Map<String, dynamic> _cs2OfflineJson(Map<String, dynamic>? raw,
+      {required int intervalHours}) {
     final config = raw ?? const <String, dynamic>{};
     return {
       'enabled': config['enabled'] == true,
-      'intervalHours': (config['intervalHours'] as num?)?.toInt() ?? 0,
+      'intervalHours': intervalHours,
       'nextCheckAtMs': config['nextCheckAtMs'],
       'lastCheckedAtMs': config['lastCheckedAtMs'],
       'items': config['items'] is List ? config['items'] : const [],
@@ -8940,6 +8979,7 @@ class Api {
     return Response(200,
         body: '<!doctype html><html><head><meta charset="utf-8">'
             '<meta name="viewport" content="width=device-width, initial-scale=1">'
+            '$_adminFavicon'
             '<title>luma admin — website</title>'
             '<style>$_adminCss$_wikiTreeCss</style></head>'
             '<body class="site-admin"><div class="wrap site-wrap">'
@@ -9247,6 +9287,7 @@ border-radius:999px;padding:2px 8px}
     return Response(200,
         body: '<!doctype html><html><head><meta charset="utf-8">'
             '<meta name="viewport" content="width=device-width, initial-scale=1">'
+            '$_adminFavicon'
             '<title>edit — ${_htmlEscape(page)}</title>'
             '<style>$_wikiEditorCss</style></head>'
             '<body>'
@@ -9698,6 +9739,7 @@ border-radius:999px;padding:2px 8px}
     return Response(200,
         body: '<!doctype html><html><head><meta charset="utf-8">'
             '<meta name="viewport" content="width=device-width, initial-scale=1">'
+            '$_adminFavicon'
             '<title>luma admin — team</title>'
             '<style>$_adminCss$_teamEditorCss</style></head>'
             '<body><div class="wrap">'
@@ -9837,6 +9879,7 @@ border-radius:999px;padding:2px 8px}
     return Response(200,
         body: '<!doctype html><html><head><meta charset="utf-8">'
             '<meta name="viewport" content="width=device-width, initial-scale=1">'
+            '$_adminFavicon'
             '<title>luma admin — new devlog</title>'
             '<style>$_adminCss'
             '.product-form{flex-direction:column;align-items:stretch;gap:6px}'
@@ -12106,6 +12149,7 @@ syncToolbar();
 
     final body = '<!doctype html><html><head><meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width, initial-scale=1">'
+        '$_adminFavicon'
         '<title>luma admin</title>'
         '<style>$_adminCss$_bannersCss$_bmCss$_adminPolishCss$_bgCss${PowerConsole.css}${AdminProjects.css}${AdminFishLibrary.css}</style>'
         '</head><body class="no-js"><div class="wrap admin-wrap">'

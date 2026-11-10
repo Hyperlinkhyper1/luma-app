@@ -1,9 +1,11 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 
 import '../../../../../l10n/current_l.dart';
+import '../../../../../security/guarded_download.dart';
 import 'forge_style_profile_merger.dart';
 import 'mc_paths.dart';
 import 'piston_meta_client.dart';
@@ -96,18 +98,32 @@ class ForgeInstaller {
 
   static Future<File> _downloadInstaller(String mcVersion, String forgeVersion) async {
     final coord = '$mcVersion-$forgeVersion';
+    if (!_coordinate.hasMatch(coord)) {
+      throw ForgeInstallerException(currentL.mcForgeInstallerDownloadFailed(forgeVersion));
+    }
     final url = '$_mavenBase/$coord/forge-$coord-installer.jar';
     final dir = await McPaths.versionDir('forge-$coord');
     final file = File('${dir.path}${Platform.pathSeparator}installer.jar');
     if (await file.exists()) return file;
 
-    final res = await http.get(Uri.parse(url)).timeout(const Duration(minutes: 3));
-    if (res.statusCode != 200) {
+    final Uint8List bytes;
+    try {
+      bytes = await guardedDownload(Uri.parse(url), maxBytes: _maxInstallerBytes)
+          .timeout(const Duration(minutes: 3));
+    } catch (_) {
       throw ForgeInstallerException(currentL.mcForgeInstallerDownloadFailed(forgeVersion));
     }
-    await file.writeAsBytes(res.bodyBytes);
+    final part = File('${file.path}.part');
+    await part.writeAsBytes(bytes, flush: true);
+    await part.rename(file.path);
     return file;
   }
+
+  /// The version pair ends up in a URL and a folder name, and it comes from
+  /// a feed on the network, so it may only look like a version.
+  static final _coordinate = RegExp(r'^[A-Za-z0-9][A-Za-z0-9._+-]*$');
+
+  static const _maxInstallerBytes = 128 * 1024 * 1024;
 
   static Future<Set<String>> _listVersionDirs(Directory root) async {
     final versionsDir = Directory('${root.path}${Platform.pathSeparator}versions');

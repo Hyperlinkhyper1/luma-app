@@ -398,9 +398,8 @@ async function mainCanvasRect(page) {
   });
 }
 
-// Hides every positioned layer that isn't the canvas or one of its
-// ancestors: HUDs, control panels, title cards. A banner is the scene, not
-// the page's chrome around it. Returns how many were hidden.
+// Hide page elements outside the canvas and its ancestors, including HUDs,
+// control panels and title cards. Returns how many were hidden.
 async function hideOverlays(page) {
   return page.evaluate(() => {
     const canvas = [...document.querySelectorAll('canvas')].sort(
@@ -412,7 +411,6 @@ async function hideOverlays(page) {
       if (el === canvas || el.contains(canvas) || canvas.contains(el)) continue;
       if (el.closest('[data-luma-hidden]')) continue;
       const s = getComputedStyle(el);
-      if (s.position !== 'fixed' && s.position !== 'absolute') continue;
       if (s.visibility === 'hidden' || s.display === 'none') continue;
       const r = el.getBoundingClientRect();
       if (r.width < 1 || r.height < 1) continue;
@@ -421,15 +419,6 @@ async function hideOverlays(page) {
       hidden++;
     }
     return hidden;
-  });
-}
-
-async function unhideOverlays(page) {
-  await page.evaluate(() => {
-    for (const el of document.querySelectorAll('[data-luma-hidden]')) {
-      el.style.removeProperty('visibility');
-      delete el.dataset.lumaHidden;
-    }
   });
 }
 
@@ -473,15 +462,10 @@ async function shootCanvasScene(page) {
   await sleep(15000);
   const late = await sceneScreen(page);
   if (late.error) throw new BadSceneError(`the scene showed an error screen: "${late.error}"`);
-  const before = await centreSpread(page);
   const hidden = await hideOverlays(page);
   if (hidden > 0) {
     await sleep(500);
-    // A scene that draws in the DOM rather than on the canvas would be left
-    // blank; keep its overlays then.
-    const after = await centreSpread(page);
-    if (after < 0.02 && after < before * 0.4) await unhideOverlays(page);
-    else note(`hid ${hidden} overlay${hidden === 1 ? '' : 's'}`);
+    note(`hid ${hidden} overlay${hidden === 1 ? '' : 's'}`);
   }
 }
 
@@ -970,12 +954,24 @@ async function main() {
         else await shootPc(page);
         if (framing) note(`framing: ${(await applyFraming(page, framing)).camera}`);
       }
+      // For canvas scenes, capture the drawing itself without the surrounding
+      // controls, labels or splash screens. Validate after hiding them so UI
+      // cannot make an empty canvas look like a successful render.
+      const canvasKinds = new Set(['pagoda', 'engine', 'pc', 'server_rack', 'cruise_ship', ...CANVAS_SCENE_KINDS]);
+      if (canvasKinds.has(kind)) {
+        const screen = await sceneScreen(page);
+        if (screen.error || screen.loading || !(await canvasVisible(page))) {
+          throw new BadSceneError(`scene did not reach a visible drawing${screen.error || screen.loading ? `: ${screen.error || screen.loading}` : ''}`);
+        }
+        await hideOverlays(page);
+        await sleep(500);
+      }
       step(0.97, 'capturing');
-      const clip = CANVAS_SCENE_KINDS.has(kind) && !framing ? await sceneClip(page) : null;
+      const clip = canvasKinds.has(kind) && !framing ? await sceneClip(page) : null;
       if (clip) note(`cropped to the canvas (${Math.round(clip.width)}×${Math.round(clip.height)})`);
       const png = await page.screenshot(clip ? { type: 'png', clip } : { type: 'png' });
       const { spread } = lumaStats(png);
-      if (spread < 0.02) throw new Error('blank frame (solid colour), keeping the old banner');
+      if (spread < 0.02) throw new BadSceneError('blank frame (solid colour)');
       // Write beside the target and rename, so the server never serves a
       // half-written banner.
       const target = path.join(outDir, `${id}.png`);

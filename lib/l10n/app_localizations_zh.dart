@@ -25268,6 +25268,18 @@ class LZh extends L {
   String get steamCs2SignInButton => '登录 Steam';
 
   @override
+  String get steamCs2PurchaseHistoryExplain =>
+      '登录 Steam 即可为库存中匹配的物品导入社区市场购买价格（含购买手续费），查看盈亏。其他货币按当前汇率换算为美元。你手动输入的成本保持不变。礼物、交易和开箱的成本需要手动设置。';
+
+  @override
+  String get steamCs2PurchaseHistoryLoading => '正在导入 Steam 购买价格…';
+
+  @override
+  String steamCs2PurchaseHistoryFailed(String error) {
+    return '购买历史：$error 你的库存和已保存的成本将保留。';
+  }
+
+  @override
   String get steamCs2SignOutButton => '退出 Steam';
 
   @override

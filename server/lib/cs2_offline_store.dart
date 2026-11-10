@@ -59,21 +59,18 @@ class Cs2OfflineStore {
   }
 }
 
+enum _Cs2CheckResult { complete, pending, rateLimited }
+
 /// Executes due offline checks. Schedule boundaries are UTC epoch boundaries:
-/// Nova is checked on every hour and Orbit every sixth hour. A missed boundary
-/// is skipped rather than run immediately when the process starts, so opening
-/// the app or restarting the server never creates an extra refresh.
+/// Nova and Orbit are checked every hour. Missed checks are caught up when
+/// the server starts again.
 class Cs2OfflineScheduler {
   Cs2OfflineScheduler({
     required this.accounts,
     required this.store,
     Future<({int statusCode, String body})> Function(Uri uri)? fetchPrice,
-    Future<({int statusCode, String body})> Function(Uri uri)? fetchBulkPrices,
     Duration requestSpacing = const Duration(milliseconds: 3500),
   })  : _fetchPrice = fetchPrice,
-        _fetchBulkPrices = fetchBulkPrices,
-        // A test that fakes Steam alone must not reach the real bulk file.
-        _bulkEnabled = fetchPrice == null || fetchBulkPrices != null,
         _requestSpacing = requestSpacing {
     _timer = Timer.periodic(const Duration(seconds: 15), (_) => runDue());
   }
@@ -81,35 +78,33 @@ class Cs2OfflineScheduler {
   final Store accounts;
   final Cs2OfflineStore store;
   final Future<({int statusCode, String body})> Function(Uri uri)? _fetchPrice;
-  final Future<({int statusCode, String body})> Function(Uri uri)?
-      _fetchBulkPrices;
-  final bool _bulkEnabled;
   final Duration _requestSpacing;
 
-  /// csgotrader.app's daily file of every CS2 item's average Steam sale
-  /// price, in USD. One download prices every user's every listing, where
-  /// Steam's `priceoverview` would take one rate-limited request each.
-  static final _bulkUri =
-      Uri.https('prices.csgotrader.app', '/latest/steam.json');
-  Map<String, int>? _bulk;
-  DateTime? _bulkAt;
   Timer? _timer;
   bool _running = false;
-
-  static const _startupGrace = Duration(minutes: 2);
+  DateTime? _rateLimitedUntil;
+  DateTime? _lastRequestAt;
+  int _nextUserIndex = 0;
+  static const _requestsPerUserPerPass = 10;
 
   Future<void> runDue({DateTime? now}) async {
     if (_running) return;
     _running = true;
     try {
       final current = now ?? DateTime.now().toUtc();
-      for (final entry in accounts.usersById.entries) {
+      if (_rateLimitedUntil != null && current.isBefore(_rateLimitedUntil!)) {
+        return;
+      }
+      final users = accounts.usersById.entries.toList();
+      for (var offset = 0; offset < users.length; offset++) {
+        final index = (_nextUserIndex + offset) % users.length;
+        final entry = users[index];
         final config = store.forUser(entry.key);
         if (config == null || config['enabled'] != true) continue;
         if (entry.value.planId != 'orbit' && entry.value.planId != 'nova') {
           continue;
         }
-        final intervalHours = entry.value.planId == 'nova' ? 1 : 6;
+        const intervalHours = 1;
         final configuredInterval =
             (config['intervalHours'] as num?)?.toInt() ?? intervalHours;
         if (configuredInterval != intervalHours) {
@@ -123,16 +118,22 @@ class Cs2OfflineScheduler {
         final next = DateTime.fromMillisecondsSinceEpoch(nextMs, isUtc: true);
         if (next.isAfter(current)) continue;
 
-        // A process may have been down over a boundary. Advance without
-        // checking so a restart is never an implicit refresh.
-        final age = current.difference(next);
-        if (age > _startupGrace) {
-          await _advanceSchedule(entry.key, config, current, intervalHours);
-          continue;
-        }
-
         await _advanceSchedule(entry.key, config, current, intervalHours);
-        await _check(entry.key, config);
+        final result = await _check(entry.key, config);
+        if (result != _Cs2CheckResult.complete) {
+          final finished = now ?? DateTime.now().toUtc();
+          final retryDelay = result == _Cs2CheckResult.rateLimited
+              ? const Duration(minutes: 15)
+              : const Duration(seconds: 15);
+          config['nextCheckAtMs'] =
+              finished.add(retryDelay).millisecondsSinceEpoch;
+          await store.put(entry.key, config);
+          if (result == _Cs2CheckResult.rateLimited) {
+            _rateLimitedUntil = finished.add(retryDelay);
+            _nextUserIndex = (index + 1) % users.length;
+            break;
+          }
+        }
       }
     } finally {
       _running = false;
@@ -153,12 +154,13 @@ class Cs2OfflineScheduler {
     await store.put(userId, config);
   }
 
-  Future<void> _check(String userId, Map<String, dynamic> config) async {
+  Future<_Cs2CheckResult> _check(
+      String userId, Map<String, dynamic> config) async {
     final rawItems = config['items'];
-    if (rawItems is! List) return;
+    if (rawItems is! List) return _Cs2CheckResult.complete;
     final items =
         rawItems.whereType<Map>().map(Map<String, dynamic>.from).toList();
-    if (items.isEmpty) return;
+    if (items.isEmpty) return _Cs2CheckResult.complete;
 
     final points = (config['points'] is List)
         ? (config['points'] as List)
@@ -166,35 +168,14 @@ class Cs2OfflineScheduler {
             .map(Map<String, dynamic>.from)
             .toList()
         : <Map<String, dynamic>>[];
-    final observedAtMs = DateTime.now().toUtc().millisecondsSinceEpoch;
-    final bulk = await _bulkPrices();
-    final steamItems = <Map<String, dynamic>>[];
-    for (final item in items) {
-      final hash = item['marketHashName'];
-      final cents = hash is String && bulk != null ? bulk[hash] : null;
-      if (cents == null) {
-        steamItems.add(item);
-        continue;
-      }
-      // The file changes once a day; a check that finds the same price
-      // again records nothing rather than another identical point.
-      if (item['lastMedianCents'] == cents && item['lastLowestCents'] == null) {
-        continue;
-      }
-      item
-        ..['lastLowestCents'] = null
-        ..['lastMedianCents'] = cents
-        ..['currency'] = 'USD'
-        ..['priceFetchedAtMs'] = observedAtMs;
-      points.add({
-        'marketHashName': hash,
-        'observedAtMs': observedAtMs,
-        'lowestCents': null,
-        'medianCents': cents,
-        'currency': 'USD',
-      });
-    }
-    final checkOrder = steamItems.indexed.toList()
+    final pending = config['pendingPriceHashes'];
+    final pendingHashes =
+        pending is List ? pending.whereType<String>().toSet() : null;
+    final checkOrder = items.indexed
+        .where((item) =>
+            pendingHashes == null ||
+            pendingHashes.contains(item.$2['marketHashName']))
+        .toList()
       ..sort((a, b) {
         final aValue = a.$2['priceFetchedAtMs'];
         final bValue = b.$2['priceFetchedAtMs'];
@@ -206,13 +187,30 @@ class Cs2OfflineScheduler {
         return ageOrder == 0 ? a.$1.compareTo(b.$1) : ageOrder;
       });
     final client = HttpClient();
-    var requested = false;
+    var requested = 0;
+    var outcome = _Cs2CheckResult.complete;
     try {
-      for (final (_, item) in checkOrder) {
+      for (var index = 0; index < checkOrder.length; index++) {
+        final (_, item) = checkOrder[index];
         final hash = item['marketHashName'];
         if (hash is! String || hash.isEmpty) continue;
-        if (requested) await Future<void>.delayed(_requestSpacing);
-        requested = true;
+        if (requested >= _requestsPerUserPerPass) {
+          config['pendingPriceHashes'] = [
+            for (final (_, remaining) in checkOrder.skip(index))
+              if (remaining['marketHashName'] is String)
+                remaining['marketHashName'],
+          ];
+          outcome = _Cs2CheckResult.pending;
+          break;
+        }
+        final previous = _lastRequestAt;
+        if (previous != null) {
+          final remaining =
+              _requestSpacing - DateTime.now().difference(previous);
+          if (remaining > Duration.zero) await Future<void>.delayed(remaining);
+        }
+        _lastRequestAt = DateTime.now();
+        requested++;
         try {
           final uri =
               Uri.https('steamcommunity.com', '/market/priceoverview/', {
@@ -225,8 +223,8 @@ class Cs2OfflineScheduler {
               ? await () async {
                   final request = await client.getUrl(uri);
                   final response = await request.close().timeout(
-                    const Duration(seconds: 30),
-                  );
+                        const Duration(seconds: 30),
+                      );
                   if (response.statusCode == 429) {
                     return (statusCode: response.statusCode, body: '');
                   }
@@ -236,7 +234,15 @@ class Cs2OfflineScheduler {
                   );
                 }()
               : await fetchPrice(uri);
-          if (result.statusCode == 429) break;
+          if (result.statusCode == 429) {
+            config['pendingPriceHashes'] = [
+              for (final (_, remaining) in checkOrder.skip(index))
+                if (remaining['marketHashName'] is String)
+                  remaining['marketHashName'],
+            ];
+            outcome = _Cs2CheckResult.rateLimited;
+            break;
+          }
           final body = jsonDecode(result.body);
           if (result.statusCode != 200 ||
               body is! Map ||
@@ -245,6 +251,8 @@ class Cs2OfflineScheduler {
           }
           final lowest = _parseUsd(body['lowest_price']);
           final median = _parseUsd(body['median_price']);
+          if (lowest == null && median == null) continue;
+          final observedAtMs = DateTime.now().toUtc().millisecondsSinceEpoch;
           item
             ..['lastLowestCents'] = lowest
             ..['lastMedianCents'] = median
@@ -266,73 +274,18 @@ class Cs2OfflineScheduler {
       client.close(force: true);
     }
 
+    if (outcome == _Cs2CheckResult.complete)
+      config.remove('pendingPriceHashes');
+
     config
       ..['items'] = items
       ..['points'] = points
-      ..['lastCheckedAtMs'] = observedAtMs;
+      ..['lastCheckedAtMs'] = DateTime.now().toUtc().millisecondsSinceEpoch;
     if (points.length > kCs2OfflineMaxPoints) {
       config['points'] = points.sublist(points.length - kCs2OfflineMaxPoints);
     }
     await store.put(userId, config);
-  }
-
-  /// The bulk file, fetched at most once an hour and shared by every user's
-  /// check in a run. Null when it can't be read; each listing then falls
-  /// back to Steam.
-  Future<Map<String, int>?> _bulkPrices() async {
-    if (!_bulkEnabled) return null;
-    final cached = _bulk;
-    final at = _bulkAt;
-    if (cached != null &&
-        at != null &&
-        DateTime.now().difference(at) < const Duration(hours: 1)) {
-      return cached;
-    }
-    try {
-      final fetch = _fetchBulkPrices;
-      final ({int statusCode, String body}) result;
-      if (fetch != null) {
-        result = await fetch(_bulkUri);
-      } else {
-        final client = HttpClient();
-        try {
-          final request = await client.getUrl(_bulkUri);
-          final response =
-              await request.close().timeout(const Duration(seconds: 60));
-          result = (
-            statusCode: response.statusCode,
-            body: await response.transform(utf8.decoder).join(),
-          );
-        } finally {
-          client.close(force: true);
-        }
-      }
-      if (result.statusCode != 200) return null;
-      final decoded = jsonDecode(result.body);
-      if (decoded is! Map) return null;
-      final cents = <String, int>{};
-      for (final MapEntry(:key, :value) in decoded.entries) {
-        if (key is! String || value is! Map) continue;
-        for (final window in const [
-          'last_24h',
-          'last_7d',
-          'last_30d',
-          'last_90d',
-        ]) {
-          final price = value[window];
-          if (price is num && price > 0) {
-            cents[key] = (price * 100).round();
-            break;
-          }
-        }
-      }
-      if (cents.isEmpty) return null;
-      _bulk = cents;
-      _bulkAt = DateTime.now();
-      return cents;
-    } catch (_) {
-      return null;
-    }
+    return outcome;
   }
 
   static int? _parseUsd(Object? raw) {

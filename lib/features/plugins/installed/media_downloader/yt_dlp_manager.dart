@@ -8,6 +8,28 @@ import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
 import '../../../../l10n/current_l.dart';
+import '../../../../security/guarded_download.dart';
+
+/// The web address to hand yt-dlp for what the user pasted, or null when it
+/// is not one. yt-dlp reads anything starting with a dash as one of its own
+/// options, `--exec` among them, so only an http(s) address gets through; a
+/// link pasted without its scheme is taken as https.
+String? normalizeMediaUrl(String input) {
+  final trimmed = input.trim();
+  if (trimmed.isEmpty ||
+      trimmed.startsWith('-') ||
+      RegExp(r'[\s\x00-\x1F\x7F]').hasMatch(trimmed)) {
+    return null;
+  }
+  final candidate = trimmed.contains('://') ? trimmed : 'https://$trimmed';
+  final uri = Uri.tryParse(candidate);
+  if (uri == null ||
+      (uri.scheme != 'https' && uri.scheme != 'http') ||
+      uri.host.isEmpty) {
+    return null;
+  }
+  return candidate;
+}
 
 /// Metadata about a YouTube video, as reported by yt-dlp's `-j` (dump-json).
 class YtVideoInfo {
@@ -126,6 +148,9 @@ class YtDlpManager {
   static const _ffmpegZipUrl =
       'https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip';
 
+  static const _maxYtDlpBytes = 256 * 1024 * 1024;
+  static const _maxFfmpegZipBytes = 512 * 1024 * 1024;
+
   Future<Directory> _toolsDir() async {
     final support = await getApplicationSupportDirectory();
     final dir = Directory('${support.path}${Platform.pathSeparator}tools');
@@ -162,7 +187,7 @@ class YtDlpManager {
 
     if (!await ytDlpFile.exists()) {
       onProgress(ToolSetupProgress(currentL.mediaDlStatusDownloadingYtDlp, fraction: 0));
-      await _downloadFile(_ytDlpUrl, ytDlpFile, (frac) {
+      await _downloadFile(_ytDlpUrl, ytDlpFile, _maxYtDlpBytes, (frac) {
         onProgress(ToolSetupProgress(currentL.mediaDlStatusDownloadingYtDlp, fraction: frac));
       });
       if (!_isWindows) {
@@ -174,7 +199,8 @@ class YtDlpManager {
       final ffmpegFile = File(await _ffmpegPath);
       if (!await ffmpegFile.exists()) {
         onProgress(ToolSetupProgress(currentL.mediaDlStatusDownloadingFfmpeg, fraction: 0));
-        final zipBytes = await _downloadBytes(_ffmpegZipUrl, (frac) {
+        final zipBytes =
+            await _downloadBytes(_ffmpegZipUrl, _maxFfmpegZipBytes, (frac) {
           onProgress(ToolSetupProgress(currentL.mediaDlStatusDownloadingFfmpeg, fraction: frac));
         });
         onProgress(ToolSetupProgress(currentL.mediaDlStatusExtractingFfmpeg, fraction: null));
@@ -189,7 +215,7 @@ class YtDlpManager {
         if (ffmpegEntry == null) {
           throw YtDlpException(currentL.mediaDlFfmpegNotInDownload);
         }
-        await ffmpegFile.writeAsBytes(ffmpegEntry.content as List<int>);
+        await _replaceFile(ffmpegFile, ffmpegEntry.content as List<int>);
       }
     } else {
       if (!await _ffmpegOnPath) {
@@ -205,7 +231,7 @@ class YtDlpManager {
   Future<void> updateYtDlp(void Function(ToolSetupProgress) onProgress) async {
     final file = File(await _ytDlpPath);
     onProgress(ToolSetupProgress(currentL.mediaDlStatusUpdatingYtDlp, fraction: 0));
-    await _downloadFile(_ytDlpUrl, file, (frac) {
+    await _downloadFile(_ytDlpUrl, file, _maxYtDlpBytes, (frac) {
       onProgress(ToolSetupProgress(currentL.mediaDlStatusUpdatingYtDlp, fraction: frac));
     });
     if (!_isWindows) {
@@ -214,37 +240,37 @@ class YtDlpManager {
     onProgress(ToolSetupProgress(currentL.mediaDlStatusReady, fraction: 1));
   }
 
-  Future<void> _downloadFile(
-      String url, File dest, void Function(double) onFraction) async {
-    final bytes = await _downloadBytes(url, onFraction);
-    await dest.writeAsBytes(bytes);
+  Future<void> _downloadFile(String url, File dest, int maxBytes,
+      void Function(double) onFraction) async {
+    await _replaceFile(dest, await _downloadBytes(url, maxBytes, onFraction));
   }
 
-  Future<List<int>> _downloadBytes(
-      String url, void Function(double) onFraction) async {
-    final client = http.Client();
+  /// Written beside [dest] and moved into place, so a download that dies
+  /// halfway never leaves a truncated executable where the real one goes.
+  Future<void> _replaceFile(File dest, List<int> bytes) async {
+    final part = File('${dest.path}.part');
+    await part.writeAsBytes(bytes, flush: true);
+    await part.rename(dest.path);
+  }
+
+  Future<Uint8List> _downloadBytes(
+      String url, int maxBytes, void Function(double) onFraction) async {
     try {
-      final req = http.Request('GET', Uri.parse(url));
-      final res = await client.send(req);
-      if (res.statusCode != 200) {
-        throw YtDlpException(currentL.mediaDlHttpFailed(
-            '${res.statusCode}', url));
+      return await guardedDownload(
+        Uri.parse(url),
+        maxBytes: maxBytes,
+        onProgress: (received, total) {
+          if (total != null && total > 0) onFraction(received / total);
+        },
+      );
+    } on GuardedDownloadException catch (e) {
+      if (e.failure == GuardedDownloadFailure.status) {
+        throw YtDlpException(
+            currentL.mediaDlHttpFailed('${e.statusCode}', url));
       }
-      final total = res.contentLength ?? 0;
-      var received = 0;
-      final chunks = <List<int>>[];
-      await for (final chunk in res.stream) {
-        chunks.add(chunk);
-        received += chunk.length;
-        if (total > 0) onFraction(received / total);
-      }
-      return chunks.expand((c) => c).toList(growable: false);
-    } on YtDlpException {
-      rethrow;
+      throw YtDlpException(currentL.mediaDlCouldNotReach(url));
     } catch (_) {
       throw YtDlpException(currentL.mediaDlCouldNotReach(url));
-    } finally {
-      client.close();
     }
   }
 
@@ -252,8 +278,10 @@ class YtDlpManager {
       r'^https?://(?:www\.)?omroepwest\.nl/tv/aflevering/[^/?#]+/(\d+)',
       caseSensitive: false);
 
-  Future<_ResolvedSource> _resolve(String url) async {
-    final m = _regionalEpisode.firstMatch(url.trim());
+  Future<_ResolvedSource> _resolve(String input) async {
+    final url = normalizeMediaUrl(input);
+    if (url == null) throw YtDlpException(currentL.mediaDlCouldNotReadLink);
+    final m = _regionalEpisode.firstMatch(url);
     if (m == null) return _ResolvedSource(url);
     final id = m.group(1)!;
     final stream =
@@ -262,7 +290,7 @@ class YtDlpManager {
     String? thumbnail;
     try {
       final res = await http
-          .get(Uri.parse(url.trim()), headers: const {'User-Agent': 'Mozilla/5.0'})
+          .get(Uri.parse(url), headers: const {'User-Agent': 'Mozilla/5.0'})
           .timeout(const Duration(seconds: 15));
       if (res.statusCode == 200) {
         final html = utf8.decode(res.bodyBytes, allowMalformed: true);
@@ -300,7 +328,7 @@ class YtDlpManager {
     final source = await _resolve(url);
     final result = await Process.run(
       await _ytDlpPath,
-      ['-j', '--no-playlist', '--no-warnings', source.url],
+      ['-j', '--no-playlist', '--no-warnings', '--', source.url],
       stdoutEncoding: utf8,
       stderrEncoding: utf8,
     );
@@ -376,7 +404,6 @@ class YtDlpManager {
           '$outputDir${Platform.pathSeparator}$baseName.%(ext)s';
 
       final args = <String>[
-        source.url,
         if (_isWindows) ...['--ffmpeg-location', (await _toolsDir()).path],
         '--no-playlist',
         '--no-warnings',
@@ -398,6 +425,7 @@ class YtDlpManager {
           '--postprocessor-args', 'ffmpeg:-c:v copy -b:a ${audioBitrateKbps}k',
         ]);
       }
+      args.addAll(['--', source.url]);
 
       final process = await Process.start(await _ytDlpPath, args);
       processHolder.process = process;

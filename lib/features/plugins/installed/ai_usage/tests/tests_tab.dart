@@ -70,7 +70,10 @@ class _TestsTabState extends State<TestsTab> {
   /// out from under the user.
   File? _tileArt(AiBenchmarkRepository repo, String kind) {
     final fallback = repo.fallbackFile(kind);
-    final roster = repo.benchmarksOfKind(kind);
+    final roster = repo
+        .benchmarksOfKind(kind)
+        .where((b) => b.hasPreview)
+        .toList();
     if (roster.isEmpty) return fallback;
     final index = (_seed ^ kind.hashCode).abs() % roster.length;
     return repo.previewFile(roster[index].id) ?? fallback;

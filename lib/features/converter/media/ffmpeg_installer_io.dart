@@ -1,11 +1,10 @@
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
-import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
 import '../../../l10n/current_l.dart';
+import '../../../security/guarded_download.dart';
 import 'ffmpeg_service.dart';
 
 /// Raised when the in-app ffmpeg install fails or isn't supported.
@@ -27,6 +26,8 @@ class FfmpegInstaller {
 
   static const _windowsUrl =
       'https://github.com/BtbN/FFmpeg-Builds/releases/latest/download/ffmpeg-master-latest-win64-gpl.zip';
+
+  static const _maxArchiveBytes = 1024 * 1024 * 1024;
 
   /// Only Windows ships a binary we know how to fetch and unpack here.
   static bool get supported => Platform.isWindows;
@@ -54,28 +55,17 @@ class FfmpegInstaller {
       throw FfmpegInstallException(currentL.ffmpegInstallDesktopOnly);
     }
 
-    final client = http.Client();
     try {
-      final response =
-          await client.send(http.Request('GET', Uri.parse(_windowsUrl)));
-      if (response.statusCode != 200) {
-        throw FfmpegInstallException(
-          currentL.ffmpegDownloadFailed(response.statusCode),
-        );
-      }
-
-      final total = response.contentLength;
-      final builder = BytesBuilder(copy: false);
-      var received = 0;
-      await for (final chunk in response.stream) {
-        builder.add(chunk);
-        received += chunk.length;
-        onProgress((total == null || total == 0) ? null : received / total);
-      }
+      final zipBytes = await guardedDownload(
+        Uri.parse(_windowsUrl),
+        maxBytes: _maxArchiveBytes,
+        onProgress: (received, total) =>
+            onProgress((total == null || total == 0) ? null : received / total),
+      );
 
       // Extraction phase — size unknown to the progress bar.
       onProgress(null);
-      final archive = ZipDecoder().decodeBytes(builder.takeBytes());
+      final archive = ZipDecoder().decodeBytes(zipBytes);
       ArchiveFile? exe;
       for (final f in archive.files) {
         if (f.isFile &&
@@ -91,16 +81,23 @@ class FfmpegInstaller {
       }
 
       final path = await binaryPath();
-      await File(path).writeAsBytes(exe.content as List<int>, flush: true);
+      final part = File('$path.part');
+      await part.writeAsBytes(exe.content as List<int>, flush: true);
+      await part.rename(path);
 
       // Point the resolver straight at the freshly installed binary.
       Ffmpeg.useBinary(path);
     } on FfmpegInstallException {
       rethrow;
+    } on GuardedDownloadException catch (e) {
+      final status = e.statusCode;
+      throw FfmpegInstallException(
+        status != null
+            ? currentL.ffmpegDownloadFailed(status)
+            : currentL.ffmpegInstallFailed('$e'),
+      );
     } catch (e) {
       throw FfmpegInstallException(currentL.ffmpegInstallFailed('$e'));
-    } finally {
-      client.close();
     }
   }
 }

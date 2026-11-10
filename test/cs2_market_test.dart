@@ -292,6 +292,19 @@ void main() {
       );
       expect(series.samples, hasLength(1));
     });
+
+    test('long histories retain each checked price and time', () {
+      final points = [
+        for (var h = 100; h >= 0; h--)
+          _point(hash, now.subtract(Duration(hours: h)), lowest: 1000 + h),
+      ];
+      final series = buildCs2PriceSeries(points, Cs2PriceRange.week, now);
+      expect(series.samples, hasLength(points.length));
+      expect(series.observations.map((s) => s.at),
+          points.map((p) => p.observedAt));
+      expect(series.observations.map((s) => s.priceCents),
+          points.map((p) => p.lowestCents));
+    });
   });
 
   group('gain/loss series', () {
@@ -309,6 +322,7 @@ void main() {
       );
       final series = buildCs2GainLossSeries(priceSeries, 1100);
       expect(series.samples.map((s) => s.deltaCents), [-100, 150]);
+      expect(series.observations.map((s) => s.deltaCents), [-100, 150]);
       expect(series.currentDeltaCents, 150);
     });
 
@@ -408,7 +422,7 @@ void main() {
       expect(series.samples.map((s) => s.priceCents), [51000, 51000]);
     });
 
-    test('a long history is averaged down to a chart-sized line', () {
+    test('a long history retains every checked price', () {
       final points = [
         for (var h = 0; h < 24 * 30; h++)
           _point(redline, now.subtract(Duration(hours: h)),
@@ -417,12 +431,30 @@ void main() {
       final entries = [_entry(redline, longAgo)];
       final series =
           buildCs2PortfolioSeries(points, entries, Cs2PriceRange.month, now);
-      expect(series.samples.length, lessThanOrEqualTo(kCs2MaxChartSamples));
+      expect(series.samples, hasLength(points.length));
+      expect(series.observations, hasLength(points.length));
       expect(series.samples.last.at, now);
       expect(series.samples.last.priceCents, 1050);
-      // Averaging neighbours flattens the hour-to-hour jitter.
-      final middle = series.samples.sublist(1, series.samples.length - 1);
-      expect(middle.every((s) => (s.priceCents - 1000).abs() <= 30), isTrue);
+    });
+
+    test('portfolio observations exclude carried endpoints and combine checks',
+        () {
+      final at = now.subtract(const Duration(hours: 5));
+      final points = [
+        _point(redline, now.subtract(const Duration(days: 10)), lowest: 900),
+        _point(redline, at, lowest: 1000),
+        _point(karambit, at, lowest: 50000),
+      ];
+      final entries = [_entry(redline, longAgo), _entry(karambit, longAgo)];
+      final series =
+          buildCs2PortfolioSeries(points, entries, Cs2PriceRange.day, now);
+      expect(series.samples.map((s) => s.at),
+          [now.subtract(const Duration(days: 1)), at, now]);
+      expect(series.observations.map((s) => s.at), [at]);
+      expect(series.observations.single.priceCents, 51000);
+      final gain = buildCs2GainLossSeries(series, 50000);
+      expect(gain.observations.map((s) => s.at), [at]);
+      expect(gain.observations.single.deltaCents, 1000);
     });
 
     test('"All" has nothing to carry forward from, so no seed sample', () {
@@ -435,6 +467,21 @@ void main() {
       // The one real reading, then carried forward to now — no seed before it.
       expect(series.samples.map((s) => s.priceCents), [1000, 1000]);
       expect(series.samples.first.at, now.subtract(const Duration(days: 400)));
+    });
+
+    test('a stale portfolio carries its price across a narrower window', () {
+      final points = [
+        _point(redline, now.subtract(const Duration(days: 10)), lowest: 1000),
+      ];
+      final series = buildCs2PortfolioSeries(
+        points,
+        [_entry(redline, longAgo)],
+        Cs2PriceRange.week,
+        now,
+      );
+      expect(series.samples.map((s) => s.at),
+          [now.subtract(const Duration(days: 7)), now]);
+      expect(series.observations, isEmpty);
     });
 
     test('falls back to the median when a listing has no lowest', () {

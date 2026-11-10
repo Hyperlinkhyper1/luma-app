@@ -159,8 +159,7 @@ void main() {
     setUp(() => db = SteamDatabase(NativeDatabase.memory()));
     tearDown(() => db.close());
 
-    test('a sweep prices covered listings from the bulk file and asks Steam '
-        'only for the rest', () async {
+    test('a sweep checks live prices even for listings covered by bulk', () async {
       for (final name in ['Covered', 'Missing']) {
         await _track(db, name);
       }
@@ -185,17 +184,17 @@ void main() {
       );
       addTearDown(repository.dispose);
       await repository.refreshAllPrices();
-      expect(steamAsked, ['Missing']);
+      expect(steamAsked, ['Covered', 'Missing']);
       final items = {
         for (final item in await db.allCs2Items()) item.marketHashName: item,
       };
-      expect(items['Covered']!.lastMedianCents, 50);
+      expect(items['Covered']!.lastLowestCents, 200);
       expect(items['Missing']!.lastLowestCents, 200);
 
-      // The same bulk file again adds no duplicate reading.
+      // A later live check records a new observation, even at the same price.
       await repository.refreshAllPrices();
       final points = await db.allCs2PricePoints();
-      expect(points.where((p) => p.marketHashName == 'Covered'), hasLength(1));
+      expect(points.where((p) => p.marketHashName == 'Covered'), hasLength(2));
     });
 
     test('backfill adds Steam history from before tracking, once', () async {

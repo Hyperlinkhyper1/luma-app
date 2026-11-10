@@ -26864,6 +26864,19 @@ class LFr extends L {
   String get steamCs2SignInButton => 'Se connecter à Steam';
 
   @override
+  String get steamCs2PurchaseHistoryExplain =>
+      'Connectez-vous à Steam pour importer les prix d\'achat du marché de la communauté, frais d\'achat inclus, des exemplaires correspondants de votre inventaire et voir leur gain ou perte. Les autres devises sont converties en USD au taux actuel. Les coûts saisis restent inchangés. Saisissez vous-même les coûts des cadeaux, échanges et ouvertures de caisses.';
+
+  @override
+  String get steamCs2PurchaseHistoryLoading =>
+      'Importation des prix d\'achat Steam…';
+
+  @override
+  String steamCs2PurchaseHistoryFailed(String error) {
+    return 'Historique d\'achat : $error Votre inventaire et les coûts déjà enregistrés sont conservés.';
+  }
+
+  @override
   String get steamCs2SignOutButton => 'Se déconnecter de Steam';
 
   @override

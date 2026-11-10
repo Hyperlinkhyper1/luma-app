@@ -26806,6 +26806,19 @@ class LEs extends L {
   String get steamCs2SignInButton => 'Iniciar sesión en Steam';
 
   @override
+  String get steamCs2PurchaseHistoryExplain =>
+      'Inicia sesión en Steam para importar los precios de compra del Mercado de la Comunidad, incluidas las comisiones de compra, de los objetos coincidentes de tu inventario y ver sus ganancias o pérdidas. Otras monedas se convierten a USD al tipo de cambio actual. Los costes que introduzcas se conservan. Introduce manualmente los costes de regalos, intercambios y aperturas de cajas.';
+
+  @override
+  String get steamCs2PurchaseHistoryLoading =>
+      'Importando precios de compra de Steam…';
+
+  @override
+  String steamCs2PurchaseHistoryFailed(String error) {
+    return 'Historial de compras: $error Tu inventario y los costes guardados se conservan.';
+  }
+
+  @override
   String get steamCs2SignOutButton => 'Cerrar sesión de Steam';
 
   @override

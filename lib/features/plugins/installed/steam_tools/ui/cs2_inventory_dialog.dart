@@ -20,6 +20,7 @@ Future<void> showCs2InventoryDialog(
   Future<String?> Function()? onSignOut,
   bool Function()? sessionEnabled,
   Cs2SteamSessionStatus Function()? sessionStatus,
+  String? Function()? purchaseHistoryError,
 }) => showDialog<void>(
   context: context,
   builder: (_) => Cs2InventoryDialog(
@@ -32,6 +33,7 @@ Future<void> showCs2InventoryDialog(
     onSignOut: onSignOut,
     sessionEnabled: sessionEnabled,
     sessionStatus: sessionStatus,
+    purchaseHistoryError: purchaseHistoryError,
   ),
 );
 
@@ -47,6 +49,7 @@ class Cs2InventoryDialog extends StatefulWidget {
     this.onSignOut,
     this.sessionEnabled,
     this.sessionStatus,
+    this.purchaseHistoryError,
   });
 
   final String? steamId;
@@ -65,6 +68,7 @@ class Cs2InventoryDialog extends StatefulWidget {
   final Future<String?> Function()? onSignOut;
   final bool Function()? sessionEnabled;
   final Cs2SteamSessionStatus Function()? sessionStatus;
+  final String? Function()? purchaseHistoryError;
 
   @override
   State<Cs2InventoryDialog> createState() => _Cs2InventoryDialogState();
@@ -239,11 +243,18 @@ class _Cs2InventoryDialogState extends State<Cs2InventoryDialog> {
                 label: const Text('Open Steam privacy settings'),
               ),
               Text(
-                'Steam inventory does not include what you paid or whether '
-                'an item came from a case. Set each item’s cost yourself '
-                'to track profit and loss.',
+                L.of(context).steamCs2PurchaseHistoryExplain,
                 style: theme.textTheme.bodySmall,
               ),
+              if (widget.purchaseHistoryError?.call() case final error?) ...[
+                const SizedBox(height: 12),
+                Text(
+                  L.of(context).steamCs2PurchaseHistoryFailed(error),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.error,
+                  ),
+                ),
+              ],
               const SizedBox(height: 12),
               Text(
                 'While CS2 Market is open, luma checks your inventory every '

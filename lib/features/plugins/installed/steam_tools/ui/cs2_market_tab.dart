@@ -65,6 +65,8 @@ class _Cs2MarketTabState extends State<Cs2MarketTab> {
       importInventory: (id, items) async {
         await repository.importInventory(id, items);
       },
+      importPurchaseHistory: (id, session, isCancelled) =>
+          repository.importPurchaseHistory(id, session, isCancelled: isCancelled),
     );
     repository.loadCatalog();
     _startInventory(repository);
@@ -84,6 +86,7 @@ class _Cs2MarketTabState extends State<Cs2MarketTab> {
       hiddenCount: () => _inventory.hiddenCount,
       sessionEnabled: () => _inventory.sessionEnabled,
       sessionStatus: () => _inventory.sessionStatus,
+      purchaseHistoryError: () => _inventory.purchaseHistoryError,
       onSignIn: (id) async {
         final success = await _inventory.signIn(id);
         if (success && mounted) setState(() => _view = _Cs2MarketView.tracked);
@@ -157,11 +160,25 @@ class _Cs2MarketTabState extends State<Cs2MarketTab> {
           listenable: _inventory,
           builder: (context, _) {
             final error = _inventory.lastError;
-            if (error == null) return const SizedBox.shrink();
+            final historyError = _inventory.purchaseHistoryError;
+            final loadingHistory = _inventory.loadingPurchaseHistory;
+            if (error == null && historyError == null && !loadingHistory) {
+              return const SizedBox.shrink();
+            }
+            final message = error != null
+                ? 'Steam inventory: $error'
+                : historyError != null
+                ? L.of(context).steamCs2PurchaseHistoryFailed(historyError)
+                : L.of(context).steamCs2PurchaseHistoryLoading;
             return Padding(
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-              child: Text('Steam inventory: $error',
-                style: TextStyle(color: luma.danger, fontSize: 12)),
+              child: Text(
+                message,
+                style: TextStyle(
+                  color: loadingHistory ? luma.textMuted : luma.danger,
+                  fontSize: 12,
+                ),
+              ),
             );
           },
         ),

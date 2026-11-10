@@ -35,6 +35,7 @@ enum Cs2SteamSessionStatus {
 class Cs2InventoryController extends ChangeNotifier {
   Cs2InventoryController({
     required Future<void> Function(String, List<Cs2InventoryItem>) importInventory,
+    this._importPurchaseHistory,
     Cs2InventoryApi? api,
     Future<File> Function()? profileFile,
     this.refreshInterval = const Duration(hours: 6),
@@ -51,6 +52,8 @@ class Cs2InventoryController extends ChangeNotifier {
   static const protectionWindow = Duration(days: 8);
 
   final Future<void> Function(String, List<Cs2InventoryItem>) _importInventory;
+  final Future<void> Function(String, Cs2SteamSession, bool Function())?
+      _importPurchaseHistory;
   final Cs2InventoryApi _api;
   final bool _ownsApi;
   final Future<File> Function() _profileFile;
@@ -68,6 +71,8 @@ class Cs2InventoryController extends ChangeNotifier {
   Timer? _timer;
   int _hiddenCount = 0;
   bool _sessionEnabled = false;
+  bool _loadingPurchaseHistory = false;
+  String? _purchaseHistoryError;
   Cs2SteamSessionStatus _sessionStatus = Cs2SteamSessionStatus.off;
   Cs2SteamSession? _session;
   Completer<void>? _sessionArrived;
@@ -87,6 +92,8 @@ class Cs2InventoryController extends ChangeNotifier {
   /// The tab mounts the Steam browser only while this is true.
   bool get sessionEnabled => _sessionEnabled;
   Cs2SteamSessionStatus get sessionStatus => _sessionStatus;
+  bool get loadingPurchaseHistory => _loadingPurchaseHistory;
+  String? get purchaseHistoryError => _purchaseHistoryError;
 
   /// Hands over the Steam browser's session, or null when it goes away.
   void attachSession(Cs2SteamSession? session) {
@@ -110,6 +117,7 @@ class Cs2InventoryController extends ChangeNotifier {
   }
 
   Future<void> _fetchAndImport(String id) async {
+    _purchaseHistoryError = null;
     Cs2InventorySnapshot? owned;
     if (_sessionEnabled) owned = await _readAsOwner(id);
     final snapshot = owned ?? await _api.fetchSnapshot(id);
@@ -118,6 +126,20 @@ class Cs2InventoryController extends ChangeNotifier {
       await _importInventory(id, snapshot.items);
       _rememberProtected(snapshot.items);
       _hiddenCount = snapshot.hiddenCount;
+      final session = _session;
+      final importer = _importPurchaseHistory;
+      if (session != null && importer != null && !_disposed) {
+        _loadingPurchaseHistory = true;
+        _notify();
+        try {
+          await importer(id, session, () => _disposed);
+        } catch (error) {
+          _purchaseHistoryError = error.toString();
+        } finally {
+          _loadingPurchaseHistory = false;
+          _notify();
+        }
+      }
       return;
     }
     final kept = _keptProtected(snapshot);
@@ -330,6 +352,7 @@ class Cs2InventoryController extends ChangeNotifier {
     await session?.signOut();
     _sessionEnabled = false;
     _sessionStatus = Cs2SteamSessionStatus.off;
+    _purchaseHistoryError = null;
   }
 
   /// Signs out of Steam and goes back to the public listing.
@@ -370,6 +393,7 @@ class Cs2InventoryController extends ChangeNotifier {
       final file = await _profileFile();
       if (await file.exists()) await file.delete();
       _steamId = null;
+      _purchaseHistoryError = null;
       _protected.clear();
       _hiddenCount = 0;
       _timer?.cancel();

@@ -35,7 +35,7 @@ jobs:
     needs: security
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Derive version
         id: ver
@@ -45,7 +45,7 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
 
-      - uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
           flutter-version: '3.44.4'
           channel: stable
@@ -59,7 +59,7 @@ jobs:
         run: flutter build windows --release --no-pub --no-tree-shake-icons --dart-define=APP_VERSION=${{ steps.ver.outputs.version }}
 
       - name: Set up Minecraft version engine Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
         with:
           distribution: temurin
           java-version: '21'
@@ -103,7 +103,7 @@ jobs:
       - name: Publish release
         id: publish
         continue-on-error: true
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           tag_name: ${{ steps.ver.outputs.tag }}
           name: luma ${{ steps.ver.outputs.version }}
@@ -117,7 +117,7 @@ jobs:
 
       - name: Publish release (retry without generated notes)
         if: steps.publish.outcome == 'failure'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           tag_name: ${{ steps.ver.outputs.tag }}
           name: luma ${{ steps.ver.outputs.version }}
@@ -128,7 +128,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Derive version
         id: ver
@@ -138,7 +138,7 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
 
-      - uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
           flutter-version: '3.44.4'
           channel: stable
@@ -194,7 +194,7 @@ jobs:
         run: flutter build linux --release --no-pub --no-tree-shake-icons --dart-define=APP_VERSION=${{ steps.ver.outputs.version }}
 
       - name: Set up Minecraft version engine Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
         with:
           distribution: temurin
           java-version: '21'
@@ -221,7 +221,7 @@ jobs:
       - name: Publish release
         id: publish
         continue-on-error: true
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           tag_name: ${{ steps.ver.outputs.tag }}
           name: luma ${{ steps.ver.outputs.version }}
@@ -235,7 +235,7 @@ jobs:
 
       - name: Publish release (retry without generated notes)
         if: steps.publish.outcome == 'failure'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           tag_name: ${{ steps.ver.outputs.tag }}
           name: luma ${{ steps.ver.outputs.version }}
@@ -245,7 +245,7 @@ jobs:
     needs: security
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Derive version
         id: ver
@@ -255,7 +255,7 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
 
-      - uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
           flutter-version: '3.44.4'
           channel: stable
@@ -263,12 +263,12 @@ jobs:
 
       # Gradle/AGP 8.7 (pinned in android/settings.gradle.kts) doesn't support
       # the very newest JDKs yet, same reason the local build pins JDK 21.
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
         with:
           distribution: temurin
           java-version: '21'
 
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
 
       - run: flutter pub get
 
@@ -370,7 +370,7 @@ jobs:
       - name: Publish release
         id: publish
         continue-on-error: true
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           tag_name: ${{ steps.ver.outputs.tag }}
           name: luma ${{ steps.ver.outputs.version }}
@@ -384,7 +384,7 @@ jobs:
 
       - name: Publish release (retry without generated notes)
         if: steps.publish.outcome == 'failure'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           tag_name: ${{ steps.ver.outputs.tag }}
           name: luma ${{ steps.ver.outputs.version }}
@@ -394,7 +394,7 @@ jobs:
     needs: security
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Derive version
         id: ver
@@ -404,7 +404,7 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
 
-      - uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
           flutter-version: '3.44.4'
           channel: stable
@@ -463,7 +463,7 @@ jobs:
       - name: Publish release
         id: publish
         continue-on-error: true
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           tag_name: ${{ steps.ver.outputs.tag }}
           name: luma ${{ steps.ver.outputs.version }}
@@ -477,7 +477,7 @@ jobs:
 
       - name: Publish release (retry without generated notes)
         if: steps.publish.outcome == 'failure'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           tag_name: ${{ steps.ver.outputs.tag }}
           name: luma ${{ steps.ver.outputs.version }}

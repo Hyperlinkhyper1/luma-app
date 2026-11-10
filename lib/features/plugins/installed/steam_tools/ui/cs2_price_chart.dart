@@ -10,6 +10,7 @@ import '../../../../../theme/luma_theme.dart';
 import '../cs2_price_history.dart';
 import '../data/steam_database.dart';
 import '../steam_price_history.dart' show formatSteamPrice;
+import 'cs2_chart_curve.dart';
 
 /// The chart-plus-summary body of a [Cs2PriceSeries] on its own, with no
 /// card chrome, title or range selector around it.
@@ -21,7 +22,11 @@ import '../steam_price_history.dart' show formatSteamPrice;
 /// inside its own card with its own headline numbers above it, so this is
 /// pulled out rather than duplicated.
 class Cs2PriceSeriesView extends StatelessWidget {
-  const Cs2PriceSeriesView({super.key, required this.series, this.height = 200});
+  const Cs2PriceSeriesView({
+    super.key,
+    required this.series,
+    this.height = 200,
+  });
 
   final Cs2PriceSeries series;
   final double height;
@@ -36,8 +41,8 @@ class Cs2PriceSeriesView extends StatelessWidget {
           child: series.isEmpty
               ? const _ChartEmpty()
               : series.isSingle
-                  ? _SingleReading(series: series)
-                  : _PriceChart(series: series),
+              ? _SingleReading(series: series)
+              : _PriceChart(series: series),
         ),
         if (series.samples.length >= 2) ...[
           const SizedBox(height: 14),
@@ -98,8 +103,9 @@ class _Cs2PriceHistoryCardState extends State<Cs2PriceHistoryCard> {
     );
     final startingPriceCents = widget.startingPriceCents;
     final showGainLoss = _gainLoss && startingPriceCents != null;
-    final gainSeries =
-        startingPriceCents == null ? null : buildCs2GainLossSeries(series, startingPriceCents);
+    final gainSeries = startingPriceCents == null
+        ? null
+        : buildCs2GainLossSeries(series, startingPriceCents);
 
     return LumaCard(
       child: Column(
@@ -141,16 +147,20 @@ class _Cs2PriceHistoryCardState extends State<Cs2PriceHistoryCard> {
             child: !widget.tracked
                 ? _NotTracked(onTrack: widget.onTrack)
                 : widget.loading && widget.points.isEmpty
-                    ? const _ChartSkeleton()
-                    : showGainLoss
-                        ? _gainLossBody(gainSeries!)
-                        : _priceBody(series),
+                ? const _ChartSkeleton()
+                : showGainLoss
+                ? _gainLossBody(gainSeries!)
+                : _priceBody(series),
           ),
-          if (widget.tracked && !showGainLoss && series.samples.length >= 2) ...[
+          if (widget.tracked &&
+              !showGainLoss &&
+              series.samples.length >= 2) ...[
             const SizedBox(height: 14),
             _SeriesSummary(series: series),
           ],
-          if (widget.tracked && showGainLoss && gainSeries!.samples.length >= 2) ...[
+          if (widget.tracked &&
+              showGainLoss &&
+              gainSeries!.samples.length >= 2) ...[
             const SizedBox(height: 14),
             _GainLossSeriesSummary(series: gainSeries),
           ],
@@ -162,14 +172,14 @@ class _Cs2PriceHistoryCardState extends State<Cs2PriceHistoryCard> {
   Widget _priceBody(Cs2PriceSeries series) => series.isEmpty
       ? const _ChartEmpty()
       : series.isSingle
-          ? _SingleReading(series: series)
-          : _PriceChart(series: series);
+      ? _SingleReading(series: series)
+      : _PriceChart(series: series);
 
   Widget _gainLossBody(Cs2GainLossSeries series) => series.isEmpty
       ? const _ChartEmpty()
       : series.isSingle
-          ? _SingleGainLossReading(series: series)
-          : _GainLossChart(series: series);
+      ? _SingleGainLossReading(series: series)
+      : _GainLossChart(series: series);
 }
 
 class _PriceChart extends StatelessWidget {
@@ -198,15 +208,21 @@ class _PriceChart extends StatelessWidget {
       label: _chartSummary(series, t),
       excludeSemantics: true,
       child: LineChart(
-        duration:
-            reduceMotion ? Duration.zero : const Duration(milliseconds: 220),
+        duration: reduceMotion
+            ? Duration.zero
+            : const Duration(milliseconds: 220),
         curve: Curves.easeOutCubic,
         LineChartData(
           minX: minX,
           maxX: maxX == minX ? minX + 1 : maxX,
           minY: minY,
           maxY: maxY == minY ? minY + 1 : maxY,
-          clipData: const FlClipData.all(),
+          clipData: const FlClipData(
+            top: true,
+            bottom: true,
+            left: false,
+            right: false,
+          ),
           gridData: FlGridData(
             show: true,
             drawVerticalLine: false,
@@ -218,10 +234,12 @@ class _PriceChart extends StatelessWidget {
           ),
           borderData: FlBorderData(show: false),
           titlesData: FlTitlesData(
-            topTitles:
-                const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            rightTitles:
-                const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            topTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            rightTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
             leftTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
@@ -255,8 +273,7 @@ class _PriceChart extends StatelessWidget {
                   if (value <= meta.min || value >= meta.max) {
                     return const SizedBox.shrink();
                   }
-                  final at =
-                      DateTime.fromMillisecondsSinceEpoch(value.toInt());
+                  final at = DateTime.fromMillisecondsSinceEpoch(value.toInt());
                   return Padding(
                     padding: const EdgeInsets.only(top: 6),
                     child: Text(
@@ -269,6 +286,24 @@ class _PriceChart extends StatelessWidget {
             ),
           ),
           lineTouchData: LineTouchData(
+            getTouchedSpotIndicator: (bar, indexes) => [
+              for (final _ in indexes)
+                if (!bar.dotData.show)
+                  null
+                else
+                  TouchedSpotIndicatorData(
+                    FlLine(color: luma.textMuted, strokeWidth: 1),
+                    FlDotData(
+                      getDotPainter: (spot, percent, bar, index) =>
+                          FlDotCirclePainter(
+                            radius: 5,
+                            color: luma.accent,
+                            strokeWidth: 2,
+                            strokeColor: luma.surface,
+                          ),
+                    ),
+                  ),
+            ],
             touchTooltipData: LineTouchTooltipData(
               getTooltipColor: (_) => luma.rail,
               tooltipRoundedRadius: 8,
@@ -276,45 +311,35 @@ class _PriceChart extends StatelessWidget {
               fitInsideVertically: true,
               getTooltipItems: (spots) => [
                 for (final spot in spots)
-                  LineTooltipItem(
-                    '${formatSteamPrice(spot.y.round(), series.currency)}\n'
-                    '${DateFormat('d MMM, HH:mm').format(DateTime.fromMillisecondsSinceEpoch(spot.x.toInt()))}',
-                    TextStyle(
-                      color: luma.textPrimary,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      fontFeatures: const [FontFeature.tabularFigures()],
-                    ),
-                  ),
+                  spot.barIndex == 0
+                      ? null
+                      : LineTooltipItem(
+                          '${formatSteamPrice(spot.y.round(), series.currency)}\n'
+                          '${DateFormat('d MMM, HH:mm').format(DateTime.fromMillisecondsSinceEpoch(spot.x.toInt()))}',
+                          TextStyle(
+                            color: luma.textPrimary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                          ),
+                        ),
               ],
             ),
           ),
           lineBarsData: [
             LineChartBarData(
-              spots: [
+              spots: monotoneCs2ChartSpots([
                 for (final sample in series.samples)
                   FlSpot(
                     sample.at.millisecondsSinceEpoch.toDouble(),
                     sample.priceCents.toDouble(),
                   ),
-              ],
-              isCurved: true,
-              curveSmoothness: 0.35,
-              preventCurveOverShooting: true,
+              ]),
               isStrokeCapRound: true,
               isStrokeJoinRound: true,
               color: luma.accent,
               barWidth: 2.5,
-              dotData: FlDotData(
-                show: series.samples.length <= 40,
-                getDotPainter: (spot, percent, bar, index) =>
-                    FlDotCirclePainter(
-                  radius: 3,
-                  color: luma.accent,
-                  strokeWidth: 2,
-                  strokeColor: luma.surface,
-                ),
-              ),
+              dotData: const FlDotData(show: false),
               belowBarData: BarAreaData(
                 show: true,
                 gradient: LinearGradient(
@@ -327,6 +352,26 @@ class _PriceChart extends StatelessWidget {
                 ),
               ),
             ),
+            LineChartBarData(
+              spots: [
+                for (final sample in series.observations)
+                  FlSpot(
+                    sample.at.millisecondsSinceEpoch.toDouble(),
+                    sample.priceCents.toDouble(),
+                  ),
+              ],
+              color: luma.accent.withValues(alpha: 0),
+              barWidth: 0,
+              dotData: FlDotData(
+                getDotPainter: (spot, percent, bar, index) =>
+                    FlDotCirclePainter(
+                      radius: 3,
+                      color: luma.accent,
+                      strokeWidth: 2,
+                      strokeColor: luma.surface,
+                    ),
+              ),
+            ),
           ],
         ),
       ),
@@ -334,11 +379,11 @@ class _PriceChart extends StatelessWidget {
   }
 
   static String _axisLabel(Cs2PriceRange range, DateTime at) => switch (range) {
-        Cs2PriceRange.day => DateFormat.Hm().format(at),
-        Cs2PriceRange.week => DateFormat.MMMd().format(at),
-        Cs2PriceRange.month => DateFormat.MMMd().format(at),
-        Cs2PriceRange.all => DateFormat.yMMMd().format(at),
-      };
+    Cs2PriceRange.day => DateFormat.Hm().format(at),
+    Cs2PriceRange.week => DateFormat.MMMd().format(at),
+    Cs2PriceRange.month => DateFormat.MMMd().format(at),
+    Cs2PriceRange.all => DateFormat.yMMMd().format(at),
+  };
 }
 
 /// "$12.34" for a gain, "-$5.00" for a loss, sign always shown even for a
@@ -372,8 +417,9 @@ class _GainLossChart extends StatelessWidget {
     final high = (series.highestDeltaCents ?? 0).toDouble();
 
     final span = high - low;
-    final double pad =
-        span == 0 ? math.max(high.abs() * 0.2, 50.0) : span * 0.18;
+    final double pad = span == 0
+        ? math.max(high.abs() * 0.2, 50.0)
+        : span * 0.18;
     var minY = low - pad;
     var maxY = high + pad;
     // Keep the zero line inside the visible range even when every reading
@@ -389,15 +435,21 @@ class _GainLossChart extends StatelessWidget {
       label: _gainLossSummary(series, t),
       excludeSemantics: true,
       child: LineChart(
-        duration:
-            reduceMotion ? Duration.zero : const Duration(milliseconds: 220),
+        duration: reduceMotion
+            ? Duration.zero
+            : const Duration(milliseconds: 220),
         curve: Curves.easeOutCubic,
         LineChartData(
           minX: minX,
           maxX: maxX == minX ? minX + 1 : maxX,
           minY: minY,
           maxY: maxY == minY ? minY + 1 : maxY,
-          clipData: const FlClipData.all(),
+          clipData: const FlClipData(
+            top: true,
+            bottom: true,
+            left: false,
+            right: false,
+          ),
           gridData: FlGridData(
             show: true,
             drawVerticalLine: false,
@@ -419,10 +471,12 @@ class _GainLossChart extends StatelessWidget {
           ),
           borderData: FlBorderData(show: false),
           titlesData: FlTitlesData(
-            topTitles:
-                const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            rightTitles:
-                const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            topTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            rightTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
             leftTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
@@ -456,8 +510,7 @@ class _GainLossChart extends StatelessWidget {
                   if (value <= meta.min || value >= meta.max) {
                     return const SizedBox.shrink();
                   }
-                  final at =
-                      DateTime.fromMillisecondsSinceEpoch(value.toInt());
+                  final at = DateTime.fromMillisecondsSinceEpoch(value.toInt());
                   return Padding(
                     padding: const EdgeInsets.only(top: 6),
                     child: Text(
@@ -470,6 +523,24 @@ class _GainLossChart extends StatelessWidget {
             ),
           ),
           lineTouchData: LineTouchData(
+            getTouchedSpotIndicator: (bar, indexes) => [
+              for (final _ in indexes)
+                if (!bar.dotData.show)
+                  null
+                else
+                  TouchedSpotIndicatorData(
+                    FlLine(color: luma.textMuted, strokeWidth: 1),
+                    FlDotData(
+                      getDotPainter: (spot, percent, bar, index) =>
+                          FlDotCirclePainter(
+                            radius: 5,
+                            color: lineColor,
+                            strokeWidth: 2,
+                            strokeColor: luma.surface,
+                          ),
+                    ),
+                  ),
+            ],
             touchTooltipData: LineTouchTooltipData(
               getTooltipColor: (_) => luma.rail,
               tooltipRoundedRadius: 8,
@@ -477,45 +548,35 @@ class _GainLossChart extends StatelessWidget {
               fitInsideVertically: true,
               getTooltipItems: (spots) => [
                 for (final spot in spots)
-                  LineTooltipItem(
-                    '${_formatDelta(spot.y.round(), series.currency)}\n'
-                    '${DateFormat('d MMM, HH:mm').format(DateTime.fromMillisecondsSinceEpoch(spot.x.toInt()))}',
-                    TextStyle(
-                      color: luma.textPrimary,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      fontFeatures: const [FontFeature.tabularFigures()],
-                    ),
-                  ),
+                  spot.barIndex == 0
+                      ? null
+                      : LineTooltipItem(
+                          '${_formatDelta(spot.y.round(), series.currency)}\n'
+                          '${DateFormat('d MMM, HH:mm').format(DateTime.fromMillisecondsSinceEpoch(spot.x.toInt()))}',
+                          TextStyle(
+                            color: luma.textPrimary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                          ),
+                        ),
               ],
             ),
           ),
           lineBarsData: [
             LineChartBarData(
-              spots: [
+              spots: monotoneCs2ChartSpots([
                 for (final sample in series.samples)
                   FlSpot(
                     sample.at.millisecondsSinceEpoch.toDouble(),
                     sample.deltaCents.toDouble(),
                   ),
-              ],
-              isCurved: true,
-              curveSmoothness: 0.35,
-              preventCurveOverShooting: true,
+              ]),
               isStrokeCapRound: true,
               isStrokeJoinRound: true,
               color: lineColor,
               barWidth: 2.5,
-              dotData: FlDotData(
-                show: series.samples.length <= 40,
-                getDotPainter: (spot, percent, bar, index) =>
-                    FlDotCirclePainter(
-                  radius: 3,
-                  color: lineColor,
-                  strokeWidth: 2,
-                  strokeColor: luma.surface,
-                ),
-              ),
+              dotData: const FlDotData(show: false),
               belowBarData: BarAreaData(
                 show: true,
                 gradient: LinearGradient(
@@ -528,6 +589,26 @@ class _GainLossChart extends StatelessWidget {
                 ),
               ),
             ),
+            LineChartBarData(
+              spots: [
+                for (final sample in series.observations)
+                  FlSpot(
+                    sample.at.millisecondsSinceEpoch.toDouble(),
+                    sample.deltaCents.toDouble(),
+                  ),
+              ],
+              color: lineColor.withValues(alpha: 0),
+              barWidth: 0,
+              dotData: FlDotData(
+                getDotPainter: (spot, percent, bar, index) =>
+                    FlDotCirclePainter(
+                      radius: 3,
+                      color: lineColor,
+                      strokeWidth: 2,
+                      strokeColor: luma.surface,
+                    ),
+              ),
+            ),
           ],
         ),
       ),
@@ -535,11 +616,11 @@ class _GainLossChart extends StatelessWidget {
   }
 
   static String _axisLabel(Cs2PriceRange range, DateTime at) => switch (range) {
-        Cs2PriceRange.day => DateFormat.Hm().format(at),
-        Cs2PriceRange.week => DateFormat.MMMd().format(at),
-        Cs2PriceRange.month => DateFormat.MMMd().format(at),
-        Cs2PriceRange.all => DateFormat.yMMMd().format(at),
-      };
+    Cs2PriceRange.day => DateFormat.Hm().format(at),
+    Cs2PriceRange.week => DateFormat.MMMd().format(at),
+    Cs2PriceRange.month => DateFormat.MMMd().format(at),
+    Cs2PriceRange.all => DateFormat.yMMMd().format(at),
+  };
 }
 
 String _gainLossSummary(Cs2GainLossSeries series, L t) {
@@ -547,9 +628,7 @@ String _gainLossSummary(Cs2GainLossSeries series, L t) {
   final high = series.highestDeltaCents;
   if (low == null || high == null) return t.cs2ChartNoReadings;
   if (low == high) {
-    return t.cs2ChartGainLossUnchanged(
-      _formatDelta(low, series.currency),
-    );
+    return t.cs2ChartGainLossUnchanged(_formatDelta(low, series.currency));
   }
   return t.cs2ChartGainLossBetween(
     _formatDelta(low, series.currency),
@@ -570,8 +649,8 @@ class _SingleGainLossReading extends StatelessWidget {
     final color = delta == 0
         ? luma.textSecondary
         : delta > 0
-            ? luma.success
-            : luma.danger;
+        ? luma.success
+        : luma.danger;
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -645,9 +724,7 @@ String _chartSummary(Cs2PriceSeries series, L t) {
   final high = series.highestCents;
   if (low == null || high == null) return t.cs2ChartNoReadings;
   if (series.isFlat) {
-    return t.cs2ChartUnchangedShown(
-      formatSteamPrice(low, series.currency),
-    );
+    return t.cs2ChartUnchangedShown(formatSteamPrice(low, series.currency));
   }
   return t.cs2ChartBetweenShown(
     formatSteamPrice(low, series.currency),
@@ -758,7 +835,7 @@ class _NotTracked extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-            t.cs2ChartNoHistoryHint,
+              t.cs2ChartNoHistoryHint,
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: luma.textMuted,
@@ -831,7 +908,7 @@ class _ChartEmpty extends StatelessWidget {
           Icon(Icons.timeline_rounded, size: 26, color: luma.textMuted),
           const SizedBox(height: 10),
           Text(
-        t.cs2ChartNoReadingsInRange,
+            t.cs2ChartNoReadingsInRange,
             style: TextStyle(
               color: luma.textSecondary,
               fontSize: 13,
@@ -840,7 +917,7 @@ class _ChartEmpty extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-        t.cs2ChartTryWiderRange,
+            t.cs2ChartTryWiderRange,
             style: TextStyle(color: luma.textMuted, fontSize: 12),
           ),
         ],

@@ -158,9 +158,10 @@ class Cs2MarketEntries extends Table {
   TextColumn get marketHashName => text()();
 
   /// What the user says they paid (or otherwise wants gain/loss measured
-  /// from) for this one copy — a manual figure, never inferred from a
-  /// market reading, since the market price when a copy was added and its
-  /// actual cost are frequently different numbers. Null means no baseline
+  /// from) for this one copy — entered manually or read from its exact
+  /// Steam Market purchase, never inferred from a market reading, since
+  /// the market price when a copy was added and its actual cost are
+  /// frequently different numbers. Null means no baseline
   /// has been set for this copy, in which case its chart has nothing to
   /// compare against and only shows raw price.
   IntColumn get startingPriceCents => integer().nullable()();
@@ -603,6 +604,31 @@ class SteamDatabase extends _$SteamDatabase {
       [steamAssetKey, entryId],
     );
     return true;
+  });
+
+  /// Fills an imported copy's missing cost from its exact Steam purchase.
+  /// The final null check also protects a manual edit made during the read.
+  Future<int> setCs2InventoryPurchasePrice({
+    required String steamAssetKey,
+    required String marketHashName,
+    required int cents,
+    required DateTime purchasedAt,
+  }) => transaction(() async {
+    final asset = await customSelect(
+      'SELECT entry_id FROM cs2_inventory_assets WHERE steam_asset_key = ?',
+      variables: [Variable.withString(steamAssetKey)],
+    ).getSingleOrNull();
+    if (asset == null) return 0;
+    return (update(cs2MarketEntries)..where((e) =>
+          e.id.equals(asset.read<int>('entry_id')) &
+          e.marketHashName.equals(marketHashName) &
+          e.startingPriceCents.isNull(),
+        )).write(
+      Cs2MarketEntriesCompanion(
+        startingPriceCents: Value(cents),
+        startingPriceAt: Value(purchasedAt),
+      ),
+    );
   });
 
   /// Drops the copies imported from [steamId] whose asset is no longer in

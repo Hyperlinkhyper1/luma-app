@@ -44,6 +44,7 @@ import 'features/plugins/installed/steam_tools/steam_scope.dart';
 import 'features/plugins/installed/steam_tools/cs2_bulk_price_api.dart';
 import 'features/plugins/installed/steam_tools/cs2_market_repository.dart';
 import 'features/plugins/installed/steam_tools/cs2_price_history_api.dart';
+import 'features/plugins/installed/steam_tools/cs2_purchase_history_api.dart';
 import 'features/plugins/installed/steam_tools/cs2_market_scope.dart';
 import 'features/plugins/installed/device_health/device_health_repository.dart';
 import 'features/plugins/installed/device_health/device_health_scope.dart';
@@ -282,6 +283,13 @@ class _LumaAppState extends State<LumaApp> {
     pushOfflineSnapshot: (snapshot) => _sync.putCs2OfflineSnapshot(snapshot),
     bulkPrices: Cs2BulkPriceApi(),
     historyApi: Cs2PriceHistoryApi(
+      usdPerUnit: (currency) async {
+        final eur = await FxService.eurPerUnit(currency);
+        final usd = await FxService.eurPerUnit('USD');
+        return eur == null || usd == null ? null : eur / usd;
+      },
+    ),
+    purchaseHistoryApi: Cs2PurchaseHistoryApi(
       usdPerUnit: (currency) async {
         final eur = await FxService.eurPerUnit(currency);
         final usd = await FxService.eurPerUnit('USD');

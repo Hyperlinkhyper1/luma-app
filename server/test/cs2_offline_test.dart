@@ -160,4 +160,48 @@ void main() {
     final body = jsonDecode(await changed.readAsString()) as Map;
     expect((body['points'] as List), hasLength(2));
   });
+
+  test('Orbit switches an existing six-hour schedule to hourly', () async {
+    store.usersById['u1']!.planId = 'orbit';
+    final config = offline.forUser('u1')!;
+    config['intervalHours'] = 6;
+    config['nextCheckAtMs'] = 0;
+    await offline.put('u1', config);
+
+    final response = await get();
+    expect(response.statusCode, 200);
+    final body = jsonDecode(await response.readAsString()) as Map;
+    expect(body['intervalHours'], 1);
+    final next = body['nextCheckAtMs'] as int;
+    final now = DateTime.now().toUtc().millisecondsSinceEpoch;
+    expect(next, greaterThan(now));
+    expect(
+        next - now, lessThanOrEqualTo(const Duration(hours: 1).inMilliseconds));
+    expect(offline.forUser('u1')!['intervalHours'], 1);
+  });
+
+  test('Orbit sees and receives an hourly interval when enabling tracking',
+      () async {
+    store.usersById['u1']!.planId = 'orbit';
+    await offline.deleteForUser('u1');
+    final before = jsonDecode(await (await get()).readAsString()) as Map;
+    expect(before['enabled'], false);
+    expect(before['intervalHours'], 1);
+
+    final response = await handler(Request(
+      'PUT',
+      Uri.parse('http://localhost/api/v1/steam/cs2/offline'),
+      headers: {'Authorization': 'Bearer $token'},
+      body: jsonEncode({
+        'enabled': true,
+        'items': [],
+        'entries': [],
+        'points': [],
+      }),
+    ));
+    expect(response.statusCode, 200);
+    final body = jsonDecode(await response.readAsString()) as Map;
+    expect(body['intervalHours'], 1);
+    expect(offline.forUser('u1')!['intervalHours'], 1);
+  });
 }

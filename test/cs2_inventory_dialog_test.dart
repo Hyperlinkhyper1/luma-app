@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:luma/features/plugins/installed/steam_tools/ui/cs2_inventory_dialog.dart';
+import 'package:luma/l10n/app_localizations.dart';
 
 void main() {
   testWidgets('connects, refreshes and disconnects an inventory', (tester) async {
@@ -8,6 +9,8 @@ void main() {
     var refreshes = 0;
     var disconnected = false;
     await tester.pumpWidget(MaterialApp(
+      localizationsDelegates: L.localizationsDelegates,
+      supportedLocales: L.supportedLocales,
       home: Scaffold(
         body: Cs2InventoryDialog(
           steamId: null,

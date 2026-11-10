@@ -26740,6 +26740,19 @@ class LNl extends L {
   String get steamCs2SignInButton => 'Inloggen bij Steam';
 
   @override
+  String get steamCs2PurchaseHistoryExplain =>
+      'Log in bij Steam om aankoopprijzen van de Communitymarkt, inclusief aankoopkosten, te importeren voor overeenkomende inventarisitems en hun winst of verlies te zien. Andere valuta worden tegen de huidige wisselkoers omgerekend naar USD. Zelf ingevoerde kosten blijven behouden. Stel kosten voor cadeaus, ruilen en geopende kisten zelf in.';
+
+  @override
+  String get steamCs2PurchaseHistoryLoading =>
+      'Steam-aankoopprijzen importeren…';
+
+  @override
+  String steamCs2PurchaseHistoryFailed(String error) {
+    return 'Aankoopgeschiedenis: $error Je inventaris en eerder opgeslagen kosten blijven behouden.';
+  }
+
+  @override
   String get steamCs2SignOutButton => 'Uitloggen bij Steam';
 
   @override

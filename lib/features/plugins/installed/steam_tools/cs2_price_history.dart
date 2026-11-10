@@ -47,9 +47,13 @@ class Cs2PriceSeries {
     required this.samples,
     required this.range,
     required this.currency,
-  });
+    List<Cs2PriceSample>? observations,
+  }) : observations = observations ?? samples;
 
   final List<Cs2PriceSample> samples;
+
+  /// Actual readings, excluding synthetic portfolio endpoints.
+  final List<Cs2PriceSample> observations;
   final Cs2PriceRange range;
   final String currency;
 
@@ -70,9 +74,7 @@ class Cs2PriceSeries {
   bool get isFlat => lowestCents != null && lowestCents == highestCents;
 }
 
-/// The most points a CS2 chart is handed. Beyond this a line of hourly
-/// readings is mostly jitter at chart width; averaging neighbours into time
-/// buckets keeps the trend and drops the noise.
+/// Default limit for callers that choose to average a long history.
 const kCs2MaxChartSamples = 80;
 
 /// Averages [samples] (oldest first) into at most [maxSamples] equal time
@@ -136,7 +138,8 @@ Cs2PriceSeries buildCs2PriceSeries(
   ];
 
   return Cs2PriceSeries(
-    samples: smoothCs2Samples(samples),
+    samples: samples,
+    observations: samples,
     range: range,
     currency: currency,
   );
@@ -207,6 +210,7 @@ Cs2PriceSeries buildCs2PortfolioSeries(
   }
 
   final samples = <Cs2PriceSample>[];
+  final observations = <Cs2PriceSample>[];
   void add(DateTime at) {
     if (samples.isNotEmpty && samples.last.at == at) {
       samples[samples.length - 1] = Cs2PriceSample(at: at, priceCents: total);
@@ -228,12 +232,21 @@ Cs2PriceSeries buildCs2PortfolioSeries(
     if (seeded && samples.isEmpty) add(start!);
     apply(p);
     add(p.observedAt);
+    if (units.containsKey(p.marketHashName) &&
+        (p.lowestCents ?? p.medianCents) != null) {
+      final observation = Cs2PriceSample(at: p.observedAt, priceCents: total);
+      if (observations.isNotEmpty && observations.last.at == p.observedAt) {
+        observations[observations.length - 1] = observation;
+      } else {
+        observations.add(observation);
+      }
+    }
   }
   if (seeded && samples.isEmpty) add(start!);
   if (samples.isNotEmpty && samples.last.at.isBefore(now)) add(now);
-
   return Cs2PriceSeries(
-    samples: smoothCs2Samples(samples),
+    samples: samples,
+    observations: observations,
     range: range,
     currency: currency,
   );
@@ -261,9 +274,11 @@ class Cs2GainLossSeries {
     required this.range,
     required this.currency,
     required this.startingPriceCents,
-  });
+    List<Cs2GainLossSample>? observations,
+  }) : observations = observations ?? samples;
 
   final List<Cs2GainLossSample> samples;
+  final List<Cs2GainLossSample> observations;
   final Cs2PriceRange range;
   final String currency;
   final int startingPriceCents;
@@ -296,6 +311,13 @@ Cs2GainLossSeries buildCs2GainLossSeries(
     Cs2GainLossSeries(
       samples: [
         for (final sample in priceSeries.samples)
+          Cs2GainLossSample(
+            at: sample.at,
+            deltaCents: sample.priceCents - startingPriceCents,
+          ),
+      ],
+      observations: [
+        for (final sample in priceSeries.observations)
           Cs2GainLossSample(
             at: sample.at,
             deltaCents: sample.priceCents - startingPriceCents,

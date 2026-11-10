@@ -495,4 +495,17 @@ void main() {
     expect(lumaDepth, 1, reason: 'projects live inside .wrap');
     expect(fwDepth, 1);
   });
+
+  test('a short LUMA_FISHING_WATERS_KEY switches the bridge off', () {
+    expect(
+        ServerConfig.fromEnvironment(
+            const {'LUMA_FISHING_WATERS_KEY': 'game-secret'}).fishingWatersKey,
+        isNull);
+    final strong = 'k' * ServerConfig.minFishingWatersKeyLength;
+    expect(
+        ServerConfig.fromEnvironment({'LUMA_FISHING_WATERS_KEY': ' $strong '})
+            .fishingWatersKey,
+        strong);
+    expect(ServerConfig.fromEnvironment(const {}).fishingWatersKey, isNull);
+  });
 }

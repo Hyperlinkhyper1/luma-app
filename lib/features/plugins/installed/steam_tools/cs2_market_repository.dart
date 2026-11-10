@@ -11,6 +11,8 @@ import 'cs2_inventory_api.dart';
 import 'cs2_market_api.dart';
 import 'cs2_models.dart';
 import 'cs2_price_history_api.dart';
+import 'cs2_purchase_history_api.dart';
+import 'cs2_steam_session.dart';
 import 'data/steam_database.dart';
 
 typedef Cs2OfflineSnapshotFetcher = Future<Map<String, dynamic>?> Function();
@@ -35,6 +37,7 @@ class Cs2MarketRepository extends ChangeNotifier {
     Cs2OfflineSnapshotPusher? pushOfflineSnapshot,
     Cs2BulkPriceApi? bulkPrices,
     Cs2PriceHistoryApi? historyApi,
+    this._purchaseHistoryApi,
     this.priceCheckSpacing = const Duration(milliseconds: 3500),
     this.priceRateLimitRetryDelay = const Duration(minutes: 1),
     this.rateLimitPause = const Duration(minutes: 15),
@@ -66,6 +69,7 @@ class Cs2MarketRepository extends ChangeNotifier {
   /// Steam's own sale history, read once per listing to give a freshly
   /// imported inventory a real chart instead of a line that starts today.
   final Cs2PriceHistoryApi? _historyApi;
+  final Cs2PurchaseHistoryApi? _purchaseHistoryApi;
   final Cs2OfflineSnapshotFetcher? _fetchOfflineSnapshot;
   final Cs2OfflineSnapshotPusher? _pushOfflineSnapshot;
 
@@ -123,8 +127,8 @@ class Cs2MarketRepository extends ChangeNotifier {
   /// is alive, same limitation [SyncService]'s periodic sync has. [
   /// _catchUpSweep] is what keeps the cadence honest across restarts —
   /// without it, a device that's only ever opened once a day would never
-  /// actually get six-hourly readings, just one per launch.
-  static const _sweepInterval = Duration(hours: 6);
+  /// actually get hourly readings, just one per launch.
+  static const _sweepInterval = Duration(hours: 1);
   Timer? _sweepTimer;
 
   bool get catalogLoaded => _catalogLoaded;
@@ -320,8 +324,9 @@ class Cs2MarketRepository extends ChangeNotifier {
         ),
       );
       final key = entry['steamAssetKey'];
-      assetKeys.add(key is String && key.isNotEmpty && usedAssetKeys.add(key)
-          ? key : null);
+      assetKeys.add(
+        key is String && key.isNotEmpty && usedAssetKeys.add(key) ? key : null,
+      );
     }
 
     final points = <Cs2MarketPricePointsCompanion>[];
@@ -496,7 +501,8 @@ class Cs2MarketRepository extends ChangeNotifier {
 
   /// Current market value of every tracked copy, in the listing currency
   /// cents (CS2 prices are currently displayed and stored as USD).
-  Stream<int> watchTrackedPortfolioCents() => watchAllEntries().asyncMap((entries) async {
+  Stream<int> watchTrackedPortfolioCents() =>
+      watchAllEntries().asyncMap((entries) async {
         final items = {
           for (final item in await _db.allCs2Items()) item.marketHashName: item,
         };
@@ -634,13 +640,18 @@ class Cs2MarketRepository extends ChangeNotifier {
 
   /// Syncs inventory copies by Steam asset identity: new assets are added,
   /// and copies whose asset left the inventory are dropped. [inventory] must
-  /// be a complete snapshot. A missing cost is kept unknown until the user
-  /// supplies the price they paid or a key cost.
-  Future<int> importInventory(String steamId, List<Cs2InventoryItem> inventory) async {
+  /// be a complete snapshot. Missing costs stay unknown until a signed-in
+  /// purchase history read or the user supplies the price paid or a key cost.
+  Future<int> importInventory(
+    String steamId,
+    List<Cs2InventoryItem> inventory,
+  ) async {
     var added = 0;
     for (final asset in inventory) {
       final hash = asset.marketHashName;
-      final wearMatch = RegExp(r' \((Factory New|Minimal Wear|Field-Tested|Well-Worn|Battle-Scarred)\)$').firstMatch(hash);
+      final wearMatch = RegExp(
+        r' \((Factory New|Minimal Wear|Field-Tested|Well-Worn|Battle-Scarred)\)$',
+      ).firstMatch(hash);
       final wear = wearMatch?.group(1);
       var base = wearMatch == null ? hash : hash.substring(0, wearMatch.start);
       final statTrak = base.contains('StatTrak™ ');
@@ -651,7 +662,12 @@ class Cs2MarketRepository extends ChangeNotifier {
       if (!souvenir) {
         for (final candidate in _catalog) {
           if (candidate.name == base &&
-              cs2MarketHashName(baseName: candidate.name, wear: wear, statTrak: statTrak) == hash) {
+              cs2MarketHashName(
+                    baseName: candidate.name,
+                    wear: wear,
+                    statTrak: statTrak,
+                  ) ==
+                  hash) {
             skin = candidate;
             break;
           }
@@ -662,12 +678,17 @@ class Cs2MarketRepository extends ChangeNotifier {
           marketHashName: hash,
           skinId: skin?.id ?? 'steam:$hash',
           displayName: skin?.name ?? hash,
-          weaponName: skin?.weaponName ??
-              (asset.typeName.isNotEmpty ? asset.typeName : base.split(' | ').first),
+          weaponName:
+              skin?.weaponName ??
+              (asset.typeName.isNotEmpty
+                  ? asset.typeName
+                  : base.split(' | ').first),
           rarityName: skin?.rarityName ?? asset.rarityName,
           rarityColor: skin?.rarityColor ?? asset.rarityColor ?? '#b0c3d9',
           caseName: Value(skin?.caseName),
-          imageUrl: asset.iconUrl.isNotEmpty ? asset.iconUrl : (skin?.imageUrl ?? ''),
+          imageUrl: asset.iconUrl.isNotEmpty
+              ? asset.iconUrl
+              : (skin?.imageUrl ?? ''),
           wear: Value(wear),
           statTrak: Value(statTrak),
         ),
@@ -675,9 +696,9 @@ class Cs2MarketRepository extends ChangeNotifier {
       );
       if (inserted) added++;
     }
-    final removed = await _db.removeCs2InventoryAssetsNotIn(
-      steamId, {for (final asset in inventory) steamId + ':' + asset.assetId},
-    );
+    final removed = await _db.removeCs2InventoryAssetsNotIn(steamId, {
+      for (final asset in inventory) steamId + ':' + asset.assetId,
+    });
     if (removed > 0 && added == 0) {
       StorageGuard.instance.scheduleRefresh();
       _queueOfflinePush();
@@ -692,6 +713,52 @@ class Cs2MarketRepository extends ChangeNotifier {
       }
     }
     return added;
+  }
+
+  /// Imports purchase costs for this account's copies with no baseline.
+  /// Existing costs and manually tracked copies are left as the user set them.
+  Future<void> importPurchaseHistory(
+    String steamId,
+    Cs2SteamSession session, {
+    bool Function()? isCancelled,
+  }) async {
+    final api = _purchaseHistoryApi;
+    if (api == null || _disposed) return;
+    final keys = await _db.allCs2InventoryAssetKeys();
+    final entries = await _db.allCs2Entries();
+    final prefix = '$steamId:';
+    final assets = <String, String>{};
+    for (final entry in entries) {
+      final key = keys[entry.id];
+      if (entry.startingPriceCents == null &&
+          key != null &&
+          key.startsWith(prefix)) {
+        assets[key.substring(prefix.length)] = entry.marketHashName;
+      }
+    }
+    bool cancelled() => _disposed || (isCancelled?.call() ?? false);
+    await for (final purchases in api.fetch(
+      steamId: steamId,
+      session: session,
+      assets: assets,
+      isCancelled: cancelled,
+    )) {
+      if (cancelled()) return;
+      var updated = 0;
+      for (final purchase in purchases) {
+        if (cancelled()) break;
+        updated += await _db.setCs2InventoryPurchasePrice(
+          steamAssetKey: '$prefix${purchase.assetId}',
+          marketHashName: purchase.marketHashName,
+          cents: purchase.cents,
+          purchasedAt: purchase.at,
+        );
+      }
+      if (updated > 0) {
+        StorageGuard.instance.scheduleRefresh();
+        _queueOfflinePush();
+      }
+    }
   }
 
   /// Stops tracking one copy. Its listing's shared price and history are
@@ -716,22 +783,22 @@ class Cs2MarketRepository extends ChangeNotifier {
   /// How long a tracked listing's price is trusted before [refreshPrice]
   /// bothers Steam again. Shorter than the game store's 12h: a market order
   /// book moves through the day in a way a store's list price does not.
-  static const _priceFreshness = Duration(hours: 3);
+  static const _priceFreshness = Duration(hours: 1);
 
-  /// Refreshes one listing. Without [force] the bulk file answers whenever
-  /// it covers the listing, so opening a detail page never costs a Steam
-  /// request; [force] (an explicit refresh) asks Steam for the live order
-  /// book, unless a sweep is already using — or resting from — Steam.
+  /// Refreshes one listing from Steam when its last reading is stale. The
+  /// bulk file can provide a fallback while Steam requests are busy or paused.
   Future<void> refreshPrice(String marketHashName, {bool force = false}) async {
     if (_fetchingPrice.contains(marketHashName)) return;
     final row = await _db.cs2Item(marketHashName);
     final at = row?.priceFetchedAt;
-    if (!force && at != null && DateTime.now().difference(at) < _priceFreshness) {
+    if (!force &&
+        at != null &&
+        DateTime.now().difference(at) < _priceFreshness) {
       return;
     }
     final steamBusy =
         _priceSweepStarting || _priceTotal > 0 || _pausedUntil != null;
-    if (!force || steamBusy) {
+    if (steamBusy) {
       final bulk = await _bulkPrices?.fetch();
       final cents = bulk?.cents[marketHashName];
       if (bulk != null && cents != null) {
@@ -740,17 +807,21 @@ class Cs2MarketRepository extends ChangeNotifier {
         }
         return;
       }
-      if (steamBusy) return;
+      return;
     }
 
     _fetchingPrice.add(marketHashName);
     notifyListeners();
     try {
       final price = await _api.priceOverview(marketHashName);
+      if (price == null ||
+          (price.lowestCents == null && price.medianCents == null)) {
+        return;
+      }
       await _db.recordCs2Price(
         marketHashName,
-        lowestCents: price?.lowestCents,
-        medianCents: price?.medianCents,
+        lowestCents: price.lowestCents,
+        medianCents: price.medianCents,
         currency: 'USD',
       );
       StorageGuard.instance.scheduleRefresh();
@@ -789,12 +860,13 @@ class Cs2MarketRepository extends ChangeNotifier {
     if (completion != null && !completion.isCompleted) completion.complete();
   }
 
-  /// Prices every tracked listing: the bulk file first, in one request, and
-  /// Steam one listing at a time only for whatever the file doesn't cover.
-  /// A sweep Steam keeps refusing pauses and resumes later by itself.
+  /// Checks each tracked listing against Steam's live market price. A sweep
+  /// Steam keeps refusing pauses and resumes later by itself.
   Future<void> refreshAllPrices({bool scheduled = false}) async {
-    if ((scheduled && _offlineTrackingEnabled) || _disposed ||
-        _priceTotal > 0 || _priceSweepStarting ||
+    if ((scheduled && _offlineTrackingEnabled) ||
+        _disposed ||
+        _priceTotal > 0 ||
+        _priceSweepStarting ||
         (scheduled && _pausedUntil != null)) {
       return;
     }
@@ -803,30 +875,9 @@ class Cs2MarketRepository extends ChangeNotifier {
     _resumeTimer = null;
     _pausedUntil = null;
     try {
-      var items = await _db.watchTrackedCs2Items().first;
+      final items = await _db.watchTrackedCs2Items().first;
       if (items.isEmpty || _disposed) return;
-      final bulk = await _bulkPrices?.fetch();
-      if (bulk != null && !_disposed) {
-        final fresh = <String, int>{};
-        for (final item in items) {
-          final cents = bulk.cents[item.marketHashName];
-          final at = item.priceFetchedAt;
-          if (cents != null && (at == null || _bulkIsNewer(bulk, at))) {
-            fresh[item.marketHashName] = cents;
-          }
-        }
-        await _db.recordCs2Prices(fresh, observedAt: bulk.updatedAt);
-        if (fresh.isNotEmpty) {
-          StorageGuard.instance.scheduleRefresh();
-          _queueOfflinePush();
-        }
-        items = [
-          for (final item in items)
-            if (!bulk.cents.containsKey(item.marketHashName)) item,
-        ];
-        unawaited(backfillHistory());
-        if (items.isEmpty || _disposed) return;
-      }
+      unawaited(backfillHistory());
       // Start with unpriced and least recently checked items so a later sweep
       // can progress even if Steam rate-limits it again.
       items.sort((a, b) {
@@ -850,10 +901,14 @@ class Cs2MarketRepository extends ChangeNotifier {
             try {
               final price = await _api.priceOverview(item.marketHashName);
               if (_cancelPriceRefresh || _disposed) break;
+              if (price == null ||
+                  (price.lowestCents == null && price.medianCents == null)) {
+                break;
+              }
               await _db.recordCs2Price(
                 item.marketHashName,
-                lowestCents: price?.lowestCents,
-                medianCents: price?.medianCents,
+                lowestCents: price.lowestCents,
+                medianCents: price.medianCents,
                 currency: 'USD',
               );
               break;
@@ -934,7 +989,8 @@ class Cs2MarketRepository extends ChangeNotifier {
           if (!_backfillTried.contains(item.marketHashName) &&
               (first[item.marketHashName] == null ||
                   first[item.marketHashName]!.isAfter(
-                      item.trackedAt.subtract(const Duration(days: 1)))))
+                    item.trackedAt.subtract(const Duration(days: 1)),
+                  )))
             item.marketHashName,
       ];
       _backfillDone = 0;
@@ -1015,8 +1071,7 @@ class Cs2MarketRepository extends ChangeNotifier {
 
   /// Runs an immediate sweep if any tracked listing has gone longer than
   /// [_sweepInterval] without a reading â€” otherwise a device that's only
-  /// opened once a day would get one reading per launch rather than the four
-  /// a real 6h cadence implies. Only fires once, on construction; the
+  /// reopened after a gap gets a fresh reading. Only fires once, on construction; the
   /// periodic timer takes over from there for as long as the app stays open.
   Future<void> _catchUpSweep() async {
     if (!_startupSweepReady) return;
