@@ -476,6 +476,14 @@ let flowerCount = 0;
   }
 }
 
+// grass tufts
+for (let x = -30; x <= 30; x++) for (let z = -30; z <= 30; z++) {
+  if (!inside(x, z) || isWater(x, z) || pathSet.has(pk(x, z)) || hash2(x * 11 + 5, z * 13) > 0.2) continue;
+  if (Math.abs(x - PX) <= 11 && Math.abs(z - PZ) <= 12) continue;
+  const t = topY(x, z);
+  if (!V.has(x, t + 1, z)) put(x, t + 1, z, hash2(x, z) < 0.5 ? 0x7C9440 : JADE2, 1, 0.04);
+}
+
 const world = new THREE.Group(); scene.add(world);
 V.build(world);
 
@@ -496,10 +504,10 @@ function islet(px, py, pz, r, deco) {
   v.build(g); g.position.set(px, py, pz); g.userData = { y: py, ph: rnd() * 6 };
   scene.add(g); islets.push(g);
 }
-islet(-46, 8, -12, 7, 'gate');
-islet(44, -4, -26, 6, 'cairn');
-islet(34, 12, 40, 5, 'rocks');
-islet(-38, -10, 34, 4, 'rocks');
+islet(-48, 8, -12, 9, 'gate');
+islet(46, -4, -26, 7, 'cairn');
+islet(36, 12, 42, 6, 'rocks');
+islet(-40, -10, 36, 5, 'rocks');
 
 /* ---------- water ---------- */
 const waterMat = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.8, roughness: 0.12, metalness: 0.15 });
@@ -642,11 +650,11 @@ function applyTime(t) {
   } else {
     sun.position.copy(sunDir).multiplyScalar(-120);
     sun.color.copy(C.moon);
-    sun.intensity = 1.1 * smooth(0, 0.22, -s);
+    sun.intensity = 1.9 * smooth(0, 0.22, -s);
   }
   hemi.color.copy(C.hemiNight).lerp(C.hemiDay, day).lerp(C.duskHor, tw * 0.3);
   hemi.groundColor.copy(C.gNight).lerp(C.gDay, day);
-  hemi.intensity = 0.75 + 0.45 * day;
+  hemi.intensity = 1.05 + 0.15 * day;
   matGlow.emissiveIntensity = 0.3 + 1.7 * nightF;
   starMat.opacity = nightF * 0.9;
   flyMat.opacity = nightF * 0.9;
