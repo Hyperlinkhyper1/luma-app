@@ -103,8 +103,8 @@ void main() {
       // Each rating says what it is, since there is no header row above it:
       // one per card, plus the sort button naming the current sort.
       expect(find.text('Intelligence'), findsNWidgets(3));
-      expect(find.text('Coding'), findsNWidgets(2));
-      expect(find.text('Agent'), findsNWidgets(2));
+      expect(find.text('Coding'), findsNothing);
+      expect(find.text('Agent'), findsNothing);
 
       // The column headers — the desktop table's only sort affordance — are
       // gone, so the card layout must be offering its own.

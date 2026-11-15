@@ -352,7 +352,8 @@ void main() {
           after['$_id:a']!.startingPriceAt!.millisecondsSinceEpoch,
           _time * 1000,
         );
-        await db.recordCs2Prices({_hash: 300}, observedAt: DateTime.now());
+        await db.recordCs2Price(_hash,
+            lowestCents: null, medianCents: 300, currency: 'USD');
         final item = (await db.allCs2Items()).single;
         expect(
           item.lastMedianCents! - after['$_id:a']!.startingPriceCents!,

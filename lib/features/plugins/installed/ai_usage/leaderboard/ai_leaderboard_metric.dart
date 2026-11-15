@@ -11,8 +11,6 @@ import 'ai_model.dart';
 enum AiMetric {
   llmStats(baseUnit: ''),
   reasoning(baseUnit: ''),
-  coding(baseUnit: ''),
-  agent(baseUnit: ''),
   math(baseUnit: ''),
   codeArena(baseUnit: 'Elo'),
   blendedPrice(baseUnit: r'$/M', higherIsBetter: false),
@@ -35,8 +33,6 @@ enum AiMetric {
   String get label => switch (this) {
         AiMetric.llmStats => currentL.aiLeaderboardMetricIntelligence,
         AiMetric.reasoning => currentL.aiLeaderboardMetricReasoning,
-        AiMetric.coding => currentL.aiLeaderboardMetricCoding,
-        AiMetric.agent => currentL.aiLeaderboardMetricAgent,
         AiMetric.math => currentL.aiLeaderboardMetricMath,
         AiMetric.codeArena => 'Code Arena',
         AiMetric.blendedPrice => currentL.aiLeaderboardMetricBlendedPrice,
@@ -61,8 +57,6 @@ enum AiMetric {
   double? valueOf(AiModel m) => switch (this) {
         AiMetric.llmStats => m.llmStatsIndex,
         AiMetric.reasoning => m.reasoningIndex,
-        AiMetric.coding => m.codingIndex,
-        AiMetric.agent => m.agentIndex,
         AiMetric.math => m.mathIndex,
         AiMetric.codeArena => m.codeArena,
         AiMetric.blendedPrice => m.blendedPricePerM,

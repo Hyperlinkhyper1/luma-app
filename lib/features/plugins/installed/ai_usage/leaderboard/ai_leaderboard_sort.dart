@@ -10,8 +10,6 @@ enum AiLeaderboardColumn {
   rank(),
   name(defaultDescending: false),
   llmStats(),
-  coding(),
-  agent(),
   codeArena(),
   params(),
   context(),
@@ -28,8 +26,6 @@ enum AiLeaderboardColumn {
         AiLeaderboardColumn.rank => currentL.aiLeaderboardColumnRank,
         AiLeaderboardColumn.name => currentL.aiLeaderboardColumnName,
         AiLeaderboardColumn.llmStats => currentL.aiLeaderboardColumnIntelligence,
-        AiLeaderboardColumn.coding => currentL.aiLeaderboardColumnCoding,
-        AiLeaderboardColumn.agent => currentL.aiLeaderboardColumnAgent,
         AiLeaderboardColumn.codeArena => 'CODE ARENA',
         AiLeaderboardColumn.params => currentL.aiLeaderboardColumnParams,
         AiLeaderboardColumn.context => currentL.aiLeaderboardColumnContext,
@@ -42,8 +38,6 @@ enum AiLeaderboardColumn {
         AiLeaderboardColumn.name => currentL.aiLeaderboardColumnNameHelp,
         AiLeaderboardColumn.llmStats =>
           currentL.aiLeaderboardColumnIntelligenceHelp,
-        AiLeaderboardColumn.coding => currentL.aiLeaderboardColumnCodingHelp,
-        AiLeaderboardColumn.agent => currentL.aiLeaderboardColumnAgentHelp,
         AiLeaderboardColumn.codeArena =>
           currentL.aiLeaderboardColumnCodeArenaHelp,
         AiLeaderboardColumn.params => currentL.aiLeaderboardColumnParamsHelp,
@@ -114,8 +108,6 @@ Comparable<Object>? _sortValue(AiModel m, AiLeaderboardColumn column) =>
       AiLeaderboardColumn.rank ||
       AiLeaderboardColumn.llmStats =>
         m.llmStatsIndex,
-      AiLeaderboardColumn.coding => m.codingIndex,
-      AiLeaderboardColumn.agent => m.agentIndex,
       AiLeaderboardColumn.codeArena => m.codeArena,
       AiLeaderboardColumn.params => m.parametersB,
       AiLeaderboardColumn.context => m.contextTokens,

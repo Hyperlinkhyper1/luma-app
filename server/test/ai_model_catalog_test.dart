@@ -604,6 +604,43 @@ void main() {
       expect(out.single.reasoningIndex, 80);
     });
 
+    test('prefers performance_v3 and survives the old performance going null',
+        () {
+      final out = aaOverlays([
+        {
+          'name': 'GPT-6 Astra',
+          'evaluations': {'artificial_analysis_intelligence_index': 45.0},
+          'performance_v3': {
+            'mean_output_tokens_per_second': 98.2,
+            'mean_time_to_first_token_seconds': 1.2,
+            'mean_time_to_first_answer_token_seconds': 9.5,
+          },
+          'performance': {
+            'median_output_tokens_per_second': null,
+            'median_time_to_first_token_seconds': null,
+          },
+        },
+        {
+          'name': 'Claude Opus 5.5',
+          'evaluations': {'artificial_analysis_intelligence_index': 54.0},
+          'performance_v3': null,
+          'performance': {
+            'median_output_tokens_per_second': 76.0,
+            'median_time_to_first_token_seconds': 2.0,
+          },
+        },
+      ], [
+        known('openai/gpt-6-astra', 'GPT-6 Astra'),
+        known('anthropic/claude-opus-5.5', 'Claude Opus 5.5'),
+      ]);
+
+      final byId = {for (final m in out) m.id: m};
+      expect(byId['openai/gpt-6-astra']!.speedTokensPerSec, 98.2);
+      expect(byId['openai/gpt-6-astra']!.latencyMs, 1200);
+      expect(byId['anthropic/claude-opus-5.5']!.speedTokensPerSec, 76.0);
+      expect(byId['anthropic/claude-opus-5.5']!.latencyMs, 2000);
+    });
+
     test('each effort tier keeps its own scores, speed and price', () {
       final out = aaOverlays([
         {

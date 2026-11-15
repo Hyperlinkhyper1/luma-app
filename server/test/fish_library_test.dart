@@ -502,6 +502,126 @@ void main() {
     expect(preview['skin'], isNotNull);
   });
 
+  group('smooth skins', () {
+    // Packed parts: chest side/back/belly spheres, then a fin.
+    List<Object> part(List<num> size, List<num> pos, String color) =>
+        [1, ...size, ...pos, 1, 0, 0, 0, 1, 0, 0, 0, 1, color, 'SmoothPlastic', 0];
+    final parts = [
+      part([2.4, 0.96, 0.48], [0.4, 0, 0], '#c41e2e'),
+      part([2.364, 0.8256, 0.4858], [0.4, 0.1152, 0], '#78101e'),
+      part([2.328, 0.768, 0.4829], [0.4, -0.1344, 0], '#ec786e'),
+      part([0.4, 0.3, 0.01], [-1.6, 0, 0], '#333333'),
+    ];
+    Map<String, dynamic> raw({List<num> shift = const [0, 0, 0]}) => {
+          'id': 'Trout',
+          'scale': 4,
+          'mode': 'bands',
+          'rings': [
+            [0.4, 0.05, -0.05, 0.03],
+            [0.1, 0.12, -0.12, 0.06],
+            [-0.4, 0.02, -0.02, 0.01],
+          ],
+          'swatch': {
+            'Side': [2.4, 0.96, 0.48, 0.4 - shift[0], 0 - shift[1], 0 - shift[2]],
+            'Back': [2.364, 0.8256, 0.4858, 0.4 - shift[0], 0.1152 - shift[1], 0 - shift[2]],
+            'Belly': [2.328, 0.768, 0.4829, 0.4 - shift[0], -0.1344 - shift[1], 0 - shift[2]],
+          },
+          'hide': [
+            [2.4, 0.96, 0.48, 0.4 - shift[0], 0 - shift[1], 0 - shift[2]],
+            [2.364, 0.8256, 0.4858, 0.4 - shift[0], 0.1152 - shift[1], 0 - shift[2]],
+            [2.328, 0.768, 0.4829, 0.4 - shift[0], -0.1344 - shift[1], 0 - shift[2]],
+          ],
+        };
+
+    test('fit the export: swatch and hidden parts by index, rings in studs', () {
+      final skin = fitSkin(parts, raw())!;
+      expect(skin['swatch'], [0, 1, 2]);
+      expect(skin['hide'], [0, 1, 2]);
+      expect(skin['mode'], 'bands');
+      expect(skin['z'], 0);
+      expect((skin['rings'] as List).first, [1.6, 0.2, -0.2, 0.12]);
+    });
+
+    test('follow an export that moved the whole model', () {
+      final skin = fitSkin(parts, raw(shift: [0.5, -0.25, 0.1]))!;
+      expect(skin['swatch'], [0, 1, 2]);
+      expect(skin['z'], 0.1);
+      expect((skin['rings'] as List).first, [2.1, -0.05, -0.45, 0.12]);
+    });
+
+    test('give up when the parts are from another build', () {
+      final other = [...parts]..removeAt(1);
+      expect(fitSkin(other, raw()), isNull);
+      expect(fitSkin(parts, {'id': 'Trout', 'none': true}), isNull);
+    });
+
+    test('read only well-formed FISHSKIN lines', () {
+      final lines = fishSkinLines('FISHCHECK 1\nFISHSKIN {"id":"Trout","none":true}\r\n'
+          'FISHSKIN {broken\nFISHSKINERR Pike no Side swatch\n');
+      expect(lines.keys, ['Trout']);
+    });
+
+    test('served models gain the game\'s skin', () async {
+      final bundles = <String>[];
+      final lib = library(luau: (source) async {
+        bundles.add(source);
+        return (code: 0, stdout: 'FISHSKIN ${jsonEncode(raw())}\n', stderr: '');
+      });
+      final models = Directory('${dir.path}/wiki/source/public/models/fish')
+        ..createSync(recursive: true);
+      File('${models.path}/trout.json')
+          .writeAsStringSync(jsonEncode({'id': 'Trout', 'parts': parts, 'variants': {}}));
+      final model = await _json(lib.model(_get('/'), 'trout'));
+      expect((model['skin'] as Map)['swatch'], [0, 1, 2]);
+      expect(bundles.single, contains(fishSkinScript));
+      expect(bundles.single, contains('FishSpecies["Trout"]'));
+      // Built once per game commit, then kept.
+      await _json(lib.model(_get('/'), 'trout'));
+      expect(bundles, hasLength(1));
+      expect(File('${dir.path}/fish_skins.json').existsSync(), isTrue);
+    });
+
+    test('previews carry the skin, and a new sphere-only fish goes back', () async {
+      final prompts = <String>[];
+      final spheres = _trout.replaceFirst(
+          'b:fishBody(0.21, 0.12, {', 'b:layered("Body", Vector3.zero, Vector3.one, {');
+      final lib = library(
+        replies: [spheres, _trout],
+        prompts: prompts,
+        luau: (source) async {
+          final fish = _fakeExport(source);
+          final skin = source.contains('b:fishBody(')
+              ? {
+                  'id': fish['id'], 'scale': 4, 'mode': 'bands',
+                  'rings': [[0.5, 0.05, -0.05, 0.04], [-0.5, 0.02, -0.02, 0.01]],
+                  'swatch': {'Side': [1, 0.4, 0.3, 0, 0, 0]},
+                  'hide': [[1, 0.4, 0.3, 0, 0, 0]],
+                }
+              : {'id': fish['id'], 'none': true};
+          return (
+            code: 0,
+            stdout: 'FISHCHECK 1\nFISHSKIN ${jsonEncode(skin)}\n${jsonEncode(fish)}\n',
+            stderr: ''
+          );
+        },
+      );
+      final created = await _json(lib.createJob(_post('/', {
+        'mode': 'new', 'provider': 'openrouter', 'model': 'm', 'effort': '', 'prompt': '',
+        'fields': {'name': 'Ember Snapper', 'pools': ['OpenSea']},
+      })));
+      await _settle(lib, created['id'] as String);
+      final job = await _json(lib.job(_get('/'), created['id'] as String));
+      expect(job['status'], 'ready', reason: '${job['error']}');
+      expect(prompts, hasLength(2));
+      expect(prompts.last, contains('smooth 3D mesh skin'));
+      final preview = jsonDecode(
+          await (await lib.preview(_get('/'), created['id'] as String)).readAsString());
+      expect(preview['skin']['swatch'], [0, 0, 0]);
+      expect(preview['skin']['hide'], [0]);
+      expect(preview['skin']['rings'][0], [2, 0.2, -0.2, 0.16]);
+    });
+  });
+
   test('a failing preview is retried, then the job fails', () async {
     final lib = library(
         replies: [_trout, _trout, _trout],

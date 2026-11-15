@@ -500,6 +500,67 @@ void main() {
     expect(((byId(again, 'Playtime'))['rows'] as List).first['score'], 7200);
   });
 
+  test('every metric has an all-time, monthly and weekly board', () async {
+    final (_, body) = await send('GET', '/api/v1/fishing-waters/leaderboards');
+    expect(body['periods'], ['all', 'month', 'week']);
+    final boards = (body['boards'] as List).cast<Map<String, dynamic>>();
+    for (final metric in ['level', 'caught', 'earned', 'playtime']) {
+      expect(
+          {for (final b in boards) if (b['metric'] == metric) b['period']},
+          {'all', 'month', 'week'},
+          reason: metric);
+    }
+    expect([for (final b in boards) if (b['noticeboard'] == true) b['id']],
+        ['Level', 'WeeklyXP', 'Caught', 'WeeklyCaught', 'Earned', 'WeeklyEarned']);
+    expect([for (final b in boards) if (b['weekly'] == true) b['period']],
+        everyElement('week'));
+  });
+
+  test('monthly boards need their month and a later month wins', () async {
+    Map<String, dynamic> monthly(int readAt, int? month, int userId) => {
+          'readAt': readAt,
+          if (month != null) 'month': month,
+          'rows': [
+            {'userId': userId, 'name': 'a$userId', 'score': 10}
+          ],
+        };
+    Future<void> beat(Map<String, dynamic> boards) => send(
+        'POST', '/api/v1/fishing-waters/heartbeat',
+        json: {...heartbeatBody(), 'leaderboards': boards},
+        gameKey: 'game-secret');
+    Future<Map<String, dynamic>> board(String id) async {
+      final (_, body) =
+          await send('GET', '/api/v1/fishing-waters/leaderboards');
+      return (body['boards'] as List)
+          .cast<Map<String, dynamic>>()
+          .firstWhere((b) => b['id'] == id);
+    }
+
+    const november = 1793491200, december = 1796083200;
+    await beat({'MonthlyEarned': monthly(5000, null, 1)});
+    expect((await board('MonthlyEarned'))['rows'], isEmpty);
+
+    await beat({
+      'MonthlyEarned': monthly(5000, november, 2),
+      'WeeklyPlaytime': {
+        'readAt': 5000,
+        'week': 1792972800,
+        'rows': [
+          {'userId': 5, 'name': 'w', 'score': 600}
+        ],
+      },
+    });
+    expect((await board('MonthlyEarned'))['month'], november);
+    expect((await board('WeeklyPlaytime'))['week'], 1792972800);
+
+    await beat({'MonthlyEarned': monthly(6000, december, 3)});
+    await beat({'MonthlyEarned': monthly(9000, november, 4)});
+    final held = await board('MonthlyEarned');
+    expect(held['month'], december);
+    expect(held['week'], isNull);
+    expect((held['rows'] as List).single['userId'], 3);
+  });
+
   test('a closing server drops off the dashboard', () async {
     await send('POST', '/api/v1/fishing-waters/heartbeat',
         json: heartbeatBody(), gameKey: 'game-secret');

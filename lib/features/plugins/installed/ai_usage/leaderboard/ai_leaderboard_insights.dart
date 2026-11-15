@@ -157,14 +157,12 @@ class _SectionHeader extends StatelessWidget {
 
 // ─── Price vs performance ───────────────────────────────────────────────────
 
-/// Which score axis the frontier chart is judged on. Kept to the four rating
+/// Which score axis the frontier chart is judged on. Kept to the rating
 /// indices — plotting the frontier against price itself would be circular.
 const List<AiMetric> _kFrontierMetrics = [
   AiMetric.llmStats,
   AiMetric.reasoning,
-  AiMetric.coding,
   AiMetric.math,
-  AiMetric.agent,
 ];
 
 class _FrontierMetricPicker extends StatelessWidget {
@@ -337,7 +335,7 @@ class _FrontierChart extends StatelessWidget {
 
 // ─── Best by task ───────────────────────────────────────────────────────────
 
-enum _TaskKind { reasoning, coding, agents, fastest, cheapest, largest }
+enum _TaskKind { reasoning, coding, fastest, cheapest, largest }
 
 class _TaskSpec {
   const _TaskSpec(this.kind, this.metric, this.icon);
@@ -348,7 +346,6 @@ class _TaskSpec {
   String label(L t) => switch (kind) {
         _TaskKind.reasoning => t.aiLeaderboardInsightsTaskReasoning,
         _TaskKind.coding => t.aiLeaderboardInsightsTaskCoding,
-        _TaskKind.agents => t.aiLeaderboardInsightsTaskAgents,
         _TaskKind.fastest => t.aiLeaderboardInsightsTaskFastest,
         _TaskKind.cheapest => t.aiLeaderboardInsightsTaskCheapest,
         _TaskKind.largest => t.aiLeaderboardInsightsTaskLargest,
@@ -357,8 +354,9 @@ class _TaskSpec {
 
 const List<_TaskSpec> _kTasks = [
   _TaskSpec(_TaskKind.reasoning, AiMetric.reasoning, Icons.psychology_outlined),
-  _TaskSpec(_TaskKind.coding, AiMetric.coding, Icons.code_rounded),
-  _TaskSpec(_TaskKind.agents, AiMetric.agent, Icons.smart_toy_outlined),
+  // Artificial Analysis stopped publishing its Coding and Agentic indices, so
+  // "best for coding" goes by the Code Arena rating instead.
+  _TaskSpec(_TaskKind.coding, AiMetric.codeArena, Icons.code_rounded),
   _TaskSpec(_TaskKind.fastest, AiMetric.speed, Icons.bolt_rounded),
   _TaskSpec(_TaskKind.cheapest, AiMetric.blendedPrice, Icons.savings_outlined),
   _TaskSpec(_TaskKind.largest, AiMetric.context, Icons.unfold_more_rounded),

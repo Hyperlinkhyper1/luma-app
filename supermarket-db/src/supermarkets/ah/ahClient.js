@@ -192,9 +192,45 @@ async function authedGet(path, params = {}, { _attempt = 0 } = {}) {
   return response.json();
 }
 
+// AH retired /mobile-services/v1/product-shelves/categories (it now answers
+// 404) and nothing else on the mobile API lists the taxonomy tree: the search
+// response's "taxonomy" facet is only the 67 busiest nodes across all levels.
+// Search still filters on taxonomyId, so the top-level ids are kept here. Each
+// was checked against product/search/v2 on 2026-11-11. If AH renumbers one,
+// the sync's empty-category guard trips rather than syncing a partial catalog.
+const TOP_LEVEL_CATEGORIES = Object.freeze([
+  { id: 6401, name: 'Groente, aardappelen' },
+  { id: 20885, name: 'Fruit, verse sappen' },
+  { id: 1301, name: 'Maaltijden, salades' },
+  { id: 9344, name: 'Vlees' },
+  { id: 1651, name: 'Vis' },
+  { id: 20128, name: 'Vegetarisch, vegan en plantaardig' },
+  { id: 5481, name: 'Vleeswaren' },
+  { id: 1192, name: 'Kaas' },
+  { id: 1730, name: 'Zuivel, eieren' },
+  { id: 1355, name: 'Bakkerij' },
+  { id: 4246, name: 'Glutenvrij' },
+  { id: 20824, name: 'Borrel, chips, snacks' },
+  { id: 1796, name: 'Pasta, rijst, wereldkeuken' },
+  { id: 6409, name: 'Soepen, sauzen, kruiden, olie' },
+  { id: 20129, name: 'Koek, snoep, chocolade' },
+  { id: 6405, name: 'Ontbijtgranen, beleg' },
+  { id: 2457, name: 'Tussendoortjes' },
+  { id: 5881, name: 'Diepvries' },
+  { id: 1043, name: 'Koffie, thee' },
+  { id: 20130, name: 'Frisdrank, sappen, water' },
+  { id: 6406, name: 'Bier, wijn, aperitieven' },
+  { id: 11717, name: 'Gezondheid en sport' },
+  { id: 1045, name: 'Drogisterij' },
+  { id: 18521, name: 'Baby en kind' },
+  { id: 1165, name: 'Huishouden' },
+  { id: 18519, name: 'Huisdier' },
+  { id: 1057, name: 'Koken, tafelen, vrije tijd' },
+]);
+
 /** Top-level product categories (taxonomy), e.g. "Groente, aardappelen". */
 async function fetchCategories() {
-  return authedGet('/mobile-services/v1/product-shelves/categories');
+  return TOP_LEVEL_CATEGORIES.map((category) => ({ ...category }));
 }
 
 /**

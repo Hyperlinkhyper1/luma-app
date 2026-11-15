@@ -223,7 +223,7 @@ class SteamDatabase extends _$SteamDatabase {
       );
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -284,6 +284,7 @@ class SteamDatabase extends _$SteamDatabase {
         await dedupeCs2Entries();
       }
       if (from < 7) await _createCs2InventoryAssets();
+      if (from < 8) await dropCs2BulkReadings();
     },
   );
 
@@ -684,8 +685,9 @@ class SteamDatabase extends _$SteamDatabase {
     required int? lowestCents,
     required int? medianCents,
     required String currency,
+    DateTime? observedAt,
   }) async {
-    final now = DateTime.now();
+    final now = observedAt ?? DateTime.now();
     await transaction(() async {
       await (update(
         cs2MarketItems,
@@ -709,13 +711,19 @@ class SteamDatabase extends _$SteamDatabase {
     });
   }
 
-  /// Records one bulk-file reading for many listings in one transaction, so
-  /// the Tracked tab rebuilds once rather than once per listing. Stored as
-  /// the median: the bulk file is an average of recent sales, not the
-  /// cheapest current listing.
-  Future<void> recordCs2Prices(
+  /// Gives listings that have never been priced a provisional price from the
+  /// bulk file, so a freshly linked inventory isn't all "$0" while Steam is
+  /// asked one listing at a time. Listings that already have a price are
+  /// left alone.
+  ///
+  /// The bulk file's averages run well above Steam's own numbers (twice the
+  /// lowest listing for some cheap skins), so it never writes a history
+  /// point and never replaces a Steam reading: mixed into the chart, each
+  /// bulk reading drew a jump up and a "crash" back down once Steam
+  /// answered. [Cs2MarketItems.priceFetchedAt] stays null so the next sweep
+  /// still treats these listings as unchecked.
+  Future<void> recordCs2BulkEstimates(
     Map<String, int> medianCents, {
-    required DateTime observedAt,
     String currency = 'USD',
   }) async {
     if (medianCents.isEmpty) return;
@@ -724,24 +732,48 @@ class SteamDatabase extends _$SteamDatabase {
         b.update(
           cs2MarketItems,
           Cs2MarketItemsCompanion(
-            lastLowestCents: const Value(null),
             lastMedianCents: Value(cents),
             currency: Value(currency),
-            priceFetchedAt: Value(observedAt),
           ),
-          where: (i) => i.marketHashName.equals(hash),
-        );
-        b.insert(
-          cs2MarketPricePoints,
-          Cs2MarketPricePointsCompanion.insert(
-            marketHashName: hash,
-            observedAt: observedAt,
-            medianCents: Value(cents),
-            currency: currency,
-          ),
+          where: (i) =>
+              i.marketHashName.equals(hash) &
+              i.lastLowestCents.isNull() &
+              i.lastMedianCents.isNull(),
         );
       }
     });
+  }
+
+  /// Removes history points the bulk file wrote before
+  /// [recordCs2BulkEstimates] stopped writing any. They are recognised as a
+  /// median with no lowest listing, stamped off the hour: Steam's sale
+  /// history is hourly or daily on the hour, and a live Steam reading
+  /// practically always carries a lowest listing. A listing whose shown
+  /// price came from one of them falls back to its latest remaining point.
+  Future<int> dropCs2BulkReadings() async {
+    final removed = await customUpdate(
+      'DELETE FROM cs2_market_price_points '
+      'WHERE lowest_cents IS NULL AND median_cents IS NOT NULL '
+      'AND observed_at % 3600 != 0',
+      updates: {cs2MarketPricePoints},
+      updateKind: UpdateKind.delete,
+    );
+    if (removed == 0) return 0;
+    await customUpdate(
+      'UPDATE cs2_market_items SET '
+      'last_lowest_cents = (SELECT p.lowest_cents FROM cs2_market_price_points p '
+      'WHERE p.market_hash_name = cs2_market_items.market_hash_name '
+      'ORDER BY p.observed_at DESC, p.id DESC LIMIT 1), '
+      'last_median_cents = (SELECT p.median_cents FROM cs2_market_price_points p '
+      'WHERE p.market_hash_name = cs2_market_items.market_hash_name '
+      'ORDER BY p.observed_at DESC, p.id DESC LIMIT 1) '
+      'WHERE last_lowest_cents IS NULL AND EXISTS (SELECT 1 FROM '
+      'cs2_market_price_points p WHERE p.market_hash_name = '
+      'cs2_market_items.market_hash_name)',
+      updates: {cs2MarketItems},
+      updateKind: UpdateKind.update,
+    );
+    return removed;
   }
 
   /// The oldest reading held for every listing that has one.

@@ -4,6 +4,33 @@ import 'dart:io';
 import 'ai_mode_routing.dart';
 import 'ai_usage_store.dart';
 
+/// Restarts an automatically sized generation after the provider reports an
+/// output limit, allowing the caller to request a more compact response.
+/// The caller records each attempt and resets [acc] in [beforeRetry].
+Future<T> retryBenchmarkCompacted<T>(
+  ChatStreamAccumulator acc,
+  Future<T> Function() request, {
+  required int Function() attempt,
+  required bool autoCompact,
+  required bool Function() canRetry,
+  required bool Function(T) isSuccess,
+  required Future<void> Function() beforeRetry,
+}) async {
+  while (true) {
+    final result = await request();
+    if (!autoCompact ||
+        attempt() >= 2 ||
+        !canRetry() ||
+        !isSuccess(result) ||
+        acc.error != null ||
+        !benchmarkWasTruncated(acc)) {
+      return result;
+    }
+    await beforeRetry();
+    if (!canRetry()) return result;
+  }
+}
+
 /// Restarts one interrupted transport without joining two generated pages.
 /// Provider errors and completed model responses are never retried.
 Future<T> retryBenchmarkStream<T>(
@@ -110,6 +137,33 @@ int? _pageStart(String s) {
 /// establish why an incomplete response ended.
 bool benchmarkHtmlComplete(String page) =>
     page.toLowerCase().trimRight().endsWith('</html>');
+
+/// Instructions for a fresh attempt after the provider cut off a response.
+/// A retry starts over rather than appending two independently generated pages.
+String benchmarkAutoCompactPrompt(String prompt, int attempt) {
+  if (attempt <= 0) return prompt;
+  final guidance = attempt == 1
+      ? 'Make the implementation substantially shorter than usual.'
+      : 'Make the implementation as compact as necessary to finish, '
+          'simplifying details while retaining the core requirements.';
+  return '''$prompt
+
+The previous attempt reached the model's output limit before completing.
+$guidance Use concise code, reuse functions and procedural structures, and
+avoid comments, repeated markup and unnecessary explanation. Prioritize a
+working, complete page ending with </html> within your output budget.''';
+}
+
+/// Only a provider-reported output limit justifies a compact retry.
+bool benchmarkWasTruncated(ChatStreamAccumulator acc) =>
+    benchmarkGenerationResult(
+      reply: acc.content,
+      finishReason: acc.finishReason,
+      nativeFinishReason: acc.nativeFinishReason,
+      httpStatus: acc.errorCode ?? acc.providerStatus,
+      error: acc.error,
+    ).status ==
+    'TRUNCATED';
 
 typedef BenchmarkGenerationResult = ({
   String status,

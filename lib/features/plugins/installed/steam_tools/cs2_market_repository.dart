@@ -345,6 +345,7 @@ class Cs2MarketRepository extends ChangeNotifier {
         ),
       );
     }
+    var cleaned = false;
     _offlineApplying = true;
     try {
       await _db.replaceCs2OfflineData(
@@ -353,9 +354,14 @@ class Cs2MarketRepository extends ChangeNotifier {
         points: points,
         steamAssetKeys: assetKeys,
       );
+      // A snapshot pushed before the bulk file stopped writing history can
+      // still carry its readings; dropping them here keeps them from coming
+      // back after the schema 8 cleanup.
+      cleaned = await _db.dropCs2BulkReadings() > 0;
     } finally {
       _offlineApplying = false;
     }
+    if (cleaned) _queueOfflinePush();
   }
 
   bool _offlineApplying = false;
@@ -615,14 +621,9 @@ class Cs2MarketRepository extends ChangeNotifier {
     unawaited(backfillHistory());
   }
 
-  /// Whether [bulk] describes a later moment than a reading taken at [at].
-  /// Compared to the second: the database keeps no finer timestamps, so a
-  /// millisecond difference would make the same file look new every time.
-  static bool _bulkIsNewer(Cs2BulkPrices bulk, DateTime at) =>
-      bulk.updatedAt.difference(at) >= const Duration(seconds: 1);
-
-  /// Records the bulk file's price for each of [hashes] it covers and
-  /// returns whether it covered all of them.
+  /// Gives each of [hashes] that has never been priced the bulk file's
+  /// provisional price (see [SteamDatabase.recordCs2BulkEstimates]) and
+  /// returns whether the file covered all of them.
   Future<bool> _recordFromBulk(Set<String> hashes) async {
     final bulk = await _bulkPrices?.fetch();
     if (bulk == null || _disposed) return false;
@@ -630,11 +631,8 @@ class Cs2MarketRepository extends ChangeNotifier {
       for (final hash in hashes)
         if (bulk.cents[hash] case final cents?) hash: cents,
     };
-    await _db.recordCs2Prices(found, observedAt: bulk.updatedAt);
-    if (found.isNotEmpty) {
-      StorageGuard.instance.scheduleRefresh();
-      _queueOfflinePush();
-    }
+    await _db.recordCs2BulkEstimates(found);
+    if (found.isNotEmpty) _queueOfflinePush();
     return found.length == hashes.length;
   }
 
@@ -785,8 +783,9 @@ class Cs2MarketRepository extends ChangeNotifier {
   /// book moves through the day in a way a store's list price does not.
   static const _priceFreshness = Duration(hours: 1);
 
-  /// Refreshes one listing from Steam when its last reading is stale. The
-  /// bulk file can provide a fallback while Steam requests are busy or paused.
+  /// Refreshes one listing from Steam when its last reading is stale. While
+  /// Steam requests are busy or paused, a listing with no price at all gets
+  /// the bulk file's estimate; one that has a Steam price keeps it.
   Future<void> refreshPrice(String marketHashName, {bool force = false}) async {
     if (_fetchingPrice.contains(marketHashName)) return;
     final row = await _db.cs2Item(marketHashName);
@@ -799,14 +798,7 @@ class Cs2MarketRepository extends ChangeNotifier {
     final steamBusy =
         _priceSweepStarting || _priceTotal > 0 || _pausedUntil != null;
     if (steamBusy) {
-      final bulk = await _bulkPrices?.fetch();
-      final cents = bulk?.cents[marketHashName];
-      if (bulk != null && cents != null) {
-        if (at == null || _bulkIsNewer(bulk, at)) {
-          await _recordFromBulk({marketHashName});
-        }
-        return;
-      }
+      await _recordFromBulk({marketHashName});
       return;
     }
 

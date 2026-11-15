@@ -18,13 +18,23 @@ function loadClient(request) {
 const tokenResponse = () => ({ ok: true, json: async () => ({ access_token: 'member_token', refresh_token: 'refresh', expires_in: 604800 }) });
 const edgeResponse = () => ({ ok: false, status: 503, text: async () => '<HTML><TITLE>Error</TITLE>errors.edgesuite.net</HTML>', headers: new Headers() });
 
-test('AH initial authentication retries an edge 503 and completes the category request', async () => {
+test('AH categories come from the built-in top-level list without touching the network', async () => {
+  const { client } = loadClient(async () => { throw new Error('no network expected'); });
+  const categories = await client.fetchCategories();
+  assert.equal(categories.length, 27);
+  assert.equal(new Set(categories.map((category) => category.id)).size, categories.length);
+  assert.ok(categories.every((category) => Number.isInteger(category.id) && category.name));
+  categories[0].id = -1;
+  assert.notEqual((await client.fetchCategories())[0].id, -1);
+});
+
+test('AH initial authentication retries an edge 503 and completes the search request', async () => {
   let authCalls = 0;
   const { client, delays } = loadClient(async (url) => {
     if (String(url).includes('/auth/token/')) return ++authCalls === 1 ? edgeResponse() : tokenResponse();
-    return { ok: true, json: async () => [{ id: 1 }] };
+    return { ok: true, json: async () => ({ products: [{ id: 1 }] }) };
   });
-  assert.equal((await client.fetchCategories())[0].id, 1);
+  assert.equal((await client.searchProducts()).products[0].id, 1);
   assert.equal(authCalls, 2);
   assert.equal(delays.length, 1);
 });
@@ -39,8 +49,8 @@ test('AH refresh edge failure retries the same member without registering a repl
     if (++dataCalls === 2) return { ok: false, status: 401, text: async () => 'invalid_token' };
     return { ok: true, json: async () => [] };
   });
-  await client.fetchCategories();
-  await client.fetchCategories();
+  await client.searchProducts();
+  await client.searchProducts();
   assert.equal(refreshCalls, 2);
   assert.equal(anonymousCalls, 1);
 });
@@ -70,8 +80,8 @@ test('AH persistent refresh edge rejection exhausts retries without minting a me
     if (++dataCalls === 2) return { ok: false, status: 401, text: async () => 'invalid_token' };
     return { ok: true, json: async () => [] };
   });
-  await client.fetchCategories();
-  await assert.rejects(client.fetchCategories(), error => {
+  await client.searchProducts();
+  await assert.rejects(client.searchProducts(), error => {
     assert.match(error.message, /HTTP 503.*edge service/);
     assert.doesNotMatch(error.message, /<HTML>|&#/);
     return true;
@@ -91,7 +101,7 @@ test('AH respects Retry-After and retries network timeouts with a fresh timeout 
     if (calls === 2) return { ...edgeResponse(), status: 429, headers: new Headers({ 'Retry-After': '10' }) };
     return tokenResponse();
   });
-  await client.fetchCategories();
+  await client.searchProducts();
   assert.deepEqual(delays, [1000, 10000]);
   assert.equal(new Set(signals).size, 3);
 });
@@ -105,7 +115,7 @@ test('AH invalid refresh credentials still register a replacement member', async
     if (++dataCalls === 2) return { ok: false, status: 401, text: async () => 'invalid_token' };
     return { ok: true, json: async () => [] };
   });
-  await client.fetchCategories();
-  await client.fetchCategories();
+  await client.searchProducts();
+  await client.searchProducts();
   assert.equal(anonymousCalls, 2);
 });

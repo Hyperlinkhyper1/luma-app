@@ -28,9 +28,11 @@ void main() {
         imageUrl: '',
       ),
     );
-    await db.recordCs2Prices({
-      'A': 100,
-    }, observedAt: DateTime.now().subtract(const Duration(hours: 2)));
+    await db.recordCs2Price('A',
+        lowestCents: null,
+        medianCents: 100,
+        currency: 'USD',
+        observedAt: DateTime.now().subtract(const Duration(hours: 2)));
     final checked = Completer<void>();
     final repository = Cs2MarketRepository(
       db,
@@ -125,7 +127,11 @@ void main() {
         ),
       );
       final old = DateTime.now().subtract(const Duration(hours: 2));
-      await db.recordCs2Prices({'A': 100}, observedAt: old);
+      await db.recordCs2Price('A',
+          lowestCents: null,
+          medianCents: 100,
+          currency: 'USD',
+          observedAt: old);
       final repository = Cs2MarketRepository(
         db,
         api: Cs2MarketApi(
