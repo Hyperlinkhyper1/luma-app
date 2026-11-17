@@ -41666,4 +41666,51 @@ class LEs extends L {
   @override
   String get mealChefUnreachable =>
       'No se pudo contactar con el chef. Revisa tu conexión e inténtalo de nuevo.';
+
+  @override
+  String get pluginNameWiki => 'Wiki';
+
+  @override
+  String get wikiForward => 'Adelante';
+
+  @override
+  String get wikiHome => 'Inicio de la wiki';
+
+  @override
+  String get wikiOfflineCopy => 'Copia sin conexión';
+
+  @override
+  String wikiOfflineCopyFrom(String date, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count páginas',
+      one: '1 página',
+    );
+    return 'Copia sin conexión del $date · $_temp0';
+  }
+
+  @override
+  String get wikiOpenLive => 'Abrir esta página en el sitio en vivo';
+
+  @override
+  String get wikiStartFailed => 'No se pudo iniciar la wiki sin conexión';
+
+  @override
+  String get wikiNotBundledTitle =>
+      'Esta versión no incluye la wiki sin conexión';
+
+  @override
+  String get wikiNotBundledSubtitle =>
+      'Esta versión de luma se compiló sin la copia de la wiki. Actualiza luma para obtenerla.';
+
+  @override
+  String get wikiLinuxTitle => 'Abrir la wiki sin conexión';
+
+  @override
+  String get wikiLinuxSubtitle =>
+      'luma aún no tiene una vista web integrada en Linux, así que la copia sin conexión se abre en tu navegador. Sigue funcionando mientras esta página esté abierta.';
+
+  @override
+  String get wikiLinuxOpen => 'Abrir en el navegador';
 }

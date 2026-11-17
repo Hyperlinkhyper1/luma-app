@@ -11726,5 +11726,17 @@
   "mealChefStartOver": "重新开始",
   "mealChefRetry": "重试",
   "mealChefSignInError": "请使用已批准的账户登录以使用餐食大厨。",
-  "mealChefUnreachable": "无法连接到大厨。请检查网络连接后重试。"
+  "mealChefUnreachable": "无法连接到大厨。请检查网络连接后重试。",
+  "pluginNameWiki": "Wiki",
+  "wikiForward": "前进",
+  "wikiHome": "Wiki 首页",
+  "wikiOfflineCopy": "离线副本",
+  "wikiOfflineCopyFrom": "{date} 的离线副本 · {count, plural, other{{count} 个页面}}",
+  "wikiOpenLive": "在线上网站打开此页面",
+  "wikiStartFailed": "离线 Wiki 无法启动",
+  "wikiNotBundledTitle": "此版本未包含离线 Wiki",
+  "wikiNotBundledSubtitle": "此版本的 luma 构建时未包含 Wiki 副本。更新 luma 即可获取。",
+  "wikiLinuxTitle": "打开离线 Wiki",
+  "wikiLinuxSubtitle": "luma 在 Linux 上还没有内置网页视图，因此离线副本会在浏览器中打开。只要此页面保持打开，它就能继续使用。",
+  "wikiLinuxOpen": "在浏览器中打开"
 }

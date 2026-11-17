@@ -49,6 +49,7 @@ String pluginDisplayName(L t, String id, String fallback) => switch (id) {
   'usage' => t.pluginNameUsage,
   'whiteboard' => t.pluginNameWhiteboard,
   'wifi-speed-test' => t.pluginNameWifiSpeedTest,
+  'wiki' => t.pluginNameWiki,
   'worth-counter' => t.pluginNameWorthCounter,
   'youtube-downloader' => t.pluginNameYoutubeDownloader,
   _ => fallback,

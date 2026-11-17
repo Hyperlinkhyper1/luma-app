@@ -41744,4 +41744,50 @@ class LFr extends L {
   @override
   String get mealChefUnreachable =>
       'Impossible de joindre le chef. Vérifiez votre connexion et réessayez.';
+
+  @override
+  String get pluginNameWiki => 'Wiki';
+
+  @override
+  String get wikiForward => 'Suivant';
+
+  @override
+  String get wikiHome => 'Accueil du wiki';
+
+  @override
+  String get wikiOfflineCopy => 'Copie hors ligne';
+
+  @override
+  String wikiOfflineCopyFrom(String date, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count pages',
+      one: '1 page',
+    );
+    return 'Copie hors ligne du $date · $_temp0';
+  }
+
+  @override
+  String get wikiOpenLive => 'Ouvrir cette page sur le site en ligne';
+
+  @override
+  String get wikiStartFailed => 'Le wiki hors ligne n\'a pas pu démarrer';
+
+  @override
+  String get wikiNotBundledTitle => 'Pas de wiki hors ligne dans cette version';
+
+  @override
+  String get wikiNotBundledSubtitle =>
+      'Cette version de luma a été compilée sans la copie du wiki. Mettez luma à jour pour l\'obtenir.';
+
+  @override
+  String get wikiLinuxTitle => 'Ouvrir le wiki hors ligne';
+
+  @override
+  String get wikiLinuxSubtitle =>
+      'luma n\'a pas encore de vue web intégrée sous Linux : la copie hors ligne s\'ouvre donc dans votre navigateur. Elle fonctionne tant que cette page reste ouverte.';
+
+  @override
+  String get wikiLinuxOpen => 'Ouvrir dans le navigateur';
 }

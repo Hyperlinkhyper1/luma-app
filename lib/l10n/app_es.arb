@@ -11726,5 +11726,17 @@
   "mealChefStartOver": "Empezar de nuevo",
   "mealChefRetry": "Reintentar",
   "mealChefSignInError": "Inicia sesión con una cuenta aprobada para usar el chef de comidas.",
-  "mealChefUnreachable": "No se pudo contactar con el chef. Revisa tu conexión e inténtalo de nuevo."
+  "mealChefUnreachable": "No se pudo contactar con el chef. Revisa tu conexión e inténtalo de nuevo.",
+  "pluginNameWiki": "Wiki",
+  "wikiForward": "Adelante",
+  "wikiHome": "Inicio de la wiki",
+  "wikiOfflineCopy": "Copia sin conexión",
+  "wikiOfflineCopyFrom": "Copia sin conexión del {date} · {count, plural, =1{1 página} other{{count} páginas}}",
+  "wikiOpenLive": "Abrir esta página en el sitio en vivo",
+  "wikiStartFailed": "No se pudo iniciar la wiki sin conexión",
+  "wikiNotBundledTitle": "Esta versión no incluye la wiki sin conexión",
+  "wikiNotBundledSubtitle": "Esta versión de luma se compiló sin la copia de la wiki. Actualiza luma para obtenerla.",
+  "wikiLinuxTitle": "Abrir la wiki sin conexión",
+  "wikiLinuxSubtitle": "luma aún no tiene una vista web integrada en Linux, así que la copia sin conexión se abre en tu navegador. Sigue funcionando mientras esta página esté abierta.",
+  "wikiLinuxOpen": "Abrir en el navegador"
 }

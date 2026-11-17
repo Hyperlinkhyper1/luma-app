@@ -25172,5 +25172,27 @@
   "mealChefStartOver": "Start over",
   "mealChefRetry": "Try again",
   "mealChefSignInError": "Sign in with an approved account to use the meal chef.",
-  "mealChefUnreachable": "Couldn't reach the chef. Check your connection and try again."
+  "mealChefUnreachable": "Couldn't reach the chef. Check your connection and try again.",
+  "pluginNameWiki": "Wiki",
+  "wikiForward": "Forward",
+  "wikiHome": "Wiki home",
+  "wikiOfflineCopy": "Offline copy",
+  "wikiOfflineCopyFrom": "Offline copy from {date} · {count, plural, =1{1 page} other{{count} pages}}",
+  "@wikiOfflineCopyFrom": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "wikiOpenLive": "Open this page on the live site",
+  "wikiStartFailed": "The offline wiki couldn't start",
+  "wikiNotBundledTitle": "No offline wiki in this build",
+  "wikiNotBundledSubtitle": "This version of luma was built without the wiki copy. Update luma to get it.",
+  "wikiLinuxTitle": "Open the offline wiki",
+  "wikiLinuxSubtitle": "luma has no built-in web view on Linux yet, so the offline copy opens in your browser. It keeps working while this page stays open.",
+  "wikiLinuxOpen": "Open in browser"
 }

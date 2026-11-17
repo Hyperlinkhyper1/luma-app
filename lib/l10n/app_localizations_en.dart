@@ -41222,4 +41222,50 @@ class LEn extends L {
   @override
   String get mealChefUnreachable =>
       'Couldn\'t reach the chef. Check your connection and try again.';
+
+  @override
+  String get pluginNameWiki => 'Wiki';
+
+  @override
+  String get wikiForward => 'Forward';
+
+  @override
+  String get wikiHome => 'Wiki home';
+
+  @override
+  String get wikiOfflineCopy => 'Offline copy';
+
+  @override
+  String wikiOfflineCopyFrom(String date, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count pages',
+      one: '1 page',
+    );
+    return 'Offline copy from $date · $_temp0';
+  }
+
+  @override
+  String get wikiOpenLive => 'Open this page on the live site';
+
+  @override
+  String get wikiStartFailed => 'The offline wiki couldn\'t start';
+
+  @override
+  String get wikiNotBundledTitle => 'No offline wiki in this build';
+
+  @override
+  String get wikiNotBundledSubtitle =>
+      'This version of luma was built without the wiki copy. Update luma to get it.';
+
+  @override
+  String get wikiLinuxTitle => 'Open the offline wiki';
+
+  @override
+  String get wikiLinuxSubtitle =>
+      'luma has no built-in web view on Linux yet, so the offline copy opens in your browser. It keeps working while this page stays open.';
+
+  @override
+  String get wikiLinuxOpen => 'Open in browser';
 }

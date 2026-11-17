@@ -1,0 +1,32 @@
+{
+  "id": "wiki",
+  "name": "Wiki",
+  "version": "1.0.0",
+  "description": "The luma wiki, offline: every guide, devlog and Fishing Waters fish page, with search and 3D fish models, straight from a copy inside the app.",
+  "icon": "menu_book",
+  "category": "Productivity",
+  "details": "A full copy of wiki.luma-app.cc ships inside the app and opens like the real site: the Minecraft mod guides, the luma module and plugin pages, the devlog, the team pages and the whole Fishing Waters section, including the fish library with its 3D models and the wiki's own search.\n\nNothing is fetched while you read. The copy is served from your own device, every request stays on it, and links that leave the wiki open in your browser. That means the wiki keeps working when its server is down or you have no connection.\n\nThe copy is as fresh as your luma version; the toolbar shows the date it was taken, and one click opens the same page on the live site. Live-only parts, such as the Fishing Waters leaderboards, show the numbers from that date.",
+  "screenshots": [],
+  "i18n": {
+    "nl": {
+      "name": "Wiki",
+      "description": "De luma-wiki, offline: elke handleiding, devlog en Fishing Waters-vispagina, met zoeken en 3D-vismodellen, rechtstreeks uit een kopie in de app.",
+      "details": "Een volledige kopie van wiki.luma-app.cc zit in de app en opent net als de echte site: de handleidingen voor Minecraft-mods, de pagina's over luma-modules en -plug-ins, de devlog, de teampagina's en het hele Fishing Waters-gedeelte, inclusief de vissenbibliotheek met 3D-modellen en de eigen zoekfunctie van de wiki.\n\nTijdens het lezen wordt niets opgehaald. De kopie wordt vanaf je eigen apparaat geserveerd, elk verzoek blijft daarop en links die de wiki verlaten openen in je browser. Zo blijft de wiki werken als de server plat ligt of je geen verbinding hebt.\n\nDe kopie is zo vers als je luma-versie; de werkbalk toont de datum waarop ze is gemaakt, en met één klik open je dezelfde pagina op de live site. Onderdelen die alleen live bestaan, zoals de Fishing Waters-ranglijsten, tonen de cijfers van die datum."
+    },
+    "fr": {
+      "name": "Wiki",
+      "description": "Le wiki de luma, hors ligne : chaque guide, devlog et page de poisson de Fishing Waters, avec la recherche et les modèles 3D des poissons, directement depuis une copie intégrée à l'app.",
+      "details": "Une copie complète de wiki.luma-app.cc est intégrée à l'app et s'ouvre comme le vrai site : les guides des mods Minecraft, les pages des modules et plugins de luma, le devlog, les pages de l'équipe et toute la section Fishing Waters, y compris la bibliothèque de poissons avec ses modèles 3D et la recherche du wiki.\n\nRien n'est téléchargé pendant la lecture. La copie est servie depuis votre propre appareil, chaque requête y reste et les liens qui quittent le wiki s'ouvrent dans votre navigateur. Le wiki continue donc de fonctionner quand son serveur est hors service ou que vous n'avez pas de connexion.\n\nLa copie est aussi récente que votre version de luma ; la barre d'outils indique sa date, et un clic ouvre la même page sur le site en ligne. Les parties uniquement en direct, comme les classements de Fishing Waters, affichent les chiffres de cette date."
+    },
+    "es": {
+      "name": "Wiki",
+      "description": "La wiki de luma, sin conexión: cada guía, devlog y página de peces de Fishing Waters, con búsqueda y modelos 3D de peces, directamente desde una copia dentro de la app.",
+      "details": "Una copia completa de wiki.luma-app.cc viene dentro de la app y se abre como el sitio real: las guías de mods de Minecraft, las páginas de módulos y plugins de luma, el devlog, las páginas del equipo y toda la sección de Fishing Waters, incluida la biblioteca de peces con sus modelos 3D y la búsqueda propia de la wiki.\n\nNo se descarga nada mientras lees. La copia se sirve desde tu propio dispositivo, cada petición se queda en él y los enlaces que salen de la wiki se abren en tu navegador. Así la wiki sigue funcionando cuando su servidor está caído o no tienes conexión.\n\nLa copia es tan reciente como tu versión de luma; la barra de herramientas muestra la fecha en que se tomó, y un clic abre la misma página en el sitio en vivo. Las partes que solo existen en vivo, como las clasificaciones de Fishing Waters, muestran las cifras de esa fecha."
+    },
+    "zh": {
+      "name": "Wiki",
+      "description": "离线版 luma Wiki：所有指南、开发日志和 Fishing Waters 鱼类页面，包括搜索和 3D 鱼类模型，直接来自应用内的副本。",
+      "details": "应用内附带 wiki.luma-app.cc 的完整副本，打开方式与真实网站相同：Minecraft 模组指南、luma 模块和插件页面、开发日志、团队页面以及整个 Fishing Waters 板块，包括带 3D 模型的鱼类图鉴和 Wiki 自带的搜索。\n\n阅读时不会下载任何内容。副本由你自己的设备提供，所有请求都留在设备上，离开 Wiki 的链接会在浏览器中打开。因此即使服务器宕机或没有网络，Wiki 也能继续使用。\n\n副本的新旧与你的 luma 版本一致；工具栏会显示副本的日期，点击一下即可在线上网站打开同一页面。仅在线上存在的部分（例如 Fishing Waters 排行榜）会显示该日期的数据。"
+    }
+  }
+}

@@ -11726,5 +11726,17 @@
   "mealChefStartOver": "Opnieuw beginnen",
   "mealChefRetry": "Opnieuw proberen",
   "mealChefSignInError": "Log in met een goedgekeurd account om de maaltijdchef te gebruiken.",
-  "mealChefUnreachable": "Kon de chef niet bereiken. Controleer je verbinding en probeer het opnieuw."
+  "mealChefUnreachable": "Kon de chef niet bereiken. Controleer je verbinding en probeer het opnieuw.",
+  "pluginNameWiki": "Wiki",
+  "wikiForward": "Vooruit",
+  "wikiHome": "Wiki-startpagina",
+  "wikiOfflineCopy": "Offline kopie",
+  "wikiOfflineCopyFrom": "Offline kopie van {date} · {count, plural, =1{1 pagina} other{{count} pagina's}}",
+  "wikiOpenLive": "Deze pagina openen op de live site",
+  "wikiStartFailed": "De offline wiki kon niet starten",
+  "wikiNotBundledTitle": "Geen offline wiki in deze versie",
+  "wikiNotBundledSubtitle": "Deze versie van luma is gebouwd zonder de wikikopie. Werk luma bij om hem te krijgen.",
+  "wikiLinuxTitle": "Open de offline wiki",
+  "wikiLinuxSubtitle": "luma heeft op Linux nog geen ingebouwde webweergave, dus de offline kopie opent in je browser. Hij blijft werken zolang deze pagina open is.",
+  "wikiLinuxOpen": "Openen in browser"
 }

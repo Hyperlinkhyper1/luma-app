@@ -11726,5 +11726,17 @@
   "mealChefStartOver": "Recommencer",
   "mealChefRetry": "Réessayer",
   "mealChefSignInError": "Connectez-vous avec un compte approuvé pour utiliser le chef repas.",
-  "mealChefUnreachable": "Impossible de joindre le chef. Vérifiez votre connexion et réessayez."
+  "mealChefUnreachable": "Impossible de joindre le chef. Vérifiez votre connexion et réessayez.",
+  "pluginNameWiki": "Wiki",
+  "wikiForward": "Suivant",
+  "wikiHome": "Accueil du wiki",
+  "wikiOfflineCopy": "Copie hors ligne",
+  "wikiOfflineCopyFrom": "Copie hors ligne du {date} · {count, plural, =1{1 page} other{{count} pages}}",
+  "wikiOpenLive": "Ouvrir cette page sur le site en ligne",
+  "wikiStartFailed": "Le wiki hors ligne n'a pas pu démarrer",
+  "wikiNotBundledTitle": "Pas de wiki hors ligne dans cette version",
+  "wikiNotBundledSubtitle": "Cette version de luma a été compilée sans la copie du wiki. Mettez luma à jour pour l'obtenir.",
+  "wikiLinuxTitle": "Ouvrir le wiki hors ligne",
+  "wikiLinuxSubtitle": "luma n'a pas encore de vue web intégrée sous Linux : la copie hors ligne s'ouvre donc dans votre navigateur. Elle fonctionne tant que cette page reste ouverte.",
+  "wikiLinuxOpen": "Ouvrir dans le navigateur"
 }

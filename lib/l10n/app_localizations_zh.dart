@@ -39335,4 +39335,48 @@ class LZh extends L {
 
   @override
   String get mealChefUnreachable => '无法连接到大厨。请检查网络连接后重试。';
+
+  @override
+  String get pluginNameWiki => 'Wiki';
+
+  @override
+  String get wikiForward => '前进';
+
+  @override
+  String get wikiHome => 'Wiki 首页';
+
+  @override
+  String get wikiOfflineCopy => '离线副本';
+
+  @override
+  String wikiOfflineCopyFrom(String date, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 个页面',
+    );
+    return '$date 的离线副本 · $_temp0';
+  }
+
+  @override
+  String get wikiOpenLive => '在线上网站打开此页面';
+
+  @override
+  String get wikiStartFailed => '离线 Wiki 无法启动';
+
+  @override
+  String get wikiNotBundledTitle => '此版本未包含离线 Wiki';
+
+  @override
+  String get wikiNotBundledSubtitle => '此版本的 luma 构建时未包含 Wiki 副本。更新 luma 即可获取。';
+
+  @override
+  String get wikiLinuxTitle => '打开离线 Wiki';
+
+  @override
+  String get wikiLinuxSubtitle =>
+      'luma 在 Linux 上还没有内置网页视图，因此离线副本会在浏览器中打开。只要此页面保持打开，它就能继续使用。';
+
+  @override
+  String get wikiLinuxOpen => '在浏览器中打开';
 }

@@ -1149,6 +1149,34 @@
           "description": "使用曲线道路、要素捕捉、接入道路的住宅地块和可编辑图层，设计交通线路图与精确的城市规划。"
         }
       }
+    },
+    {
+      "id": "wiki",
+      "name": "Wiki",
+      "description": "The luma wiki, offline: every guide, devlog and Fishing Waters fish page, with search and 3D fish models, straight from a copy inside the app.",
+      "icon": "menu_book",
+      "category": "Productivity",
+      "tags": ["Productivity", "Documents", "Education"],
+      "free": true,
+      "version": "1.0.0",
+      "i18n": {
+        "nl": {
+          "name": "Wiki",
+          "description": "De luma-wiki, offline: elke handleiding, devlog en Fishing Waters-vispagina, met zoeken en 3D-vismodellen, rechtstreeks uit een kopie in de app."
+        },
+        "fr": {
+          "name": "Wiki",
+          "description": "Le wiki de luma, hors ligne : chaque guide, devlog et page de poisson de Fishing Waters, avec la recherche et les modèles 3D des poissons, directement depuis une copie intégrée à l'app."
+        },
+        "es": {
+          "name": "Wiki",
+          "description": "La wiki de luma, sin conexión: cada guía, devlog y página de peces de Fishing Waters, con búsqueda y modelos 3D de peces, directamente desde una copia dentro de la app."
+        },
+        "zh": {
+          "name": "Wiki",
+          "description": "离线版 luma Wiki：所有指南、开发日志和 Fishing Waters 鱼类页面，包括搜索和 3D 鱼类模型，直接来自应用内的副本。"
+        }
+      }
     }
   ]
 }

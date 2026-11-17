@@ -67600,6 +67600,78 @@ abstract class L {
   /// In en, this message translates to:
   /// **'Couldn\'t reach the chef. Check your connection and try again.'**
   String get mealChefUnreachable;
+
+  /// No description provided for @pluginNameWiki.
+  ///
+  /// In en, this message translates to:
+  /// **'Wiki'**
+  String get pluginNameWiki;
+
+  /// No description provided for @wikiForward.
+  ///
+  /// In en, this message translates to:
+  /// **'Forward'**
+  String get wikiForward;
+
+  /// No description provided for @wikiHome.
+  ///
+  /// In en, this message translates to:
+  /// **'Wiki home'**
+  String get wikiHome;
+
+  /// No description provided for @wikiOfflineCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Offline copy'**
+  String get wikiOfflineCopy;
+
+  /// No description provided for @wikiOfflineCopyFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'Offline copy from {date} · {count, plural, =1{1 page} other{{count} pages}}'**
+  String wikiOfflineCopyFrom(String date, int count);
+
+  /// No description provided for @wikiOpenLive.
+  ///
+  /// In en, this message translates to:
+  /// **'Open this page on the live site'**
+  String get wikiOpenLive;
+
+  /// No description provided for @wikiStartFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The offline wiki couldn\'t start'**
+  String get wikiStartFailed;
+
+  /// No description provided for @wikiNotBundledTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No offline wiki in this build'**
+  String get wikiNotBundledTitle;
+
+  /// No description provided for @wikiNotBundledSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'This version of luma was built without the wiki copy. Update luma to get it.'**
+  String get wikiNotBundledSubtitle;
+
+  /// No description provided for @wikiLinuxTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Open the offline wiki'**
+  String get wikiLinuxTitle;
+
+  /// No description provided for @wikiLinuxSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'luma has no built-in web view on Linux yet, so the offline copy opens in your browser. It keeps working while this page stays open.'**
+  String get wikiLinuxSubtitle;
+
+  /// No description provided for @wikiLinuxOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open in browser'**
+  String get wikiLinuxOpen;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

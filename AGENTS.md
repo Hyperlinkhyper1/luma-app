@@ -120,6 +120,16 @@ earlier questions' text to avoid repeats; never a chat history. Keep it that
 way. An account sets its country once; only the Users tab's Actions menu can
 reset it.
 
+**The Wiki plugin is an offline copy of wiki.luma-app.cc.** The built site
+lives in `assets/wiki_site/site.zip`, and `features/plugins/installed/wiki/`
+serves it from a loopback server (`WikiSiteServer`) into a WebView. Its
+Content-Security-Policy keeps every request on that loopback origin, so the
+copy never reaches the live wiki or the sync server (the leaderboards page's
+live fetch is blocked and the snapshot's numbers stay). The copy does not
+update itself: refresh it with `node tool/wiki_mirror/mirror.mjs` while the
+wiki is up, and commit the new zip. `test/wiki_site_test.dart` checks that the
+zip still holds the whole site.
+
 **Platform-specific code** uses the suffix convention: `feature_io.dart` (Windows/Android/native), `feature_stub.dart` (unsupported platforms), `feature_web.dart` (web). The main `feature.dart` file exports the right one via conditional imports.
 
 ## Build, Test, and Development Commands

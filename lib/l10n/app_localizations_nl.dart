@@ -41515,4 +41515,50 @@ class LNl extends L {
   @override
   String get mealChefUnreachable =>
       'Kon de chef niet bereiken. Controleer je verbinding en probeer het opnieuw.';
+
+  @override
+  String get pluginNameWiki => 'Wiki';
+
+  @override
+  String get wikiForward => 'Vooruit';
+
+  @override
+  String get wikiHome => 'Wiki-startpagina';
+
+  @override
+  String get wikiOfflineCopy => 'Offline kopie';
+
+  @override
+  String wikiOfflineCopyFrom(String date, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count pagina\'s',
+      one: '1 pagina',
+    );
+    return 'Offline kopie van $date · $_temp0';
+  }
+
+  @override
+  String get wikiOpenLive => 'Deze pagina openen op de live site';
+
+  @override
+  String get wikiStartFailed => 'De offline wiki kon niet starten';
+
+  @override
+  String get wikiNotBundledTitle => 'Geen offline wiki in deze versie';
+
+  @override
+  String get wikiNotBundledSubtitle =>
+      'Deze versie van luma is gebouwd zonder de wikikopie. Werk luma bij om hem te krijgen.';
+
+  @override
+  String get wikiLinuxTitle => 'Open de offline wiki';
+
+  @override
+  String get wikiLinuxSubtitle =>
+      'luma heeft op Linux nog geen ingebouwde webweergave, dus de offline kopie opent in je browser. Hij blijft werken zolang deze pagina open is.';
+
+  @override
+  String get wikiLinuxOpen => 'Openen in browser';
 }

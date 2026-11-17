@@ -45,6 +45,7 @@ import '../features/plugins/installed/qr_code_generator/qr_code_generator_page.d
 import '../features/plugins/installed/machine_learning/machine_learning_page.dart';
 import '../features/plugins/installed/mind_map/mind_map_page.dart';
 import '../features/plugins/installed/whiteboard/whiteboard_page.dart';
+import '../features/plugins/installed/wiki/wiki_page.dart';
 import '../features/plugins/installed/free_sketch/free_sketch_page.dart';
 import '../features/plugins/installed/school/school_page.dart';
 import '../features/plugins/installed/secure_chat/secure_chat_page.dart';
@@ -948,6 +949,7 @@ class _AppShellState extends State<AppShell> {
     'device-health' => const DeviceHealthPage(),
     'command-dashboard' => const CommandDashboardPage(),
     'account-overview' => const AccountOverviewPage(),
+    'wiki' => const WikiPage(),
     _ => LumaEmptyState(
       icon: Icons.extension_off_rounded,
       title: t.shellPluginUnavailable,

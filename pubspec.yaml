@@ -148,6 +148,7 @@ flutter:
     - assets/tests/pagoda_gpt_sol_61_low.html
     - assets/images/vendors/
     - assets/space_colony/
+    - assets/wiki_site/
     - assets/ai_usage/engine_tests/
     - assets/ai_usage/server_rack_tests/
     - server/benchmarks/scenes/engine_gpt61_sol_xhigh/index.html
