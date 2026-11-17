@@ -43,6 +43,8 @@ class NativeWebviewManager {
     std::vector<NativeWebviewOcclusion> occlusions;
     bool visible = false;
     bool destroyed = false;
+    bool monitor_expanded = false;
+    std::wstring monitor_capture_folder;
   };
 
   using MethodResult = flutter::MethodResult<flutter::EncodableValue>;

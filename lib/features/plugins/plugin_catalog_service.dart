@@ -152,6 +152,8 @@ class PluginCatalogService {
       'https://raw.githubusercontent.com/Hyperlinkhyper1/luma-app/master/plugins';
   static const _smartHomeManifestAsset = 'plugins/smart-home/manifest.json';
   static const _smallGamesManifestAsset = 'plugins/small-games/manifest.json';
+  static const _monitorSimulationManifestAsset =
+      'plugins/monitor-simulation/manifest.json';
   static const _pluginI18nAsset = 'assets/plugin_i18n.json';
 
   Future<Map<String, dynamic>>? _i18nCatalog;
@@ -168,14 +170,21 @@ class PluginCatalogService {
     final pluginI18n = (i18n['plugins'] as Map?)?.cast<String, dynamic>() ?? {};
     final smartHome = PluginCatalogEntry.fromJson(await _bundledSmartHome());
     final smallGames = PluginCatalogEntry.fromJson(await _bundledSmallGames());
+    final monitorSimulation = PluginCatalogEntry.fromJson(
+      await _bundledMonitorSimulation(),
+    );
     return [
       _withCatalogI18n(smartHome, pluginI18n),
       _withCatalogI18n(smallGames, pluginI18n),
+      _withCatalogI18n(monitorSimulation, pluginI18n),
       ...list
           .map(PluginCatalogEntry.fromJson)
           .map((entry) => _withCatalogI18n(entry, pluginI18n))
           .where(
-            (entry) => entry.id != smartHome.id && entry.id != smallGames.id,
+            (entry) =>
+                entry.id != smartHome.id &&
+                entry.id != smallGames.id &&
+                entry.id != monitorSimulation.id,
           ),
     ];
   }
@@ -184,6 +193,7 @@ class PluginCatalogService {
     final body = switch (pluginId) {
       'smart-home' => await _bundledSmartHome(),
       'small-games' => await _bundledSmallGames(),
+      'monitor-simulation' => await _bundledMonitorSimulation(),
       _ => await _getJson('$_rawBase/$pluginId/manifest.json'),
     };
     final manifest = PluginManifest.fromJson(body);
@@ -236,6 +246,11 @@ class PluginCatalogService {
 
   Future<Map<String, dynamic>> _bundledSmallGames() async =>
       (jsonDecode(await rootBundle.loadString(_smallGamesManifestAsset)) as Map)
+          .cast<String, dynamic>();
+
+  Future<Map<String, dynamic>> _bundledMonitorSimulation() async =>
+      (jsonDecode(await rootBundle.loadString(_monitorSimulationManifestAsset))
+              as Map)
           .cast<String, dynamic>();
 
   /// Resolves a screenshot filename (as listed in a manifest) to the raw

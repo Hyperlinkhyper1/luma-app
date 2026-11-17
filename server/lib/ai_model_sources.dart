@@ -1020,8 +1020,11 @@ List<AiModel> aaOverlays(List<Object?> raw, List<AiModel> known) {
     if (match == null) continue;
 
     final evals = _map(entry['evaluations']);
-    // The v2 language API nests speed and latency under `performance`; the
-    // flat keys are what the retired /api/v2/data route returned.
+    // Performance v3 replaced `performance`, whose fields AA nulls from
+    // 2026-12-10; v3 reports run means where the old object had medians. The
+    // older shapes stay as fallbacks: `performance` until it's removed, and
+    // the flat keys the retired /api/v2/data route returned.
+    final perfV3 = _map(entry['performance_v3']);
     final perf = _map(entry['performance']);
     final intelligence = _num(evals['artificial_analysis_intelligence_index']);
 
@@ -1042,9 +1045,11 @@ List<AiModel> aaOverlays(List<Object?> raw, List<AiModel> known) {
       codingIndex: _num(evals['artificial_analysis_coding_index']),
       agentIndex: _num(evals['artificial_analysis_agentic_index']),
       mathIndex: _num(evals['artificial_analysis_math_index']),
-      speedTokensPerSec: _num(perf['median_output_tokens_per_second'] ??
+      speedTokensPerSec: _num(perfV3['mean_output_tokens_per_second'] ??
+          perf['median_output_tokens_per_second'] ??
           entry['median_output_tokens_per_second']),
-      latencyMs: _secondsToMs(_num(perf['median_time_to_first_token_seconds'] ??
+      latencyMs: _secondsToMs(_num(perfV3['mean_time_to_first_token_seconds'] ??
+          perf['median_time_to_first_token_seconds'] ??
           entry['median_time_to_first_token_seconds'])),
       sources: const ['artificial-analysis'],
     );

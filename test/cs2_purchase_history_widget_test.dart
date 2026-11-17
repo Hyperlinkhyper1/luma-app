@@ -95,7 +95,8 @@ void main() {
             ),
             '$_id:owned-copy',
           );
-          await db.recordCs2Prices({_hash: 200}, observedAt: DateTime.now());
+          await db.recordCs2Price(_hash,
+              lowestCents: null, medianCents: 200, currency: 'USD');
         });
         await tester.pumpWidget(
           MaterialApp(
@@ -119,7 +120,8 @@ void main() {
         expect(find.text('+\$0.85'), findsWidgets);
         expect(find.text('+73.9%'), findsWidgets);
         await tester.runAsync(
-          () => db.recordCs2Prices({_hash: 100}, observedAt: DateTime.now()),
+          () => db.recordCs2Price(_hash,
+              lowestCents: null, medianCents: 100, currency: 'USD'),
         );
         await tester.pumpAndSettle();
         expect(find.text('-\$0.15'), findsWidgets);

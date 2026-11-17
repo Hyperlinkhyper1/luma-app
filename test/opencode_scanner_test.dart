@@ -50,23 +50,22 @@ Map<String, dynamic> _assistantData({
   String? cwd = r'C:\Users\ayden\project',
   int timeCreated = 1787479979983,
   num? cost = 0,
-}) =>
-    {
-      'role': 'assistant',
-      'mode': 'build',
-      'agent': 'build',
-      'cost': ?cost,
-      'tokens': {
-        'input': input,
-        'output': output,
-        'reasoning': reasoning,
-        'cache': {'read': cacheRead, 'write': cacheWrite},
-      },
-      'modelID': modelId,
-      'providerID': providerId,
-      if (cwd != null) 'path': {'cwd': cwd, 'root': '/'},
-      'time': {'created': timeCreated},
-    };
+}) => {
+  'role': 'assistant',
+  'mode': 'build',
+  'agent': 'build',
+  'cost': ?cost,
+  'tokens': {
+    'input': input,
+    'output': output,
+    'reasoning': reasoning,
+    'cache': {'read': cacheRead, 'write': cacheWrite},
+  },
+  'modelID': modelId,
+  'providerID': providerId,
+  if (cwd != null) 'path': {'cwd': cwd, 'root': '/'},
+  'time': {'created': timeCreated},
+};
 
 void main() {
   late Directory tempDir;
@@ -83,7 +82,8 @@ void main() {
     if (await tempDir.exists()) await tempDir.delete(recursive: true);
   });
 
-  File dbPath(String name) => File('${tempDir.path}${Platform.pathSeparator}$name');
+  File dbPath(String name) =>
+      File('${tempDir.path}${Platform.pathSeparator}$name');
 
   test('an assistant message with token usage parses into a turn', () async {
     final path = dbPath('opencode.db');
@@ -93,7 +93,13 @@ void main() {
       id: 'msg-1',
       sessionId: 'ses-1',
       timeCreated: 1787479979983,
-      data: _assistantData(input: 1000, output: 200, reasoning: 50, cacheRead: 300, cacheWrite: 20),
+      data: _assistantData(
+        input: 1000,
+        output: 200,
+        reasoning: 50,
+        cacheRead: 300,
+        cacheWrite: 20,
+      ),
     );
     sqliteDb.close();
 
@@ -107,7 +113,11 @@ void main() {
     expect(row.model, 'anthropic/claude-opus-4-6');
     expect(row.source, AiUsageSource.opencode);
     expect(row.inputTokens, 1000);
-    expect(row.outputTokens, 200 + 50, reason: 'reasoning tokens are folded into output');
+    expect(
+      row.outputTokens,
+      200 + 50,
+      reason: 'reasoning tokens are folded into output',
+    );
     expect(row.cacheReadTokens, 300);
     expect(row.cacheCreationTokens, 20);
     expect(row.project, 'ayden/project');
@@ -121,7 +131,10 @@ void main() {
       id: 'msg-1',
       sessionId: 'ses-1',
       timeCreated: 1787479979983,
-      data: {'role': 'user', 'time': {'created': 1787479979983}},
+      data: {
+        'role': 'user',
+        'time': {'created': 1787479979983},
+      },
     );
     sqliteDb.close();
 
@@ -146,11 +159,14 @@ void main() {
     expect(result.turnsAdded, 0);
   });
 
-  test('a null file (no local install found) is a clean unavailable result', () async {
-    final result = await scanner.scanFile(db, null);
-    expect(result.dbFound, isFalse);
-    expect(result.turnsAdded, 0);
-  });
+  test(
+    'a null file (no local install found) is a clean unavailable result',
+    () async {
+      final result = await scanner.scanFile(db, null);
+      expect(result.dbFound, isFalse);
+      expect(result.turnsAdded, 0);
+    },
+  );
 
   test('a path to a nonexistent db file fails open gracefully', () async {
     final result = await scanner.scanFile(db, dbPath('missing.db'));
@@ -184,7 +200,11 @@ void main() {
     sqliteDb.close();
 
     final second = await scanner.scanFile(db, path);
-    expect(second.turnsAdded, 1, reason: 'only msg-2 is newer than the stored watermark');
+    expect(
+      second.turnsAdded,
+      1,
+      reason: 'only msg-2 is newer than the stored watermark',
+    );
 
     final rows = await db.select(db.aiUsageTurns).get();
     expect(rows, hasLength(2));
@@ -208,23 +228,126 @@ void main() {
     expect(await db.select(db.aiUsageTurns).get(), hasLength(1));
   });
 
-  test('an opencode-provider (OpenCode Zen catalog) model still records the turn', () async {
+  test('imports a message completed after an earlier scan', () async {
     final path = dbPath('opencode.db');
-    final sqliteDb = _openFixtureDb(path.path);
+    final source = _openFixtureDb(path.path);
     _insertMessage(
-      sqliteDb,
+      source,
       id: 'msg-1',
       sessionId: 'ses-1',
       timeCreated: 1000,
-      data: _assistantData(providerId: 'opencode', modelId: 'x-preview-f-free', input: 500, output: 50),
+      data: _assistantData(input: 0, output: 0),
     );
-    sqliteDb.close();
-
-    await scanner.scanFile(db, path);
-
-    final row = (await db.select(db.aiUsageTurns).get()).single;
-    expect(row.model, 'opencode/x-preview-f-free');
+    expect((await scanner.scanFile(db, path)).turnsAdded, 0);
+    source.execute(
+      'UPDATE message SET time_updated = ?, data = ? WHERE id = ?',
+      [2000, jsonEncode(_assistantData(input: 30, output: 10)), 'msg-1'],
+    );
+    expect((await scanner.scanFile(db, path)).turnsAdded, 1);
+    expect((await db.select(db.aiUsageTurns).get()).single.inputTokens, 30);
+    source.close();
   });
+
+  test(
+    'rescans equal update timestamps and replaces changed usage only once',
+    () async {
+      final path = dbPath('opencode.db');
+      final source = _openFixtureDb(path.path);
+      _insertMessage(
+        source,
+        id: 'msg-1',
+        sessionId: 'ses-1',
+        timeCreated: 1000,
+        data: _assistantData(input: 30),
+      );
+      expect((await scanner.scanFile(db, path)).turnsAdded, 1);
+      source.execute('UPDATE message SET data = ? WHERE id = ?', [
+        jsonEncode(_assistantData(input: 50)),
+        'msg-1',
+      ]);
+      _insertMessage(
+        source,
+        id: 'msg-2',
+        sessionId: 'ses-1',
+        timeCreated: 1000,
+        data: _assistantData(input: 60),
+      );
+      expect((await scanner.scanFile(db, path)).turnsAdded, 1);
+      final rows = await db.select(db.aiUsageTurns).get();
+      expect(rows, hasLength(2));
+      expect(rows.singleWhere((r) => r.messageId == 'msg-1').inputTokens, 50);
+      final ids = rows.map((r) => r.id).toSet();
+      expect((await scanner.scanFile(db, path)).turnsAdded, 0);
+      expect(
+        (await db.select(db.aiUsageTurns).get()).map((r) => r.id).toSet(),
+        ids,
+      );
+      source.close();
+    },
+  );
+
+  test(
+    'backfills old creation-time watermark without duplicating existing turns',
+    () async {
+      final path = dbPath('opencode.db');
+      final source = _openFixtureDb(path.path);
+      _insertMessage(
+        source,
+        id: 'msg-1',
+        sessionId: 'ses-1',
+        timeCreated: 1000,
+        data: _assistantData(input: 30),
+      );
+      await scanner.scanFile(db, path);
+      await (db.delete(
+        db.aiUsageScanFiles,
+      )..where((t) => t.path.equals('${path.path}::opencode-updated-v2'))).go();
+      await db
+          .into(db.aiUsageScanFiles)
+          .insert(
+            AiUsageScanFilesCompanion.insert(path: path.path, mtimeMs: 2000),
+          );
+      _insertMessage(
+        source,
+        id: 'msg-2',
+        sessionId: 'ses-1',
+        timeCreated: 1500,
+        data: _assistantData(input: 60),
+      );
+      final original = (await db.select(db.aiUsageTurns).get()).single.id;
+      expect((await scanner.scanFile(db, path)).turnsAdded, 1);
+      final rows = await db.select(db.aiUsageTurns).get();
+      expect(rows, hasLength(2));
+      expect(rows.singleWhere((r) => r.messageId == 'msg-1').id, original);
+      source.close();
+    },
+  );
+
+  test(
+    'an opencode-provider (OpenCode Zen catalog) model still records the turn',
+    () async {
+      final path = dbPath('opencode.db');
+      final sqliteDb = _openFixtureDb(path.path);
+      _insertMessage(
+        sqliteDb,
+        id: 'msg-1',
+        sessionId: 'ses-1',
+        timeCreated: 1000,
+        data: _assistantData(
+          providerId: 'opencode',
+          modelId: 'x-preview-f-free',
+          input: 500,
+          output: 50,
+        ),
+      );
+      sqliteDb.close();
+
+      await scanner.scanFile(db, path);
+
+      final row = (await db.select(db.aiUsageTurns).get()).single;
+      expect(row.model, 'opencode/x-preview-f-free');
+    },
+  );
 
   test("stores opencode's own per-turn cost", () async {
     final path = dbPath('opencode.db');

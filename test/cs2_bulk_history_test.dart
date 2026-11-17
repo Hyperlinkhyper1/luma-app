@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:drift/drift.dart' show Value;
@@ -197,10 +198,105 @@ void main() {
       expect(points.where((p) => p.marketHashName == 'Covered'), hasLength(2));
     });
 
+    test('bulk only prices unpriced listings and never writes history',
+        () async {
+      for (final name in ['Priced', 'Fresh']) {
+        await _track(db, name);
+      }
+      await db.recordCs2Price('Priced',
+          lowestCents: 460, medianCents: 461, currency: 'USD');
+      await db.recordCs2BulkEstimates({'Priced': 623, 'Fresh': 67});
+      final items = {
+        for (final item in await db.allCs2Items()) item.marketHashName: item,
+      };
+      expect(items['Priced']!.lastLowestCents, 460);
+      expect(items['Priced']!.lastMedianCents, 461);
+      expect(items['Fresh']!.lastMedianCents, 67);
+      expect(items['Fresh']!.priceFetchedAt, isNull);
+      final points = await db.allCs2PricePoints();
+      expect(points.map((p) => p.marketHashName), ['Priced']);
+    });
+
+    test('a busy sweep does not let bulk overwrite a Steam price', () async {
+      await _track(db, 'A');
+      await db.recordCs2Price('A',
+          lowestCents: 460,
+          medianCents: 461,
+          currency: 'USD',
+          observedAt: DateTime.now().subtract(const Duration(hours: 3)));
+      final release = Completer<void>();
+      final repository = Cs2MarketRepository(
+        db,
+        api: Cs2MarketApi(
+          client: MockClient((_) async {
+            await release.future;
+            return http.Response('{"success":true,"lowest_price":"\$4.70"}', 200);
+          }),
+        ),
+        bulkPrices: Cs2BulkPriceApi(
+          client: MockClient((_) async =>
+              http.Response(jsonEncode({'A': {'last_24h': 6.23}}), 200)),
+        ),
+        fetchOfflineSnapshot: () async => null,
+        priceCheckSpacing: Duration.zero,
+      );
+      addTearDown(repository.dispose);
+      final sweep = repository.refreshAllPrices();
+      await repository.refreshPrice('A');
+      final during = (await db.allCs2Items()).single;
+      expect(during.lastLowestCents, 460);
+      expect(await db.allCs2PricePoints(), hasLength(1));
+      release.complete();
+      await sweep;
+      expect((await db.allCs2Items()).single.lastLowestCents, 470);
+    });
+
+    test('cleanup drops stored bulk readings and restores the last price',
+        () async {
+      await _track(db, 'A');
+      final hour = DateTime.utc(2026, 10, 30, 12).toLocal();
+      await db.recordCs2Price('A',
+          lowestCents: null,
+          medianCents: 450,
+          currency: 'USD',
+          observedAt: hour);
+      await db.recordCs2Price('A',
+          lowestCents: 460,
+          medianCents: 461,
+          currency: 'USD',
+          observedAt: hour.add(const Duration(minutes: 7, seconds: 3)));
+      await db.into(db.cs2MarketPricePoints).insert(
+            Cs2MarketPricePointsCompanion.insert(
+              marketHashName: 'A',
+              observedAt: hour.add(const Duration(hours: 4, seconds: 8)),
+              medianCents: const Value(623),
+              currency: 'USD',
+            ),
+          );
+      await (db.update(db.cs2MarketItems)
+            ..where((i) => i.marketHashName.equals('A')))
+          .write(const Cs2MarketItemsCompanion(
+        lastLowestCents: Value(null),
+        lastMedianCents: Value(623),
+      ));
+
+      expect(await db.dropCs2BulkReadings(), 1);
+      final points = await db.allCs2PricePoints();
+      expect(points.map((p) => p.medianCents), unorderedEquals([450, 461]));
+      final item = (await db.allCs2Items()).single;
+      expect(item.lastLowestCents, 460);
+      expect(item.lastMedianCents, 461);
+      expect(await db.dropCs2BulkReadings(), 0);
+    });
+
     test('backfill adds Steam history from before tracking, once', () async {
       final trackedAt = DateTime.now().subtract(const Duration(hours: 1));
       await _track(db, 'A', trackedAt: trackedAt);
-      await db.recordCs2Prices({'A': 900}, observedAt: trackedAt);
+      await db.recordCs2Price('A',
+          lowestCents: null,
+          medianCents: 900,
+          currency: 'USD',
+          observedAt: trackedAt);
       var calls = 0;
       final repository = Cs2MarketRepository(
         db,

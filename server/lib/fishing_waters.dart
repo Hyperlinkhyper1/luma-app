@@ -77,16 +77,24 @@ class FishingWaters {
   Map<String, Map<String, dynamic>> _boards = {};
 
   /// The boards the game may report, in website order. Titles and units live
-  /// here so a game server can't put arbitrary text on the website. Playtime
-  /// has no noticeboard in the game; the website is the only place it shows.
+  /// here so a game server can't put arbitrary text on the website. Each
+  /// board is one [metric] over one [period] (`all`, `month` or `week`), which
+  /// the website's switch flips between. Only the six with `noticeboard` set
+  /// stand on the harbour plaza; the rest show on the website alone.
+  /// `weekly` stays for pages built before monthly boards existed.
   static const boardDefinitions = [
-    {'id': 'Level', 'title': 'Highest level', 'unit': 'level', 'weekly': false},
-    {'id': 'WeeklyXP', 'title': 'Most XP this week', 'unit': 'xp', 'weekly': true},
-    {'id': 'Caught', 'title': 'Most fish caught', 'unit': 'fish', 'weekly': false},
-    {'id': 'WeeklyCaught', 'title': 'Fish this week', 'unit': 'fish', 'weekly': true},
-    {'id': 'Earned', 'title': 'Most money earned', 'unit': 'money', 'weekly': false},
-    {'id': 'WeeklyEarned', 'title': 'Money this week', 'unit': 'money', 'weekly': true},
-    {'id': 'Playtime', 'title': 'Most time played', 'unit': 'seconds', 'weekly': false},
+    {'id': 'Level', 'metric': 'level', 'period': 'all', 'title': 'Highest level', 'unit': 'level', 'weekly': false, 'noticeboard': true},
+    {'id': 'MonthlyXP', 'metric': 'level', 'period': 'month', 'title': 'Most XP this month', 'unit': 'xp', 'weekly': false, 'noticeboard': false},
+    {'id': 'WeeklyXP', 'metric': 'level', 'period': 'week', 'title': 'Most XP this week', 'unit': 'xp', 'weekly': true, 'noticeboard': true},
+    {'id': 'Caught', 'metric': 'caught', 'period': 'all', 'title': 'Most fish caught', 'unit': 'fish', 'weekly': false, 'noticeboard': true},
+    {'id': 'MonthlyCaught', 'metric': 'caught', 'period': 'month', 'title': 'Fish this month', 'unit': 'fish', 'weekly': false, 'noticeboard': false},
+    {'id': 'WeeklyCaught', 'metric': 'caught', 'period': 'week', 'title': 'Fish this week', 'unit': 'fish', 'weekly': true, 'noticeboard': true},
+    {'id': 'Earned', 'metric': 'earned', 'period': 'all', 'title': 'Most money earned', 'unit': 'money', 'weekly': false, 'noticeboard': true},
+    {'id': 'MonthlyEarned', 'metric': 'earned', 'period': 'month', 'title': 'Money this month', 'unit': 'money', 'weekly': false, 'noticeboard': false},
+    {'id': 'WeeklyEarned', 'metric': 'earned', 'period': 'week', 'title': 'Money this week', 'unit': 'money', 'weekly': true, 'noticeboard': true},
+    {'id': 'Playtime', 'metric': 'playtime', 'period': 'all', 'title': 'Most time played', 'unit': 'seconds', 'weekly': false, 'noticeboard': false},
+    {'id': 'MonthlyPlaytime', 'metric': 'playtime', 'period': 'month', 'title': 'Time played this month', 'unit': 'seconds', 'weekly': false, 'noticeboard': false},
+    {'id': 'WeeklyPlaytime', 'metric': 'playtime', 'period': 'week', 'title': 'Time played this week', 'unit': 'seconds', 'weekly': true, 'noticeboard': false},
   ];
   static const _boardRows = 10;
 
@@ -301,24 +309,28 @@ class FishingWaters {
   }
 
   /// Takes each reported board that is at least as fresh as the one held. A
-  /// later week always wins, so last week's weekly rows never come back.
+  /// later week or month always wins, so last period's rows never come back.
   /// True when any rows changed and the file needs saving.
   bool _mergeBoards(Object? raw) {
     if (raw is! Map) return false;
     var changed = false;
     for (final def in boardDefinitions) {
       final id = def['id'] as String;
-      final weekly = def['weekly'] == true;
+      final period = def['period'] as String;
       final board = raw[id];
       if (board is! Map) continue;
       final readAt = _int(board['readAt']);
-      final week = weekly ? _int(board['week']) : null;
-      if (readAt == null || readAt <= 0 || (weekly && week == null)) continue;
+      final week = period == 'week' ? _int(board['week']) : null;
+      final month = period == 'month' ? _int(board['month']) : null;
+      final scope = week ?? month;
+      if (readAt == null || readAt <= 0 || (period != 'all' && scope == null)) {
+        continue;
+      }
       final held = _boards[id];
       if (held != null) {
-        final heldWeek = _int(held['week']) ?? 0;
-        if (week != null && week < heldWeek) continue;
-        if ((week == null || week == heldWeek) &&
+        final heldScope = _int(held[period]) ?? 0;
+        if (scope != null && scope < heldScope) continue;
+        if ((scope == null || scope == heldScope) &&
             readAt < (_int(held['readAt']) ?? 0)) {
           continue;
         }
@@ -339,10 +351,16 @@ class FishingWaters {
       }
       if (held == null ||
           held['week'] != week ||
+          held['month'] != month ||
           jsonEncode(held['rows']) != jsonEncode(rows)) {
         changed = true;
       }
-      _boards[id] = {'readAt': readAt, 'week': week, 'rows': rows};
+      _boards[id] = {
+        'readAt': readAt,
+        'week': week,
+        'month': month,
+        'rows': rows,
+      };
     }
     return changed;
   }
@@ -351,11 +369,13 @@ class FishingWaters {
     _load();
     return {
       'game': 'Fishing Waters',
+      'periods': const ['all', 'month', 'week'],
       'boards': [
         for (final def in boardDefinitions)
           {
             ...def,
             'week': _boards[def['id']]?['week'],
+            'month': _boards[def['id']]?['month'],
             'readAt': _boards[def['id']]?['readAt'],
             'rows': _boards[def['id']]?['rows'] ?? const [],
           },

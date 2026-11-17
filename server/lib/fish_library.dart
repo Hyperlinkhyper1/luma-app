@@ -279,6 +279,108 @@ class FishLibrary {
       ? null
       : File('$wikiDir/source/public/models/fish/$slug.json');
 
+  // ---- Smooth skins -----------------------------------------------------
+
+  /// The game's smooth skins ([fishSkinScript] output) by fish id, for the
+  /// game commit [_skinsCommit]. The wiki's exporter doesn't write skins, so
+  /// [model] adds them to the files it serves.
+  Map<String, Map<String, dynamic>> _skins = {};
+  String? _skinsCommit;
+  String? _skinsTried;
+  Future<void>? _skinsRun;
+  bool _skinsLoaded = false;
+  File get _skinsFile => File('$dataDir/fish_skins.json');
+
+  void _loadSkins() {
+    if (_skinsLoaded) return;
+    _skinsLoaded = true;
+    try {
+      final saved = jsonDecode(_skinsFile.readAsStringSync()) as Map;
+      _skinsCommit = saved['commit'] as String?;
+      _skins = {
+        for (final e in (saved['skins'] as Map).entries)
+          e.key as String: Map<String, dynamic>.from(e.value as Map),
+      };
+    } catch (_) {}
+  }
+
+  /// Rebuilds the skins once per game commit, when the sandbox and the
+  /// wiki's Roblox mock are there; the first model request waits for it.
+  void _refreshSkins(String commit, Map<String, String> files) {
+    _loadSkins();
+    if (_skinsCommit == commit || _skinsTried == commit || _skinsRun != null) return;
+    if (_luauOverride == null && _rendererUrl == null) return;
+    _skinsTried = commit;
+    _skinsRun = _buildSkins(commit, files)
+        .catchError((Object _) {})
+        .whenComplete(() => _skinsRun = null);
+  }
+
+  Future<void> _buildSkins(String commit, Map<String, String> files) async {
+    final mock = wikiDir == null
+        ? null
+        : File('$wikiDir/source/scripts/fish-models/roblox-mock.luau');
+    if (mock == null || !mock.existsSync()) return;
+    String read(String? text) => (text ?? '').replaceAll('\r\n', '\n');
+    final species = await _species(files);
+    final ids = species.keys.where(isFishId).toList();
+    final mutations = read(await _file(files, 'src/shared/FishMutations.luau'));
+    final models = exposeFishTemplate(read(await _file(files, 'src/shared/FishModels.luau'))
+        .replaceFirst('require(script.Parent.FishSpecies)', 'FishSpecies')
+        .replaceFirst('require(script.Parent.FishMutations)', 'FishMutations'));
+    final bundle = [
+      read(await mock.readAsString()),
+      'local FishSpecies = {}',
+      for (final id in ids)
+        'do local ok, species = pcall(function()\n${read(species[id]!.source)}\nend) '
+            'if ok then FishSpecies["$id"] = species end end',
+      'local FishMutations = (function()\n$mutations\nend)()',
+      'local FishModels = (function()\n$models\nend)()',
+      'FISH_IDS = {}',
+      'for _, id in { ${ids.map((id) => '"$id"').join(', ')} } do '
+          'if FishModels.has(id) then table.insert(FISH_IDS, id) end end',
+      fishSkinScript,
+    ].join('\n');
+    final run = await _runLuau(bundle);
+    final skins = fishSkinLines(run.stdout);
+    if (skins.isEmpty) return;
+    _skins = skins;
+    _skinsCommit = commit;
+    try {
+      await _skinsFile.parent.create(recursive: true);
+      await _skinsFile.writeAsString(jsonEncode({'commit': commit, 'skins': skins}));
+    } catch (_) {}
+  }
+
+  /// [bytes] (a model file) with the species' smooth skin added, when it has
+  /// none and the skin fits its parts.
+  Future<List<int>> _withSkin(String slug, List<int> bytes) async {
+    try {
+      final head = await _tree();
+      _refreshSkins(head.commit, head.files);
+    } catch (_) {
+      _loadSkins();
+    }
+    final running = _skinsRun;
+    if (running != null) {
+      await running.timeout(const Duration(seconds: 25), onTimeout: () {});
+    }
+    final raw = _skins.entries
+        .where((e) => fishSlug(e.key) == slug)
+        .map((e) => e.value)
+        .firstOrNull;
+    if (raw == null) return bytes;
+    try {
+      final model = jsonDecode(utf8.decode(bytes)) as Map<String, dynamic>;
+      if (model['skin'] != null || model['parts'] is! List) return bytes;
+      final skin = fitSkin(model['parts'] as List, raw);
+      if (skin == null) return bytes;
+      return utf8.encode(jsonEncode({...model, 'skin': skin}));
+    } catch (_) {
+      return bytes;
+    }
+  }
+
   Map<String, Map<String, dynamic>> _wikiPalettes() {
     final file = wikiDir == null
         ? null
@@ -356,7 +458,7 @@ class FishLibrary {
     }
     for (final file in [_overrideModel(slug), _wikiModel(slug)]) {
       if (file != null && await file.exists()) {
-        return Response.ok(await file.readAsBytes(), headers: {
+        return Response.ok(await _withSkin(slug, await file.readAsBytes()), headers: {
           'Content-Type': 'application/json',
           'Cache-Control': 'no-store',
         });
@@ -1244,8 +1346,9 @@ $table''';
     String withSpecies(String text) =>
         text.replaceFirst('require(script.Parent.FishSpecies)', 'FishSpecies');
     final mutations = read(await _file(files, 'src/shared/FishMutations.luau'));
-    final models = withSpecies(read(await _file(files, 'src/shared/FishModels.luau')))
-        .replaceFirst('require(script.Parent.FishMutations)', 'FishMutations');
+    final models = exposeFishTemplate(
+        withSpecies(read(await _file(files, 'src/shared/FishModels.luau')))
+            .replaceFirst('require(script.Parent.FishMutations)', 'FishMutations'));
     final catalog = withSpecies(read(await _file(files, 'src/shared/AnglerCatalog.luau')));
     final id = file.id;
     final exporter = await export.readAsString();
@@ -1258,6 +1361,7 @@ $table''';
       'assert(Catalog.Fish["$id"], "AnglerCatalog did not load $id")',
       'FISH_IDS = if FishModels.has("$id") then { "$id" } else {}',
       'print("FISHCHECK " .. #FISH_IDS)',
+      fishSkinScript,
       read(exporter),
     ].join('\n');
     final run = await _runLuau(bundle);
@@ -1274,14 +1378,25 @@ $table''';
     }
     try {
       final fish = jsonDecode(line) as Map<String, dynamic>;
-      if (requireSkin && exporter.contains('encodeSkin') && fish['skin'] == null) {
+      // The sandbox reports the game's own loft; an exporter that encodes
+      // skins itself counts too.
+      final skin = fishSkinLines(run.stdout)[id];
+      final noSkin = fish['skin'] == null &&
+          (skin == null ? exporter.contains('encodeSkin') : skin['none'] == true);
+      if (requireSkin && noSkin) {
         return (json: null, error: 'The body is still built from loose spheres, '
             'with no smooth 3D mesh skin. Build the body with b:fishBody, '
             'b:loftBody, a skinned kit family (carp, trout, sturgeon, eel, '
             'flatfish), or call b:beginSkin(colors) before its b:layered '
             'body spheres, as the rules describe.');
       }
-      return (json: packModel(fish), error: null);
+      var json = packModel(fish);
+      if (fish['skin'] == null && skin != null) {
+        final packed = jsonDecode(json) as Map<String, dynamic>;
+        final fitted = fitSkin(packed['parts'] as List, skin);
+        if (fitted != null) json = jsonEncode({...packed, 'skin': fitted});
+      }
+      return (json: json, error: null);
     } on FormatException catch (e) {
       return (json: null, error: e.message);
     }
@@ -1338,6 +1453,186 @@ $table''';
       client.close(force: true);
     }
   }
+}
+
+/// Prints one `FISHSKIN {json}` line per id in `FISH_IDS`: the smooth skin
+/// the game's clients loft over the sphere body (FishModels.loft), with the
+/// size and position of its colour swatches and of the body spheres it
+/// hides, so [fitSkin] can find them among an exported model's parts. A
+/// species without a skin prints `{"id":…,"none":true}`. Needs
+/// FishModels.template, which [exposeFishTemplate] adds.
+const fishSkinScript = r'''
+pcall(function()
+	local function num(n)
+		if type(n) ~= "number" or n ~= n or n == math.huge or n == -math.huge then
+			error("not a finite number")
+		end
+		return string.format("%.5f", n)
+	end
+	local function piece(part)
+		local p, s = part.CFrame.Position, part.Size
+		return "[" .. table.concat({ num(s.X), num(s.Y), num(s.Z), num(p.X), num(p.Y), num(p.Z) }, ",") .. "]"
+	end
+	for _, id in FISH_IDS do
+		local ok, line = pcall(function()
+			local loft = FishModels.loft(id)
+			if not loft or not loft.rings then
+				return '{"id":"' .. id .. '","none":true}'
+			end
+			local model = (FishModels.template or FishModels.create)(id)
+			local swatches, hide = {}, {}
+			for _, item in model:GetDescendants() do
+				if item:IsA("BasePart") then
+					local name = item:GetAttribute("LoftSwatch")
+					if type(name) == "string" and not swatches[name] then
+						swatches[name] = piece(item)
+					end
+					if item:GetAttribute("LoftFallback") then
+						table.insert(hide, piece(item))
+					end
+				end
+			end
+			if not swatches.Side then
+				error("no Side swatch")
+			end
+			local rings, named = {}, {}
+			for _, ring in loft.rings do
+				table.insert(rings, "[" .. table.concat({ num(ring.x), num(ring.top), num(ring.bottom), num(ring.width) }, ",") .. "]")
+			end
+			for name, text in swatches do
+				table.insert(named, '"' .. name .. '":' .. text)
+			end
+			return '{"id":"' .. id .. '","scale":' .. num(FishModels.SCALE) .. ',"mode":"' .. tostring(loft.mode or "bands")
+				.. '","rings":[' .. table.concat(rings, ",") .. '],"swatch":{' .. table.concat(named, ",")
+				.. '},"hide":[' .. table.concat(hide, ",") .. "]}"
+		end)
+		if ok then
+			print("FISHSKIN " .. line)
+		else
+			print("FISHSKINERR " .. id .. " " .. tostring(line))
+		end
+	end
+end)
+''';
+
+/// Lets [fishSkinScript] read a species' unmutated template, whose parts
+/// still carry the LoftSwatch/LoftFallback attributes.
+String exposeFishTemplate(String fishModels) => fishModels.replaceFirst(
+    'function FishModels.create(',
+    'FishModels.template = template\nfunction FishModels.create(');
+
+/// The `FISHSKIN` lines of a run, by fish id.
+Map<String, Map<String, dynamic>> fishSkinLines(String stdout) {
+  final out = <String, Map<String, dynamic>>{};
+  for (final line in stdout.split('\n')) {
+    final text = line.trim();
+    if (!text.startsWith('FISHSKIN {')) continue;
+    try {
+      final skin = jsonDecode(text.substring('FISHSKIN '.length));
+      if (skin is Map && skin['id'] is String) {
+        out[skin['id'] as String] = Map<String, dynamic>.from(skin);
+      }
+    } on FormatException {
+      continue;
+    }
+  }
+  return out;
+}
+
+/// The skin in the model file format the dashboard's viewer draws
+/// (skinGeometry in admin_fish_library.dart): rings in the model's studs, and
+/// its swatch (side, back, belly) and hidden body parts as indices into
+/// [parts], the packed base parts. Null when the parts don't line up with
+/// the skin, e.g. a wiki export of an older commit; the viewer then keeps
+/// the sphere body.
+Map<String, dynamic>? fitSkin(List<dynamic> parts, Map<String, dynamic> skin) {
+  if (skin['none'] == true || skin['rings'] is! List || skin['swatch'] is! Map) {
+    return null;
+  }
+  List<double>? geometry(Object? value) {
+    if (value is! List || value.length != 6 || value.any((v) => v is! num)) {
+      return null;
+    }
+    return [for (final v in value) (v as num).toDouble()];
+  }
+
+  final swatch = skin['swatch'] as Map;
+  final side = geometry(swatch['Side']);
+  if (side == null) return null;
+  final back = geometry(swatch['Back']) ?? side;
+  final belly = geometry(swatch['Belly']) ?? side;
+  final hidden = <List<double>>[];
+  for (final value in skin['hide'] is List ? skin['hide'] as List : const []) {
+    final g = geometry(value);
+    if (g == null) return null;
+    hidden.add(g);
+  }
+  final packed = [
+    for (final p in parts)
+      p is List && p.length >= 7 && p.skip(1).take(6).every((v) => v is num)
+          ? [for (final v in p.skip(1).take(6)) (v as num).toDouble()]
+          : null,
+  ];
+  bool close(double a, double b) => (a - b).abs() < 0.002;
+  int? find(List<double> want, List<double> shift, [Set<int>? taken]) {
+    for (var i = 0; i < packed.length; i++) {
+      final p = packed[i];
+      if (p == null || (taken?.contains(i) ?? false)) continue;
+      if (close(p[0], want[0]) &&
+          close(p[1], want[1]) &&
+          close(p[2], want[2]) &&
+          close(p[3], want[3] + shift[0]) &&
+          close(p[4], want[4] + shift[1]) &&
+          close(p[5], want[5] + shift[2])) {
+        return i;
+      }
+    }
+    return null;
+  }
+
+  // Exports normally keep the template's coordinates; otherwise the side
+  // swatch's twin gives the offset.
+  final shifts = <List<double>>[
+    [0, 0, 0],
+    for (final p in packed)
+      if (p != null && close(p[0], side[0]) && close(p[1], side[1]) && close(p[2], side[2]))
+        [p[3] - side[3], p[4] - side[4], p[5] - side[5]],
+  ];
+  final scale = (skin['scale'] as num?)?.toDouble() ?? 4;
+  double round(double v) => (v * 10000).round() / 10000;
+  for (final shift in shifts) {
+    final s = find(side, shift), b = find(back, shift), u = find(belly, shift);
+    if (s == null || b == null || u == null) continue;
+    final taken = <int>{};
+    final hide = <int>[];
+    for (final g in hidden) {
+      final i = find(g, shift, taken);
+      if (i == null) break;
+      taken.add(i);
+      hide.add(i);
+    }
+    if (hide.length != hidden.length) continue;
+    final rings = <List<double>>[];
+    for (final ring in skin['rings'] as List) {
+      final r = geometry([...(ring is List ? ring : const []), 0, 0]);
+      if (r == null) return null;
+      rings.add([
+        round(r[0] * scale + shift[0]),
+        round(r[1] * scale + shift[1]),
+        round(r[2] * scale + shift[1]),
+        round(r[3] * scale),
+      ]);
+    }
+    if (rings.length < 2) return null;
+    return {
+      'mode': skin['mode'] == 'flat' ? 'flat' : 'bands',
+      'rings': rings,
+      'z': round(shift[2]),
+      'swatch': [s, b, u],
+      'hide': hide,
+    };
+  }
+  return null;
 }
 
 /// The exporter's raw model line in the wiki's model file format (see the

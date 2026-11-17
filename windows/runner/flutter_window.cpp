@@ -92,6 +92,7 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
 
   switch (message) {
     case WM_MOVE:
+    case WM_SIZE:
       if (native_webviews_) native_webviews_->OnParentMoved();
       break;
     case WM_FONTCHANGE:

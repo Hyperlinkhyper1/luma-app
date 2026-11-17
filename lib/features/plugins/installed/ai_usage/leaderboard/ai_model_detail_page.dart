@@ -197,16 +197,6 @@ class _RatingsGrid extends StatelessWidget {
         t.aiLeaderboardDetailRatingReasoningHelp
       ),
       (
-        t.aiLeaderboardDetailRatingCoding,
-        model.codingIndex,
-        t.aiLeaderboardDetailRatingCodingHelp
-      ),
-      (
-        t.aiLeaderboardDetailRatingAgent,
-        model.agentIndex,
-        t.aiLeaderboardDetailRatingAgentHelp
-      ),
-      (
         'Code Arena',
         model.codeArena,
         t.aiLeaderboardDetailRatingCodeArenaHelp

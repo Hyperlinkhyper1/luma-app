@@ -1050,12 +1050,15 @@ body.theme-fw .proj-menu-label,body.theme-fw .proj-item-text small,body.theme-fw
   var BAY = [[290,1565],[350,1555],[450,1553],[550,1565],[650,1598],[760,1640],[850,1640],[950,1620],[1030,1630],[1100,1668],[1170,1690],[1240,1660],[1305,1585],[1345,1480],[1362,1360],[1348,1262],[1290,1182],[1200,1122],[1105,1090],[1045,1050],[1012,980],[985,902],[940,852],[870,818],[760,820],[685,850],[652,905],[663,1000],[680,1118],[660,1190],[600,1255],[520,1300],[430,1340]];
   function world(p) { return [(p[0] - 870) * 1.05, (p[1] - 1330) * 1.05]; }
   var ISLAND = OUTER.map(world), LAKE = BAY.map(world);
+  // Shared.Biomes in the game: the five terrain biomes, then zones (small biomes
+  // with their own mood and fish pool nested inside one, drawn as a solid gold ring).
   var BIOMES = [
     { name: 'Gullhaven Sound', x: 0, z: 0, r: 1300 },
-    { name: 'The Sodden Mire', x: -3700, z: -200, r: 1250 },
-    { name: 'Coral Shallows', x: -200, z: 3700, r: 1300 },
-    { name: 'Cinder Isles', x: 3700, z: 300, r: 1250 },
-    { name: 'Frostmere Expanse', x: 300, z: -3700, r: 1300 }
+    { name: 'The Sodden Mire', x: -3750, z: -1000, r: 1250 },
+    { name: 'Coral Shallows', x: -1200, z: 3000, r: 1300 },
+    { name: 'Cinder Isles', x: 3300, z: 1300, r: 1250 },
+    { name: 'Frostmere Expanse', x: 1000, z: -3800, r: 1300 },
+    { name: 'Pirate Cove', x: -650, z: 2150, r: 260, zone: true }
   ];
   var RANGES = { harbour: 1100, world: 5300 };
   // Rings drawn at each location: a black hole's Void Touched reach, and the
@@ -1132,11 +1135,12 @@ body.theme-fw .proj-menu-label,body.theme-fw .proj-item-text small,body.theme-fw
       if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = 1.2; ctx.stroke(); }
     }
     if (range === 'world') {
-      ctx.setLineDash([4, 5]);
       BIOMES.forEach(function (b) {
         var q = px(b.x, b.z);
-        ctx.beginPath(); ctx.arc(q[0], q[1], b.r * k, 0, Math.PI * 2);
-        ctx.strokeStyle = 'rgba(143,225,239,.22)'; ctx.lineWidth = 1; ctx.stroke();
+        ctx.setLineDash(b.zone ? [] : [4, 5]);
+        ctx.beginPath(); ctx.arc(q[0], q[1], Math.max(4, b.r * k), 0, Math.PI * 2);
+        if (b.zone) { ctx.fillStyle = 'rgba(240,196,110,.14)'; ctx.fill(); }
+        ctx.strokeStyle = b.zone ? 'rgba(240,196,110,.7)' : 'rgba(143,225,239,.22)'; ctx.lineWidth = 1; ctx.stroke();
       });
       ctx.setLineDash([]);
     }
@@ -1175,8 +1179,9 @@ body.theme-fw .proj-menu-label,body.theme-fw .proj-item-text small,body.theme-fw
     if (range === 'world') {
       BIOMES.forEach(function (b) {
         var q = px(b.x, b.z);
-        ctx.fillStyle = 'rgba(191,240,248,.7)';
-        ctx.fillText(b.name, q[0], b.z === 0 ? q[1] + b.r * k + 10 : q[1]);
+        ctx.fillStyle = b.zone ? 'rgba(248,222,160,.9)' : 'rgba(191,240,248,.7)';
+        var y = b.zone ? q[1] - Math.max(4, b.r * k) - 8 : b.z === 0 ? q[1] + b.r * k + 10 : q[1];
+        ctx.fillText(b.name, q[0], y);
       });
     }
     if (s) {

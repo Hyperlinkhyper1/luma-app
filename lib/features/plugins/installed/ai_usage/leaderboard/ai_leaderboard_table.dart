@@ -472,8 +472,6 @@ class _SortMenu extends StatelessWidget {
 
   static const _sortable = [
     AiLeaderboardColumn.llmStats,
-    AiLeaderboardColumn.coding,
-    AiLeaderboardColumn.agent,
     AiLeaderboardColumn.codeArena,
     AiLeaderboardColumn.params,
     AiLeaderboardColumn.context,
@@ -570,7 +568,7 @@ const double _wPrice = 96;
 const double _wLicense = 78;
 const double _tableWidth = _wRank +
     _wModel +
-    _wScore * 3 +
+    _wScore +
     _wArena +
     _wParams +
     _wContext +
@@ -613,7 +611,7 @@ class _ColumnWidths {
     }
     final modelGrowth = slack < _wModelMaxGrowth ? slack : _wModelMaxGrowth;
     final remaining = slack - modelGrowth;
-    const flexBase = _wScore * 3 + _wArena + _wParams + _wContext + _wPrice;
+    const flexBase = _wScore + _wArena + _wParams + _wContext + _wPrice;
     final scale = 1 + remaining / flexBase;
     return _ColumnWidths(
       model: _wModel + modelGrowth,
@@ -842,12 +840,6 @@ class _ModelCard extends StatelessWidget {
                       label: t.aiLeaderboardDetailRatingIntelligence,
                       value: model.llmStatsIndex),
                   _CardScore(
-                      label: t.aiLeaderboardDetailRatingCoding,
-                      value: model.codingIndex),
-                  _CardScore(
-                      label: t.aiLeaderboardDetailRatingAgent,
-                      value: model.agentIndex),
-                  _CardScore(
                     label: t.aiLeaderboardTableArena,
                     value: model.codeArena,
                     tinted: false,
@@ -974,17 +966,12 @@ class _HeaderRow extends StatelessWidget {
               sortBy: sortBy,
               descending: descending,
               onSort: onSort),
-          for (final column in const [
-            AiLeaderboardColumn.llmStats,
-            AiLeaderboardColumn.coding,
-            AiLeaderboardColumn.agent,
-          ])
-            _HeaderCell(
-                column: column,
-                width: widths.score,
-                sortBy: sortBy,
-                descending: descending,
-                onSort: onSort),
+          _HeaderCell(
+              column: AiLeaderboardColumn.llmStats,
+              width: widths.score,
+              sortBy: sortBy,
+              descending: descending,
+              onSort: onSort),
           _HeaderCell(
               column: AiLeaderboardColumn.codeArena,
               width: widths.arena,
@@ -1169,8 +1156,6 @@ class _ModelRow extends StatelessWidget {
             ),
           ),
           _ScoreCell(value: model.llmStatsIndex, width: widths.score),
-          _ScoreCell(value: model.codingIndex, width: widths.score),
-          _ScoreCell(value: model.agentIndex, width: widths.score),
           _NumberCell(
             width: widths.arena,
             text: model.codeArena?.round().toString(),

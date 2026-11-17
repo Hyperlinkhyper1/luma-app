@@ -2,7 +2,7 @@ part of 'api.dart';
 
 /// One "Add benchmark" run: a model writing one test's scene on one of the
 /// server's keys, from the request to the saved roster entry. Held in
-/// memory only; a server restart drops runs in flight.
+/// memory while running; queued runs and submitted batches survive a restart.
 class BenchmarkGenJob {
   BenchmarkGenJob({
     required this.id,
@@ -20,13 +20,26 @@ class BenchmarkGenJob {
     this.providerName,
     this.providerInput,
     this.providerOutput,
+    this.autoCompact = false,
+    this.compactAttempt = 0,
+    this.batchStartedAtMs,
+    this.priorInputTokens = 0,
+    this.priorOutputTokens = 0,
+    this.priorTotalTokens = 0,
   });
 
   /// Rebuilds a batch run saved by [toState] after a restart.
   static BenchmarkGenJob? fromState(Map<String, dynamic> j) {
     final upstream = AiUpstream.parse(j['upstream'] as String?);
     final batchId = j['batchId'];
-    if (upstream == null || batchId is! String || batchId.isEmpty) return null;
+    final attempt = (j['compactAttempt'] as num?)?.toInt() ?? 0;
+    final prompt = j['prompt'] as String? ?? '';
+    if (upstream == null ||
+        (batchId is! String &&
+            j['waiting'] != true &&
+            !((attempt > 0 || j['outputCapSent'] == false) &&
+                prompt.isNotEmpty)) ||
+        (batchId is String && batchId.isEmpty)) return null;
     final effort = j['effort'] as String? ?? '';
     return BenchmarkGenJob(
       id: j['id'] as String,
@@ -36,10 +49,16 @@ class BenchmarkGenJob {
       vendor: j['vendor'] as String? ?? '',
       route: AiModeRoute(upstream, j['model'] as String,
           reasoningEffort: effort.isEmpty ? null : effort),
-      prompt: '',
+      prompt: prompt,
+      autoCompact: j['autoCompact'] == true && prompt.isNotEmpty,
+      compactAttempt: attempt.clamp(0, 2),
+      batchStartedAtMs: (j['batchStartedAtMs'] as num?)?.toInt(),
+      priorInputTokens: (j['priorInputTokens'] as num?)?.toInt() ?? 0,
+      priorOutputTokens: (j['priorOutputTokens'] as num?)?.toInt() ?? 0,
+      priorTotalTokens: (j['priorTotalTokens'] as num?)?.toInt() ?? 0,
       maxTokens: (j['maxTokens'] as num?)?.toInt() ?? 0,
       startedAtMs: (j['startedAtMs'] as num).toInt(),
-      batchId: batchId,
+      batchId: batchId is String ? batchId : null,
       replaces: j['replaces'] == true,
       provider: j['provider'] as String?,
       providerName: j['providerName'] as String?,
@@ -73,7 +92,13 @@ class BenchmarkGenJob {
   final AiModeRoute route;
   final String prompt;
   final int maxTokens;
-  final int startedAtMs;
+  int startedAtMs;
+  final bool autoCompact;
+  int compactAttempt;
+  int? batchStartedAtMs;
+  int priorInputTokens;
+  int priorOutputTokens;
+  int priorTotalTokens;
 
   /// True when this run writes a new page for an existing entry (same id,
   /// name and company) instead of adding one. The old page is backed up.
@@ -100,7 +125,8 @@ class BenchmarkGenJob {
 
   /// connecting · thinking · writing · saving while streaming; a batch is
   /// submitting · queued · generating · saving.
-  String phase = 'connecting';
+  String phase = 'queued';
+  bool active = false;
   int? finishedAtMs;
   int chars = 0;
   int reasoningChars = 0;
@@ -135,7 +161,10 @@ class BenchmarkGenJob {
         'model': route.model,
         'effort': route.reasoningEffort ?? '',
         'maxTokens': maxTokens,
+        'autoCompact': autoCompact,
+        'compactAttempt': compactAttempt,
         'status': status,
+        'waiting': status == 'running' && !active,
         'phase': phase,
         'startedAtMs': startedAtMs,
         'finishedAtMs': finishedAtMs,
@@ -174,10 +203,18 @@ class BenchmarkGenJob {
         'model': route.model,
         'effort': route.reasoningEffort ?? '',
         'maxTokens': maxTokens,
+        'autoCompact': autoCompact,
+        'compactAttempt': compactAttempt,
+        'prompt': prompt,
+        'batchStartedAtMs': batchStartedAtMs,
+        'priorInputTokens': priorInputTokens,
+        'priorOutputTokens': priorOutputTokens,
+        'priorTotalTokens': priorTotalTokens,
         'startedAtMs': startedAtMs,
         'batchId': batchId,
         'batchStatus': batchStatus,
         'status': status,
+        'waiting': status == 'running' && !active,
         'resultStatus': resultStatus,
         'resultReason': resultReason,
         'validation': validation,
@@ -200,6 +237,7 @@ class BenchmarkGenJob {
 }
 
 final _benchmarkGenJobs = <BenchmarkGenJob>[];
+Future<void> _benchmarkStateWrite = Future.value();
 
 /// OpenRouter's provider list per model, kept a few minutes so opening the
 /// list and then starting the run read the same prices.
@@ -208,7 +246,6 @@ final _benchmarkProviderCache =
 
 extension BenchmarkGenerateApi on Api {
   static const _maxRunning = 3;
-  static const _maxBatches = 10;
   static const _keepJobs = 20;
   static const _defaultMaxTokens = 64000;
   static const _maxPromptChars = 200000;
@@ -254,24 +291,49 @@ extension BenchmarkGenerateApi on Api {
       job.hasResult = await File('$_genOutputDir/${job.id}.json').exists();
       _benchmarkGenJobs.add(job);
       // Failed and stopped ones come back as cards that can be checked again.
-      if (job.status == 'running') unawaited(_runBenchmarkGen(job));
     }
+    _scheduleBenchmarkGen();
   }
 
-  /// Saves every submitted batch that hasn't produced its scene: the ones
-  /// still waiting, and failed or stopped ones that may yet finish at
-  /// OpenRouter and can be checked again. Dismissing a card drops it.
+  /// Saves queued runs and submitted batches that may still finish at
+  /// OpenRouter. Dismissing a card drops it.
   Future<void> _saveBenchmarkBatches() async {
     final pending = [
       for (final j in _benchmarkGenJobs)
-        if (j.batch && j.batchId != null && j.status != 'done') j.toState(),
+        if ((j.status == 'running' && !j.active) ||
+            (j.batch &&
+                (j.batchId != null ||
+                    j.compactAttempt > 0 ||
+                    !j.outputCapSent) &&
+                j.status != 'done'))
+          j.toState(),
     ];
-    try {
-      await Directory(_genOutputDir).create(recursive: true);
-      await _batchStateFile.writeAsString(jsonEncode(pending), flush: true);
-    } on FileSystemException catch (e) {
-      stderr.writeln('[luma] could not save pending benchmark batches: $e');
+    final encoded = jsonEncode(pending);
+    _benchmarkStateWrite = _benchmarkStateWrite.then((_) async {
+      try {
+        await Directory(_genOutputDir).create(recursive: true);
+        await _batchStateFile.writeAsString(encoded, flush: true);
+      } on FileSystemException catch (e) {
+        stderr.writeln('[luma] could not save pending benchmark batches: $e');
+      }
+    });
+    await _benchmarkStateWrite;
+  }
+
+  void _scheduleBenchmarkGen() {
+    var available =
+        _maxRunning - _benchmarkGenJobs.where((j) => j.active).length;
+    for (final job in _benchmarkGenJobs) {
+      if (available <= 0) break;
+      if (job.status != 'running' || job.active) continue;
+      job.active = true;
+      if (job.batchId == null) {
+        job.startedAtMs = DateTime.now().millisecondsSinceEpoch;
+      }
+      available--;
+      unawaited(_runBenchmarkGen(job));
     }
+    unawaited(_saveBenchmarkBatches());
   }
 
   /// Everything the dialog needs: the tests with their default prompts, the
@@ -438,7 +500,6 @@ extension BenchmarkGenerateApi on Api {
     final rawMax = body['maxTokens'];
     final maxTokens =
         rawMax is num ? rawMax.toInt().clamp(1000, 256000) : _defaultMaxTokens;
-    // Batches only sit and wait at OpenRouter, so they get their own cap.
     final batch = isBenchmarkBatchModel(upstream, model);
     // An already-submitted batch to wait on instead of paying for a new one,
     // e.g. one this server lost track of.
@@ -480,18 +541,6 @@ extension BenchmarkGenerateApi on Api {
             'OpenRouter does not serve $model through $providerTag.');
       }
     }
-    final running = _benchmarkGenJobs
-        .where((j) => j.status == 'running' && j.batch == batch)
-        .length;
-    if (running >= (batch ? _maxBatches : _maxRunning)) {
-      return errorResponse(
-          409,
-          'busy',
-          batch
-              ? 'Already $_maxBatches batches waiting. Wait for one to finish.'
-              : 'Already $_maxRunning runs going. Wait for one to finish.');
-    }
-
     final taken = {
       for (final e in await aiBenchmarks.editableEntries()) e['id'] as String,
       for (final j in _benchmarkGenJobs)
@@ -511,6 +560,7 @@ extension BenchmarkGenerateApi on Api {
           reasoningEffort: effort.isEmpty ? null : effort),
       prompt: benchmarkPromptWithLot(kind, prompt, sceneId),
       maxTokens: maxTokens,
+      autoCompact: rawMax is! num && existingBatch.isEmpty,
       startedAtMs: DateTime.now().millisecondsSinceEpoch,
       batchId: existingBatch.isEmpty ? null : existingBatch,
       provider: provider == null ? null : providerTag,
@@ -520,8 +570,8 @@ extension BenchmarkGenerateApi on Api {
     );
     _benchmarkGenJobs.add(job);
     await _pruneBenchmarkGenJobs();
-    if (job.batchId != null) await _saveBenchmarkBatches();
-    unawaited(_runBenchmarkGen(job));
+    await _saveBenchmarkBatches();
+    _scheduleBenchmarkGen();
     return jsonResponse(200, job.toJson());
   }
 
@@ -531,6 +581,14 @@ extension BenchmarkGenerateApi on Api {
       return errorResponse(404, 'not_found', 'No running run with that id.');
     }
     job.stopRequested = true;
+    if (!job.active) {
+      job.status = 'stopped';
+      job.finishedAtMs = DateTime.now().millisecondsSinceEpoch;
+      job.resultStatus = 'STOPPED';
+      job.resultReason = 'Stopped by administrator';
+      await _saveBenchmarkBatches();
+      return jsonResponse(200, {'ok': true});
+    }
     job.client?.close(force: true);
     job.wake?.complete();
     job.wake = null;
@@ -544,7 +602,7 @@ extension BenchmarkGenerateApi on Api {
     }
     _benchmarkGenJobs.remove(job);
     await _deleteBenchmarkGenOutput(job);
-    if (job.batchId != null) await _saveBenchmarkBatches();
+    await _saveBenchmarkBatches();
     return jsonResponse(200, {'ok': true});
   }
 
@@ -571,8 +629,10 @@ extension BenchmarkGenerateApi on Api {
       ..hasResult = false
       ..finishedAtMs = null
       ..stopRequested = false;
+    _benchmarkGenJobs.remove(job);
+    _benchmarkGenJobs.add(job);
     await _saveBenchmarkBatches();
-    unawaited(_runBenchmarkGen(job));
+    _scheduleBenchmarkGen();
     return jsonResponse(200, job.toJson());
   }
 
@@ -615,9 +675,10 @@ extension BenchmarkGenerateApi on Api {
 
   Future<void> _pruneBenchmarkGenJobs() async {
     while (_benchmarkGenJobs.length > _keepJobs) {
-      final old = _benchmarkGenJobs.firstWhere((j) => j.status != 'running',
+      final old = _benchmarkGenJobs.firstWhere(
+          (j) => j.status != 'running' && !j.active,
           orElse: () => _benchmarkGenJobs.first);
-      if (old.status == 'running') break;
+      if (old.status == 'running' || old.active) break;
       _benchmarkGenJobs.remove(old);
       await _deleteBenchmarkGenOutput(old);
       if (old.batchId != null) await _saveBenchmarkBatches();
@@ -663,10 +724,10 @@ extension BenchmarkGenerateApi on Api {
       job.finishedAtMs = DateTime.now().millisecondsSinceEpoch;
       job.chars = acc.contentChars;
       job.reasoningChars = acc.reasoningChars;
-      job.tokens = acc.tokens;
+      job.tokens = job.priorTotalTokens + acc.tokens;
       job.finishReason = acc.finishReason;
       job.nativeFinishReason = acc.nativeFinishReason;
-      job.outputTokens = acc.usage.outputTokens;
+      job.outputTokens = job.priorOutputTokens + acc.usage.outputTokens;
       final result = benchmarkGenerationResult(
         reply: acc.content,
         finishReason: acc.finishReason,
@@ -693,6 +754,8 @@ extension BenchmarkGenerateApi on Api {
       }
       await _saveBenchmarkGenResult(job, acc);
       if (job.batch) await _saveBenchmarkBatches();
+      job.active = false;
+      _scheduleBenchmarkGen();
     }
     final mins =
         ((job.finishedAtMs! - job.startedAtMs) / 60000).toStringAsFixed(1);
@@ -709,37 +772,51 @@ extension BenchmarkGenerateApi on Api {
       BenchmarkGenJob job, ChatStreamAccumulator acc) async {
     final deadline =
         DateTime.fromMillisecondsSinceEpoch(job.startedAtMs).add(_totalTimeout);
-    final (status, errorBody) = await retryBenchmarkStream(
+    final (status, errorBody) = await retryBenchmarkCompacted(
       acc,
-      () async {
-        var result = await _streamBenchmarkGen(job, acc, withMaxTokens: true);
-        // Some models cap output below what was asked and refuse the request
-        // outright; their own maximum is the next best thing.
-        if (result.$1 == HttpStatus.badRequest &&
-            acc.contentChars == 0 &&
-            RegExp(r'max[_ ]?(output[_ ]?)?tokens|max_completion',
-                    caseSensitive: false)
-                .hasMatch(result.$2) &&
-            !job.stopRequested) {
-          result = await _streamBenchmarkGen(job, acc, withMaxTokens: false);
-        }
-        return result;
-      },
+      () => retryBenchmarkStream(
+        acc,
+        () async {
+          var result = await _streamBenchmarkGen(job, acc, withMaxTokens: true);
+          // Some models cap output below what was asked and refuse the request
+          // outright; their own maximum is the next best thing.
+          if (result.$1 == HttpStatus.badRequest &&
+              acc.contentChars == 0 &&
+              RegExp(r'max[_ ]?(output[_ ]?)?tokens|max_completion',
+                      caseSensitive: false)
+                  .hasMatch(result.$2) &&
+              !job.stopRequested) {
+            result = await _streamBenchmarkGen(job, acc, withMaxTokens: false);
+          }
+          return result;
+        },
+        canRetry: () => !job.stopRequested && DateTime.now().isBefore(deadline),
+        beforeRetry: () async {
+          job.client?.close(force: true);
+          job.client = null;
+          await _saveBenchmarkGenOutput(job, acc.content);
+          try {
+            await recordBenchmarkGenerationUsage(
+                aiUsage, store.userIdByEmail, job.route, acc.usage);
+          } catch (error) {
+            stderr.writeln('[luma] benchmark usage recording failed: $error');
+          }
+          job.priorInputTokens += acc.usage.inputTokens;
+          job.priorOutputTokens += acc.usage.outputTokens;
+          job.priorTotalTokens += acc.usage.totalTokens;
+          job.chars = 0;
+          job.reasoningChars = 0;
+          job.tokens = job.priorTotalTokens;
+          job.outputTokens = job.priorOutputTokens;
+          job.httpStatus = null;
+        },
+      ),
+      autoCompact: job.autoCompact,
+      attempt: () => job.compactAttempt,
       canRetry: () => !job.stopRequested && DateTime.now().isBefore(deadline),
+      isSuccess: (result) => result.$1 == HttpStatus.ok,
       beforeRetry: () async {
-        job.client?.close(force: true);
-        job.client = null;
-        await _saveBenchmarkGenOutput(job, acc.content);
-        try {
-          await recordBenchmarkGenerationUsage(
-              aiUsage, store.userIdByEmail, job.route, acc.usage);
-        } catch (error) {
-          stderr.writeln('[luma] benchmark usage recording failed: $error');
-        }
-        job.chars = 0;
-        job.reasoningChars = 0;
-        job.tokens = 0;
-        job.httpStatus = null;
+        await _prepareCompactRetry(job, acc);
       },
     );
     await _saveBenchmarkGenOutput(job, acc.content);
@@ -757,6 +834,35 @@ extension BenchmarkGenerateApi on Api {
     }
   }
 
+  /// Starts a fresh request only for automatically sized runs that hit a
+  /// provider output limit. Each attempt is billed and recorded separately.
+  Future<bool> _prepareCompactRetry(
+      BenchmarkGenJob job, ChatStreamAccumulator acc) async {
+    if (!job.autoCompact ||
+        job.compactAttempt >= 2 ||
+        job.prompt.isEmpty ||
+        job.stopRequested) return false;
+    await _saveBenchmarkGenOutput(job, acc.content);
+    try {
+      await recordBenchmarkGenerationUsage(
+          aiUsage, store.userIdByEmail, job.route, acc.usage);
+    } catch (error) {
+      stderr.writeln('[luma] benchmark usage recording failed: $error');
+    }
+    job.priorInputTokens += acc.usage.inputTokens;
+    job.priorOutputTokens += acc.usage.outputTokens;
+    job.priorTotalTokens += acc.usage.totalTokens;
+    job.compactAttempt++;
+    job.phase = 'compacting';
+    job.chars = 0;
+    job.reasoningChars = 0;
+    job.tokens = job.priorTotalTokens;
+    job.outputTokens = job.priorOutputTokens;
+    job.httpStatus = null;
+    acc.reset();
+    return true;
+  }
+
   /// The chat completion body for [job]'s one request, streamed or, for a
   /// batch, not.
   Map<String, dynamic> _benchmarkRequestBody(BenchmarkGenJob job,
@@ -766,7 +872,10 @@ extension BenchmarkGenerateApi on Api {
     return {
       if (stream) 'model': route.model,
       'messages': [
-        {'role': 'user', 'content': job.prompt},
+        {
+          'role': 'user',
+          'content': benchmarkAutoCompactPrompt(job.prompt, job.compactAttempt)
+        },
       ],
       if (stream) 'stream': true,
       if (stream) 'stream_options': {'include_usage': true},
@@ -785,23 +894,37 @@ extension BenchmarkGenerateApi on Api {
   /// it. Nothing streams, so progress is only ever the batch's status.
   Future<void> _runBenchmarkBatch(
       BenchmarkGenJob job, ChatStreamAccumulator acc) async {
-    final deadline =
-        DateTime.fromMillisecondsSinceEpoch(job.startedAtMs).add(_batchTimeout);
+    if (job.stopRequested) {
+      job.status = 'stopped';
+      return;
+    }
     if (job.batchId == null) {
       job.phase = 'submitting';
       // OpenRouter stream-parses the submit and wants `requests` last.
-      final (status, body) =
-          await _openRouterBatchCall('POST', '/batches', body: {
-        'endpoint': '/v1/chat/completions',
-        'model': benchmarkBatchBaseModel(job.route.model),
-        'requests': [
-          {
-            'custom_id': job.sceneId,
-            'body':
-                _benchmarkRequestBody(job, stream: false, withMaxTokens: true),
-          },
-        ],
-      });
+      Future<(int, Object?)> submit() =>
+          _openRouterBatchCall('POST', '/batches', body: {
+            'endpoint': '/v1/chat/completions',
+            'model': benchmarkBatchBaseModel(job.route.model),
+            'requests': [
+              {
+                'custom_id': job.sceneId,
+                'body': _benchmarkRequestBody(job,
+                    stream: false, withMaxTokens: job.outputCapSent),
+              },
+            ],
+          });
+      var (status, body) = await submit();
+      if (job.autoCompact &&
+          job.outputCapSent &&
+          !job.stopRequested &&
+          status == HttpStatus.badRequest &&
+          RegExp(r'max[_ ]?(output[_ ]?)?tokens|max_completion',
+                  caseSensitive: false)
+              .hasMatch(body is String ? body : jsonEncode(body))) {
+        job.outputCapSent = false;
+        await _saveBenchmarkBatches();
+        (status, body) = await submit();
+      }
       final id = body is Map ? body['id'] : null;
       if ((status != HttpStatus.ok && status != HttpStatus.accepted) ||
           id is! String ||
@@ -813,9 +936,13 @@ extension BenchmarkGenerateApi on Api {
         return;
       }
       job.batchId = id;
+      job.batchStartedAtMs = DateTime.now().millisecondsSinceEpoch;
       job.batchStatus = (body as Map)['status'] as String?;
       await _saveBenchmarkBatches();
     }
+    final deadline = DateTime.fromMillisecondsSinceEpoch(
+            job.batchStartedAtMs ?? job.startedAtMs)
+        .add(_batchTimeout);
     job.phase = 'queued';
     var misses = 0;
     // OpenRouter persists a new batch asynchronously, so a GET straight
@@ -848,8 +975,50 @@ extension BenchmarkGenerateApi on Api {
               (acc.contentChars == 0 ? acc.error : null);
           job.chars = acc.contentChars;
           job.reasoningChars = acc.reasoningChars;
-          job.tokens = acc.tokens;
+          job.tokens = job.priorTotalTokens + acc.tokens;
+          job.outputTokens = job.priorOutputTokens + acc.usage.outputTokens;
           await _saveBenchmarkGenOutput(job, acc.content);
+          final completedBatchId = job.batchId;
+          // A batch can accept submission and only report the provider's
+          // rejected output cap in its result many hours later.
+          final rejectedCap = job.autoCompact &&
+              job.outputCapSent &&
+              !job.stopRequested &&
+              acc.contentChars == 0 &&
+              (acc.providerStatus == 400 || acc.errorCode == 400) &&
+              RegExp(r'max[_ ]?(output[_ ]?)?tokens|max_completion',
+                      caseSensitive: false)
+                  .hasMatch(why ?? acc.error ?? '');
+          if (rejectedCap) {
+            try {
+              await recordBenchmarkGenerationUsage(
+                  aiUsage, store.userIdByEmail, job.route, acc.usage);
+            } catch (error) {
+              stderr.writeln('[luma] benchmark usage recording failed: $error');
+            }
+            job.priorInputTokens += acc.usage.inputTokens;
+            job.priorOutputTokens += acc.usage.outputTokens;
+            job.priorTotalTokens += acc.usage.totalTokens;
+            acc.reset();
+            job.batchId = null;
+            job.batchStatus = null;
+            job.batchStartedAtMs = null;
+            job.outputCapSent = false;
+            await _saveBenchmarkBatches();
+            await _runBenchmarkBatch(job, acc);
+            return;
+          }
+          if (why == null &&
+              acc.error == null &&
+              benchmarkWasTruncated(acc) &&
+              await _prepareCompactRetry(job, acc)) {
+            job.batchId = null;
+            job.batchStatus = null;
+            job.batchStartedAtMs = null;
+            await _saveBenchmarkBatches();
+            await _runBenchmarkBatch(job, acc);
+            return;
+          }
           if (why != null || acc.error != null) {
             job.status = 'failed';
             job.error = why ?? acc.error;
@@ -857,7 +1026,7 @@ extension BenchmarkGenerateApi on Api {
             await _finishBenchmarkGen(job, acc);
           }
           // The reply is saved here now; OpenRouter needn't keep a copy.
-          unawaited(_openRouterBatchCall('DELETE', '/batches/${job.batchId}')
+          unawaited(_openRouterBatchCall('DELETE', '/batches/$completedBatchId')
               .then((_) {}, onError: (_) {}));
           return;
         }
@@ -969,7 +1138,8 @@ extension BenchmarkGenerateApi on Api {
       acc.addLine(line);
       job.chars = acc.contentChars;
       job.reasoningChars = acc.reasoningChars;
-      job.tokens = acc.tokens;
+      job.tokens = job.priorTotalTokens + acc.tokens;
+      job.outputTokens = job.priorOutputTokens + acc.usage.outputTokens;
       if (acc.contentChars > 0) job.phase = 'writing';
       if (acc.done || job.stopRequested) break;
       if (DateTime.now().isAfter(deadline)) {
@@ -1085,7 +1255,7 @@ extension BenchmarkGenerateApi on Api {
           ...job.toJson(),
           'hasResult': true,
           'reply': acc.content,
-          'inputTokens': acc.usage.inputTokens,
+          'inputTokens': job.priorInputTokens + acc.usage.inputTokens,
           'providerError': acc.error,
           'providerErrorCode': acc.errorCode,
           'providerHttpStatus': acc.providerStatus ?? job.httpStatus,
@@ -1108,7 +1278,8 @@ extension BenchmarkGenerateApi on Api {
 /// test (see `api_decider_tests.dart`). It sits outside the scene form and
 /// has its own endpoints and runs; the two only share the dialog. The
 /// [ttsView], the Text to Speech test (`api_tts_tests.dart`), is a third.
-String _bgDialogHtml({String deciderView = '', String ttsView = '', String wikiView = ''}) =>
+String _bgDialogHtml(
+        {String deciderView = '', String ttsView = '', String wikiView = ''}) =>
     '<dialog id="bgDialog" class="bn-dialog bg-dialog" '
     'aria-labelledby="bgTitle">'
     '<form id="bgForm" novalidate>'
@@ -1196,7 +1367,9 @@ String _bgDialogHtml({String deciderView = '', String ttsView = '', String wikiV
     '${Api._bmOptions(Api._bmVendors)}</select></label>'
     '<label class="bm-field"><span>Max output tokens</span>'
     '<input id="bgMaxTokens" class="bn-input" type="number" min="1000" '
-    'max="256000" step="1000" inputmode="numeric"></label>'
+    'max="256000" step="1000" inputmode="numeric" placeholder="Automatic">'
+    '<span class="muted">Clear for automatic compact retries if output is cut off. '
+    'Retries can add cost.</span></label>'
     '</div>'
     '<div class="bg-preview" aria-live="polite"><span id="bgPreviewLabel" '
     'class="muted">New entry</span> <strong id="bgPreviewName">—</strong> <span id="bgPreviewVendor" '
@@ -1521,6 +1694,7 @@ const _bgScript = r'''
       ? '<span>Estimated cost: no price listed for this model</span>'
       : '<span>Estimated cost <b>≈ ' + usd(e.cost) + '</b> per run</span>'];
     parts.push('<span>' + kfmt(e.input) + ' in · ' + kfmt(e.out) + ' out</span>');
+    if (!maxTokens.value.trim()) parts.push('<span class="muted">Automatic: compact retries may add cost</span>');
     if (!thinks(model)) parts.push('<span class="muted">Lists no reasoning, so effort changes nothing</span>');
     if (e.capped) parts.push('<span class="bg-cost-warn">Reaches the ' + kfmt(e.out) + ' output cap; the page may be cut off</span>');
     if (e.ref) parts.push('<span class="muted">OpenRouter price for the same model</span>');
@@ -1830,7 +2004,7 @@ const _bgScript = r'''
     }).catch(() => { start.disabled = false; status.textContent = 'Could not start the run (network error).'; });
   });
 
-  const PHASE = { connecting: 'Connecting', thinking: 'Thinking', writing: 'Writing', saving: 'Saving',
+  const PHASE = { connecting: 'Connecting', thinking: 'Thinking', writing: 'Writing', saving: 'Saving', compacting: 'Retrying more compactly',
     submitting: 'Submitting', queued: 'Queued', generating: 'In batch' };
   function renderRuns(jobs) {
     runsBox.innerHTML = (jobs || []).map((j) => {
@@ -1851,6 +2025,7 @@ const _bgScript = r'''
         const out = Math.min(j.outputTokens || 0, j.tokens);
         bits.push('Cost ≈ ' + usd(((j.tokens - out) * jp.input + out * jp.output) / 1e6));
       }
+      if (j.autoCompact) bits.push('Automatic compact retry: ' + j.compactAttempt + ' / 2');
       bits.push('Output cap: ' + (j.outputCapSent === false ? 'provider default (requested ' + kfmt(j.maxTokens) + ')' : kfmt(j.maxTokens)));
       if (j.batch && running) bits.push('OpenRouter batch ' + (j.batchStatus || 'not submitted yet').replace(/_/g, ' '));
       bits.push(took);
@@ -1863,7 +2038,7 @@ const _bgScript = r'''
         else if (j.render === 'queued') pub += ' · banner queued';
       }
       const actions = [];
-      if (running) actions.push('<button type="button" class="btn btn-ghost btn-sm" data-act="stop"' + (j.batch ? ' data-batch="1"' : '') + '>Stop</button>');
+      if (running) actions.push('<button type="button" class="btn btn-ghost btn-sm" data-act="stop"' + (j.batchId ? ' data-batch="1"' : '') + '>Stop</button>');
       if (j.commitUrl) actions.push('<a class="btn btn-ghost btn-sm" href="' + esc(j.commitUrl) + '" target="_blank" rel="noopener">Commit</a>');
       if (j.hasOutput) actions.push('<a class="btn btn-ghost btn-sm" href="/admin/benchmarks/generate/' + encodeURIComponent(j.id) + '/output" target="_blank" rel="noopener">Reply</a>');
       if (j.hasResult) actions.push('<a class="btn btn-ghost btn-sm" href="/admin/benchmarks/generate/' + encodeURIComponent(j.id) + '/result" target="_blank" rel="noopener">Raw result</a>');

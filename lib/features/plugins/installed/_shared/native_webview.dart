@@ -29,6 +29,7 @@ class NativeWebview extends StatefulWidget {
     this.onCreated,
     this.visible = true,
     this.background = const Color(0xFFDBE9E5),
+    this.monitorCaptureFolder,
   });
 
   /// A `file:///...` URL to load.
@@ -44,6 +45,10 @@ class NativeWebview extends StatefulWidget {
 
   /// Painted by Flutter under the window before it first appears.
   final Color background;
+
+  /// The bundled monitor viewer directory, exposed only to its fixed HTTPS
+  /// virtual host so that WebView2 can use the camera API.
+  final String? monitorCaptureFolder;
 
   @override
   State<NativeWebview> createState() => _NativeWebviewState();
@@ -130,6 +135,7 @@ class _NativeWebviewState extends State<NativeWebview>
       id = await NativeWebviewController._channel.invokeMethod<int>('create', {
         'url': widget.fileUrl,
         'userDataFolder': ?folder,
+        'monitorCaptureFolder': ?widget.monitorCaptureFolder,
       });
     } on PlatformException catch (error) {
       if (mounted) widget.onError?.call(error.message ?? error.code);

@@ -33,6 +33,7 @@ import '../features/plugins/installed/account_overview/account_overview_shell.da
 import '../features/plugins/installed/file_viewer/file_viewer_page.dart';
 import '../features/plugins/installed/groceries/groceries_page.dart';
 import '../features/plugins/installed/minecraft_launcher/minecraft_launcher_page.dart';
+import '../features/plugins/installed/monitor_simulation/monitor_simulation_page.dart';
 import '../features/plugins/installed/mood_journal/mood_journal_page.dart';
 import '../features/plugins/installed/text_library/text_library_page.dart';
 import '../features/plugins/installed/ai_usage/ai_usage_shell.dart';
@@ -939,6 +940,7 @@ class _AppShellState extends State<AppShell> {
     'small-games' => const SmallGamesPage(),
     'groceries-list' => const GroceriesPage(),
     'minecraft-launcher' => const MinecraftLauncherPage(),
+    'monitor-simulation' => const MonitorSimulationPage(),
     'secure-chat' => const SecureChatPage(),
     'sftp' => const SftpPage(),
     'recipe-book' => const RecipeBookPage(),

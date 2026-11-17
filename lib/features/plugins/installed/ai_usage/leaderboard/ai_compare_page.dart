@@ -17,14 +17,12 @@ const List<Color> _kCompareColors = [
   Color(0xFF93C5FD),
 ];
 
-/// The five ratings shown on the radar. Fixed rather than user-chosen: a
-/// radar with a changing axis set is unreadable, and these five are the ones
+/// The ratings shown on the radar. Fixed rather than user-chosen: a
+/// radar with a changing axis set is unreadable, and these are the ones
 /// every model in the catalogue is scored on the same 0–100 scale.
 const List<AiMetric> _kRadarMetrics = [
   AiMetric.llmStats,
   AiMetric.reasoning,
-  AiMetric.coding,
-  AiMetric.agent,
   AiMetric.math,
 ];
 
@@ -32,8 +30,6 @@ const List<AiMetric> _kRadarMetrics = [
 const List<AiMetric> _kCompareRows = [
   AiMetric.llmStats,
   AiMetric.reasoning,
-  AiMetric.coding,
-  AiMetric.agent,
   AiMetric.math,
   AiMetric.codeArena,
   AiMetric.context,
@@ -45,7 +41,7 @@ const List<AiMetric> _kCompareRows = [
 ];
 
 /// Compares up to [kMaxCompareModels] models side by side: a radar of the
-/// five rating axes, then every metric as its own row so the gaps a radar
+/// rating axes, then every metric as its own row so the gaps a radar
 /// compresses away are still readable.
 class AiComparePage extends StatefulWidget {
   const AiComparePage({super.key, this.initialModelIds = const []});
