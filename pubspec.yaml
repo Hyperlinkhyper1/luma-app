@@ -139,6 +139,7 @@ flutter:
     - assets/plugin_i18n.json
     - plugins/smart-home/manifest.json
     - plugins/small-games/manifest.json
+    - plugins/monitor-simulation/manifest.json
     - assets/images/
     - assets/pagoda_gpt6_luna_low.html
     - assets/tests/pagoda_step5.html
@@ -162,6 +163,7 @@ flutter:
     - assets/security/
     - assets/world/
     - assets/device_health/
+    - assets/monitor_simulation/
     - assets/cs2_translator/
     - assets/airline_tycoon/
     - assets/airline_tycoon/scene/

@@ -11,6 +11,9 @@ using Microsoft::WRL::ComPtr;
 namespace {
 
 const wchar_t kHostClass[] = L"LUMA_NATIVE_WEBVIEW_HOST";
+const wchar_t kMonitorUrl[] =
+    L"https://monitor-simulation.luma.example/index.html";
+const wchar_t kMonitorOrigin[] = L"https://monitor-simulation.luma.example";
 
 std::wstring Wide(const std::string& text) {
   if (text.empty()) return std::wstring();
@@ -100,6 +103,7 @@ NativeWebviewManager::~NativeWebviewManager() {
 
 void NativeWebviewManager::OnParentMoved() {
   for (auto& entry : views_) {
+    if (entry.second->monitor_expanded) ApplyBounds(*entry.second);
     if (entry.second->controller) {
       entry.second->controller->NotifyParentWindowPositionChanged();
     }
@@ -119,6 +123,11 @@ void NativeWebviewManager::HandleMethodCall(
     RegisterHostClass();
     int64_t id = next_id_++;
     auto view = std::make_shared<View>();
+    auto url = Wide(StringArg(*args, "url"));
+    if (url == kMonitorUrl) {
+      view->monitor_capture_folder =
+          Wide(StringArg(*args, "monitorCaptureFolder"));
+    }
     view->host = CreateWindowExW(
         0, kHostClass, L"", WS_CHILD | WS_CLIPCHILDREN | WS_CLIPSIBLINGS, 0,
         0, 0, 0, parent_, nullptr, GetModuleHandle(nullptr), nullptr);
@@ -129,7 +138,6 @@ void NativeWebviewManager::HandleMethodCall(
     SetWindowPos(view->host, HWND_TOP, 0, 0, 0, 0,
                  SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
     views_[id] = view;
-    auto url = Wide(StringArg(*args, "url"));
     WithEnvironment(Wide(StringArg(*args, "userDataFolder")),
                     [this, id, url](ICoreWebView2Environment* environment) {
                       if (!environment) {
@@ -161,6 +169,9 @@ void NativeWebviewManager::HandleMethodCall(
     ApplyBounds(view);
   } else if (method == "setVisible") {
     view.visible = BoolArg(*args, "visible");
+    if (!view.visible && !view.monitor_capture_folder.empty() && view.webview) {
+      view.webview->PostWebMessageAsString(L"stop-capture");
+    }
     ApplyVisibility(view);
   } else if (method == "setOcclusionRects") {
     view.occlusions.clear();
@@ -278,6 +289,76 @@ void NativeWebviewManager::CreateController(int64_t id,
 #endif
             }
             EventRegistrationToken token;
+            if (!view->monitor_capture_folder.empty()) {
+              ComPtr<ICoreWebView2_3> webview3;
+              if (FAILED(view->webview.As(&webview3)) ||
+                  FAILED(webview3->SetVirtualHostNameToFolderMapping(
+                      L"monitor-simulation.luma.example",
+                      view->monitor_capture_folder.c_str(),
+                      COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_DENY))) {
+                Emit("error", id, "The monitor viewer could not be loaded.");
+                return S_OK;
+              }
+              view->webview->add_NavigationStarting(
+                  Callback<ICoreWebView2NavigationStartingEventHandler>(
+                      [](ICoreWebView2*,
+                         ICoreWebView2NavigationStartingEventArgs* args) {
+                        LPWSTR uri = nullptr;
+                        if (SUCCEEDED(args->get_Uri(&uri))) {
+                          if (!uri || std::wstring(uri) != kMonitorUrl)
+                            args->put_Cancel(TRUE);
+                          CoTaskMemFree(uri);
+                        } else {
+                          args->put_Cancel(TRUE);
+                        }
+                        return S_OK;
+                      })
+                      .Get(),
+                  &token);
+              view->webview->add_PermissionRequested(
+                  Callback<ICoreWebView2PermissionRequestedEventHandler>(
+                      [](ICoreWebView2*,
+                         ICoreWebView2PermissionRequestedEventArgs* args) {
+                        LPWSTR uri = nullptr;
+                        COREWEBVIEW2_PERMISSION_KIND kind;
+                        const bool has_uri = SUCCEEDED(args->get_Uri(&uri)) && uri;
+                        const std::wstring origin = has_uri ? uri : L"";
+                        const bool trusted =
+                            origin == kMonitorOrigin ||
+                            origin == std::wstring(kMonitorOrigin) + L"/" ||
+                            origin == kMonitorUrl;
+                        const bool allowed =
+                            trusted && SUCCEEDED(args->get_PermissionKind(&kind)) &&
+                            kind == COREWEBVIEW2_PERMISSION_KIND_CAMERA;
+                        CoTaskMemFree(uri);
+                        args->put_State(
+                            allowed ? COREWEBVIEW2_PERMISSION_STATE_ALLOW
+                                    : COREWEBVIEW2_PERMISSION_STATE_DENY);
+#ifdef __ICoreWebView2PermissionRequestedEventArgs3_INTERFACE_DEFINED__
+                        ComPtr<ICoreWebView2PermissionRequestedEventArgs3> args3;
+                        if (SUCCEEDED(args->QueryInterface(IID_PPV_ARGS(&args3)))) {
+                          args3->put_SavesInProfile(FALSE);
+                        }
+#endif
+                        return S_OK;
+                      })
+                      .Get(),
+                  &token);
+              view->webview->add_ContainsFullScreenElementChanged(
+                  Callback<ICoreWebView2ContainsFullScreenElementChangedEventHandler>(
+                      [this, weak_view = std::weak_ptr<View>(view)](
+                          ICoreWebView2* sender, IUnknown*) {
+                        auto view = weak_view.lock();
+                        if (!view || view->destroyed) return S_OK;
+                        BOOL expanded = FALSE;
+                        sender->get_ContainsFullScreenElement(&expanded);
+                        view->monitor_expanded = expanded == TRUE;
+                        ApplyBounds(*view);
+                        return S_OK;
+                      })
+                      .Get(),
+                  &token);
+            }
             view->webview->add_WebMessageReceived(
                 Callback<ICoreWebView2WebMessageReceivedEventHandler>(
                     [this, id](ICoreWebView2*,
@@ -331,7 +412,8 @@ void NativeWebviewManager::CreateController(int64_t id,
 }
 
 void NativeWebviewManager::ApplyBounds(View& view) {
-  const auto& b = view.bounds;
+  RECT b = view.bounds;
+  if (view.monitor_expanded) GetClientRect(parent_, &b);
   MoveWindow(view.host, b.left, b.top, b.right - b.left, b.bottom - b.top,
              TRUE);
   if (view.controller) {
@@ -342,6 +424,10 @@ void NativeWebviewManager::ApplyBounds(View& view) {
 }
 
 void NativeWebviewManager::ApplyOcclusion(View& view) {
+  if (view.monitor_expanded) {
+    SetWindowRgn(view.host, nullptr, TRUE);
+    return;
+  }
   ApplyNativeWebviewRegion(view.host, view.bounds, view.occlusions);
 }
 

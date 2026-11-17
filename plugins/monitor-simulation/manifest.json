@@ -1,0 +1,17 @@
+{
+  "id": "monitor-simulation",
+  "name": "Monitor Simulation",
+  "version": "1.0.0",
+  "description": "View a PC's HDMI output on your Windows laptop using a USB HDMI capture device.",
+  "icon": "smart_display",
+  "category": "Utility",
+  "tags": ["Utility", "System"],
+  "free": true,
+  "details": "Turn your Windows laptop into a display for another PC. Connect the PC's HDMI output to a USB HDMI capture device, then connect the capture device to the laptop and select it in Monitor Simulation.\n\nMost laptop HDMI ports only send video out and cannot receive the PC's signal directly. The capture device provides video only; use a keyboard and mouse connected to the PC to control it. Capture quality and delay depend on the device.",
+  "i18n": {
+    "nl": {"name": "Monitorsimulatie", "description": "Bekijk het HDMI-beeld van een pc op je Windows-laptop met een USB HDMI-opnameapparaat."},
+    "fr": {"name": "Simulation de moniteur", "description": "Affichez la sortie HDMI d'un PC sur votre ordinateur portable Windows à l'aide d'un boîtier d'acquisition HDMI USB."},
+    "es": {"name": "Simulación de monitor", "description": "Visualiza la salida HDMI de un PC en tu portátil Windows con una capturadora HDMI USB."},
+    "zh": {"name": "显示器模拟", "description": "使用 USB HDMI 采集设备在 Windows 笔记本电脑上查看电脑的 HDMI 输出。"}
+  }
+}

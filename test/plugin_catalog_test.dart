@@ -72,6 +72,7 @@ void main() {
       expect(entries.map((entry) => entry.id), [
         'smart-home',
         'small-games',
+        'monitor-simulation',
         'calculator',
       ]);
     },
@@ -90,6 +91,12 @@ void main() {
                 'icon': 'extension',
                 'category': 'Utility',
               },
+              {
+                'id': 'monitor-simulation',
+                'name': 'Older Monitor Simulation',
+                'icon': 'extension',
+                'category': 'Utility',
+              },
             ],
           }),
           200,
@@ -97,8 +104,13 @@ void main() {
       );
 
       final entries = await service.fetchCatalog();
-      expect(entries.map((entry) => entry.id), ['smart-home', 'small-games']);
+      expect(entries.map((entry) => entry.id), [
+        'smart-home',
+        'small-games',
+        'monitor-simulation',
+      ]);
       expect(entries.first.name, 'Smart Home');
+      expect(entries.last.name, 'Monitor Simulation');
     },
   );
 
@@ -113,6 +125,8 @@ void main() {
       expect(manifest.name, 'Smart Home');
       final games = await service.fetchManifest('small-games');
       expect(games.name, 'Small Games');
+      final monitor = await service.fetchManifest('monitor-simulation');
+      expect(monitor.name, 'Monitor Simulation');
     },
   );
 }
