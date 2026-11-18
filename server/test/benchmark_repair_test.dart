@@ -1163,6 +1163,9 @@ const s = "y";
           'Nemo · galaxy',
         ]);
         expect({for (final j in jobs) j['sceneId']}, hasLength(6));
+        // No max output given: no cap is sent, and compact retries are on.
+        expect([for (final j in jobs) j['outputCapSent']], everyElement(false));
+        expect([for (final j in jobs) j['autoCompact']], everyElement(true));
         expect([for (final j in jobs) j['waiting']],
             [false, false, false, true, true, true]);
 
@@ -1171,6 +1174,30 @@ const s = "y";
         expect(cancelled['httpStatus'], 200, reason: '$cancelled');
         final after = ours(await request('GET', '/admin/benchmarks/generate'));
         expect(after.where((j) => j['waiting'] == true), isEmpty);
+
+        // Skipping what is already tested: the roster has a pagoda test
+        // for "Original model" at the model's default effort.
+        final state = await request('GET', '/admin/benchmarks/generate');
+        expect(state['tested'], contains('pagoda|original model'));
+        final allTested = await multi({
+          'name': 'Original model',
+          'efforts': [''],
+          'kinds': ['pagoda'],
+          'skipTested': true,
+        });
+        expect(allTested['httpStatus'], 409, reason: '$allTested');
+        final rest = await multi({
+          'name': 'Original model',
+          'efforts': [''],
+          'kinds': ['pagoda', 'galaxy'],
+          'skipTested': true,
+        });
+        expect(rest['httpStatus'], 200, reason: '$rest');
+        expect(rest['count'], 1);
+        expect(rest['skipped'], 1);
+        final restJobs = (rest['jobs'] as List).cast<Map>();
+        ids.addAll([for (final j in restJobs) j['id'] as String]);
+        expect(restJobs.single['kind'], 'galaxy');
       } finally {
         var state = await request('GET', '/admin/benchmarks/generate');
         for (final j in ours(state)) {

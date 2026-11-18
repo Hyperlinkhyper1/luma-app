@@ -109,7 +109,8 @@ Future<T> retryBenchmarkStream<T>(
     try {
       result = await request();
       if (!(failedTransiently?.call(result) ?? false) &&
-          !benchmarkStreamFailedTransiently(acc)) {
+          !benchmarkStreamFailedTransiently(acc) &&
+          !benchmarkEndedInProviderError(acc)) {
         return result;
       }
     } on IOException catch (e, s) {
@@ -140,6 +141,18 @@ Future<T> retryBenchmarkStream<T>(
     if (!canRetry()) return giveUp();
     acc.reset();
   }
+}
+
+/// Whether the provider closed the stream with finish reason `error` but no
+/// error message, before a complete page arrived. That is the provider's own
+/// failure (free endpoints do it under load, often mid-reasoning), so the
+/// run is worth starting over like a dropped connection.
+bool benchmarkEndedInProviderError(ChatStreamAccumulator acc) {
+  if (acc.error != null || acc.finishReason?.toLowerCase() != 'error') {
+    return false;
+  }
+  final page = extractBenchmarkHtml(acc.content);
+  return page == null || !benchmarkHtmlComplete(page);
 }
 
 /// EOF without a terminal event is a broken stream, even if HTTP was 200.
@@ -182,6 +195,12 @@ const kBenchmarkEfforts = <String, String>{
   'high': 'High',
   'xhigh': 'Xhigh',
 };
+
+/// What makes two runs the same contestant's test: the test and the entry's
+/// name, ignoring case and spacing at the ends. The dashboard builds the same
+/// key to tell which tests a model still lacks.
+String benchmarkTestedKey(String kind, String name) =>
+    '$kind|${name.trim().toLowerCase()}';
 
 /// The most runs one multi-test request may queue.
 const kBenchmarkMultiMaxRuns = 120;

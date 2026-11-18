@@ -96,6 +96,36 @@ void main() {
     }
   });
 
+  test('a stream the provider ends with finish reason error starts over',
+      () async {
+    final acc = ChatStreamAccumulator();
+    var attempts = 0;
+    final result = await retryBenchmarkStream(acc, () async {
+      attempts++;
+      acc.addLine(attempts == 1
+          ? 'data: {"choices":[{"delta":{"reasoning":"thinking…"},"finish_reason":"error"}]}'
+          : chunk(page));
+      if (attempts > 1) {
+        acc.addLine('data: {"choices":[{"delta":{},"finish_reason":"stop"}]}');
+      }
+      return 200;
+    }, canRetry: () => true, beforeRetry: () async {}, backoff: noWait);
+    expect(result, 200);
+    expect(attempts, 2);
+    expect(acc.content, page);
+
+    final whole = ChatStreamAccumulator();
+    var calls = 0;
+    await retryBenchmarkStream(whole, () async {
+      calls++;
+      whole
+        ..addLine(chunk(page))
+        ..addLine('data: {"choices":[{"delta":{},"finish_reason":"error"}]}');
+      return 200;
+    }, canRetry: () => true, beforeRetry: () async {}, backoff: noWait);
+    expect(calls, 1, reason: 'a complete page is kept, not paid for again');
+  });
+
   test('restarts a disconnected generation without mixing partial HTML',
       () async {
     final acc = ChatStreamAccumulator();

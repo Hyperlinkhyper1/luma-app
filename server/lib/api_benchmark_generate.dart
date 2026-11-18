@@ -350,8 +350,10 @@ extension BenchmarkGenerateApi on Api {
   Future<Response> _adminBenchmarkGenState(Request request) async {
     final configured = config.configuredAiUpstreams;
     final pageSizes = <String, List<int>>{};
+    final tested = <String>{};
     for (final entry in await aiBenchmarks.list()) {
       (pageSizes[entry.kind] ??= []).add(entry.sizeBytes);
+      tested.add(benchmarkTestedKey(entry.kind, entry.model));
     }
     return jsonResponse(200, {
       'tests': [
@@ -380,6 +382,7 @@ extension BenchmarkGenerateApi on Api {
           {'value': e.key, 'label': e.key.isEmpty ? "Model's default" : e.key},
       ],
       'defaultMaxTokens': _defaultMaxTokens,
+      'tested': [...tested],
       'github': benchmarkGithub.enabled,
       'jobs': [for (final j in _benchmarkGenJobs.reversed) j.toJson()],
     });
@@ -581,16 +584,35 @@ extension BenchmarkGenerateApi on Api {
             'OpenRouter does not serve $model through $providerTag.');
       }
     }
+    final entries = await aiBenchmarks.editableEntries();
     final taken = {
-      for (final e in await aiBenchmarks.editableEntries()) e['id'] as String,
+      for (final e in entries) e['id'] as String,
       for (final j in _benchmarkGenJobs)
         if (j.status == 'running') j.sceneId,
     };
+    // "Only untested" leaves out every pairing the roster already has a test
+    // for under the same name, or that a run is already writing.
+    final tested = multi && body['skipTested'] == true
+        ? {
+            for (final e in entries)
+              benchmarkTestedKey(e['kind'] as String, e['model'] as String),
+            for (final j in _benchmarkGenJobs)
+              if (j.status == 'running') benchmarkTestedKey(j.kind, j.name),
+          }
+        : const <String>{};
+    var skipped = 0;
+    // An empty max output sends no cap at all: the model writes up to its
+    // own maximum, and only then do compact retries start.
+    final auto = rawMax is! num && existingBatch.isEmpty;
     final idBase = DateTime.now().microsecondsSinceEpoch;
     final jobs = <BenchmarkGenJob>[];
     for (final effort in efforts) {
       for (final k in kinds) {
         final entryName = multi ? benchmarkDisplayName(name, effort) : name;
+        if (tested.contains(benchmarkTestedKey(k, entryName))) {
+          skipped++;
+          continue;
+        }
         final sceneId = replacing != null
             ? replaceId
             : benchmarkSceneId(k, entryName, effort, taken);
@@ -607,15 +629,19 @@ extension BenchmarkGenerateApi on Api {
               reasoningEffort: effort.isEmpty ? null : effort),
           prompt: benchmarkPromptWithLot(k, runPrompt, sceneId),
           maxTokens: maxTokens,
-          autoCompact: rawMax is! num && existingBatch.isEmpty,
+          autoCompact: auto,
           startedAtMs: DateTime.now().millisecondsSinceEpoch,
           batchId: existingBatch.isEmpty ? null : existingBatch,
           provider: provider == null ? null : providerTag,
           providerName: provider?['name'] as String?,
           providerInput: provider?['input'] as double?,
           providerOutput: provider?['output'] as double?,
-        ));
+        )..outputCapSent = !auto);
       }
+    }
+    if (jobs.isEmpty) {
+      return errorResponse(409, 'already_tested',
+          'Every picked test already has a run for $name at those reasoning levels.');
     }
     _benchmarkGenJobs.addAll(jobs);
     await _pruneBenchmarkGenJobs();
@@ -625,6 +651,7 @@ extension BenchmarkGenerateApi on Api {
       return jsonResponse(200, {
         'multi': true,
         'count': jobs.length,
+        'skipped': skipped,
         'jobs': [for (final j in jobs) j.toJson()],
       });
     }
@@ -858,7 +885,8 @@ extension BenchmarkGenerateApi on Api {
       () => retryBenchmarkStream(
         acc,
         () async {
-          var result = await _streamBenchmarkGen(job, acc, withMaxTokens: true);
+          var result = await _streamBenchmarkGen(job, acc,
+              withMaxTokens: job.outputCapSent);
           // Some models cap output below what was asked and refuse the request
           // outright; their own maximum is the next best thing.
           if (result.$1 == HttpStatus.badRequest &&
@@ -1460,7 +1488,9 @@ String _bgDialogHtml(
     '<div id="bgTestTools" class="bg-test-tools" hidden>'
     '<button type="button" class="btn btn-ghost btn-sm" data-tests="all">'
     'Select all</button><button type="button" class="btn btn-ghost btn-sm" '
-    'data-tests="none">Clear</button></div>'
+    'data-tests="none">Clear</button>'
+    '<label class="bg-skip"><input id="bgSkipTested" type="checkbox" checked>'
+    'Skip tests this model already has</label></div>'
     '<details id="bgPromptBox" class="bg-prompt"><summary>Prompt '
     '<span id="bgPromptNote" class="muted"></span></summary>'
     '<textarea id="bgPrompt" class="bn-input bm-paste" spellcheck="false" '
@@ -1484,8 +1514,9 @@ String _bgDialogHtml(
     '<label class="bm-field"><span>Max output tokens</span>'
     '<input id="bgMaxTokens" class="bn-input" type="number" min="1000" '
     'max="256000" step="1000" inputmode="numeric" placeholder="Automatic">'
-    '<span class="muted">Clear for automatic compact retries if output is cut off. '
-    'Retries can add cost.</span></label>'
+    '<span class="muted">Clear for no cap: the model writes up to its own '
+    'maximum and retries more compactly if it still runs out. Retries can '
+    'add cost.</span></label>'
     '</div>'
     '<div class="bg-preview" aria-live="polite"><span id="bgPreviewLabel" '
     'class="muted">New entry</span> <strong id="bgPreviewName">—</strong> <span id="bgPreviewVendor" '
@@ -1602,7 +1633,10 @@ button.bg-prov-row[aria-checked=true]{background:#1a1530;box-shadow:inset 3px 0 
 .bg-chip .bg-chip-note{color:#8d86a8;font-size:11px;margin-left:4px}
 .bg-tests .bg-opt[role=checkbox] .bg-opt-title::before{content:"";width:14px;height:14px;border-radius:4px;border:1.5px solid #4a4170;flex:none}
 .bg-tests .bg-opt[role=checkbox][aria-checked=true] .bg-opt-title::before{background:#8a7ee0;border-color:#8a7ee0;box-shadow:inset 0 0 0 2px #1a1530}
-.bg-test-tools{display:flex;gap:6px;margin-top:8px}
+.bg-test-tools{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:8px}
+.bg-skip{display:inline-flex;align-items:center;gap:7px;margin-left:auto;font-size:12.5px;color:#c5bed9;cursor:pointer}
+.bg-skip input{accent-color:#8a7ee0;width:15px;height:15px;margin:0}
+.bg-tests .bg-opt.is-tested .bg-opt-sub{color:#7ee08a}
 .bg-test-tools[hidden]{display:none}
 .bg-queue{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12.5px;color:#c5bed9;padding:8px 12px;border-radius:10px;background:#16132a;border:1px solid #2a2346;font-variant-numeric:tabular-nums}
 .bg-queue b{color:#ece8f7}
@@ -1658,6 +1692,7 @@ const _bgScript = r'''
   const pickedKinds = new Set(), pickedEfforts = new Set();
   const runModeBox = $('bgRunMode'), effortsBox = $('bgEfforts');
   let lastJobs = [];
+  const skipTested = $('bgSkipTested');
   // OpenRouter's providers for the model in provFor; provTag is the one
   // picked, '' for letting OpenRouter route.
   let providers = null, provFor = '', provPending = '', provErr = '', provTag = '', provReq = 0, provTimer = null;
@@ -1719,8 +1754,47 @@ const _bgScript = r'''
   }
   function currentTest() { return state && state.costModel ? state.tests.find((x) => x.kind === kind) : null; }
   function multiTests() { return state ? state.tests.filter((t) => pickedKinds.has(t.kind) && !t.manual) : []; }
-  function multiCount() { return multiTests().length * pickedEfforts.size; }
   function effortsInOrder() { return state ? state.efforts.map((e) => e.value).filter((v) => pickedEfforts.has(v)) : [...pickedEfforts]; }
+  // Tests the roster or a run already has, keyed like benchmarkTestedKey on
+  // the server: "kind|entry name", the name trimmed and in lower case.
+  function testedKeys() {
+    const keys = new Set(state && Array.isArray(state.tested) ? state.tested : []);
+    lastJobs.forEach((j) => {
+      if (j.status === 'running' || j.status === 'done') keys.add(j.kind + '|' + String(j.name || '').trim().toLowerCase());
+    });
+    return keys;
+  }
+  function entryNameAt(eff) {
+    const n = nameBox.value.trim();
+    return (ENTRY_EFFORT[eff] ? n + ' (' + ENTRY_EFFORT[eff] + ')' : n).slice(0, 80).trim();
+  }
+  function isTested(keys, k, eff) { return keys.has(k + '|' + entryNameAt(eff).toLowerCase()); }
+  // Every test × reasoning level pairing Start would queue, less the ones
+  // already tested while "Skip tests this model already has" is on.
+  function multiPairs() {
+    const keys = skipTested.checked ? testedKeys() : null;
+    const out = [];
+    effortsInOrder().forEach((eff) => multiTests().forEach((t) => {
+      if (!keys || !isTested(keys, t.kind, eff)) out.push({ t: t, eff: eff });
+    }));
+    return out;
+  }
+  function multiCount() { return multiPairs().length; }
+  // Says on each test card how much of the picked levels it already has.
+  function markTested() {
+    if (!multi || !state) return;
+    const keys = testedKeys(), effs = effortsInOrder();
+    testsBox.querySelectorAll('[role=checkbox]').forEach((b) => {
+      const t = state.tests.find((x) => x.kind === b.dataset.value);
+      if (!t || t.manual) return;
+      const done = effs.filter((eff) => isTested(keys, t.kind, eff)).length;
+      b.classList.toggle('is-tested', done > 0 && done === effs.length);
+      b.querySelector('.bg-opt-sub').textContent = !done ? kfmt(t.prompt.length) + ' character prompt'
+        : done === effs.length ? 'Already tested' + (effs.length > 1 ? ' at every picked level' : '')
+        : 'Tested at ' + done + ' of ' + effs.length + ' picked levels';
+    });
+    $('bgTestTools').querySelector('[data-tests=all]').textContent = skipTested.checked ? 'Select all untested' : 'Select all';
+  }
   // The estimate for what Start would queue on [m]: one run, or every
   // multi-test pairing summed. Null when there is nothing to estimate.
   function selectionCost(m) {
@@ -1729,17 +1803,17 @@ const _bgScript = r'''
       const t = currentTest();
       return t && !t.manual ? estimate(m, effort.value, t) : null;
     }
-    const tests = multiTests();
-    if (!tests.length || !pickedEfforts.size) return null;
+    const pairs = multiPairs();
+    if (!pairs.length) return null;
     const sum = { input: 0, out: 0, cost: 0, capped: false, ref: false };
-    tests.forEach((t) => pickedEfforts.forEach((eff) => {
-      const e = estimate(m, eff, t);
+    pairs.forEach((p) => {
+      const e = estimate(m, p.eff, p.t);
       sum.input += e.input;
       sum.out += e.out;
       sum.cost = sum.cost == null || e.cost == null ? null : sum.cost + e.cost;
       sum.capped = sum.capped || e.capped;
       sum.ref = sum.ref || e.ref;
-    }));
+    });
     return sum;
   }
 
@@ -2115,12 +2189,15 @@ const _bgScript = r'''
     const by = !replace && vendor.value ? 'by ' + vendor.options[vendor.selectedIndex].text : '';
     if (multi) {
       const count = multiCount();
+      const skipped = multiTests().length * pickedEfforts.size - count;
       const names = effortsInOrder().map((x) => ENTRY_EFFORT[x] ? n + ' (' + ENTRY_EFFORT[x] + ')' : n)
         .filter((x, i, all) => x && all.indexOf(x) === i);
       $('bgPreviewLabel').textContent = 'Queues';
       $('bgPreviewName').textContent = count + ' run' + (count === 1 ? '' : 's');
       $('bgPreviewVendor').textContent = [names.length ? 'as ' + names.join(', ') : '', by,
+        skipped ? skipped + ' already tested, skipped' : '',
         count > 3 ? '3 at a time, the rest wait in the queue' : ''].filter(Boolean).join(' · ');
+      markTested();
       $('bgPreviewId').textContent = '';
     } else {
       $('bgPreviewName').textContent = n || '—';
@@ -2153,7 +2230,13 @@ const _bgScript = r'''
     const b = e.target.closest('[data-tests]');
     if (!b || !state) return;
     pickedKinds.clear();
-    if (b.dataset.tests === 'all') state.tests.forEach((t) => { if (!t.manual) pickedKinds.add(t.kind); });
+    // With skipping on, "all" means every test still missing one of the
+    // picked levels for this model.
+    const keys = skipTested.checked ? testedKeys() : null;
+    const effs = effortsInOrder();
+    if (b.dataset.tests === 'all') state.tests.forEach((t) => {
+      if (!t.manual && (!keys || !effs.length || effs.some((eff) => !isTested(keys, t.kind, eff)))) pickedKinds.add(t.kind);
+    });
     renderTests();
     renderModels();
     autofill();
@@ -2173,6 +2256,7 @@ const _bgScript = r'''
     if (multi) renderEfforts();
     autofill();
   });
+  skipTested.addEventListener('change', () => { renderModels(); autofill(); });
   nameBox.addEventListener('input', () => { nameEdited = nameBox.value.trim() !== ''; preview(); });
   vendor.addEventListener('change', () => { vendorEdited = true; preview(); });
   maxTokens.addEventListener('input', () => { maxEdited = true; renderCost(); renderModels(); renderProviders(); });
@@ -2249,6 +2333,7 @@ const _bgScript = r'''
       if (!pickedEfforts.size) { status.textContent = 'Pick at least one reasoning level.'; return; }
       if (!kinds.length) { status.textContent = 'Pick at least one test.'; return; }
       if (!nameBox.value.trim()) { status.textContent = 'Give the entries a name.'; nameBox.focus(); return; }
+      if (!multiCount()) { status.textContent = 'Every picked test already has a run for ' + nameBox.value.trim() + ' at those levels.'; return; }
       start.disabled = true;
       status.textContent = 'Queueing…';
       post('/admin/benchmarks/generate', {
@@ -2256,6 +2341,7 @@ const _bgScript = r'''
         name: nameBox.value.trim(), vendor: vendor.value,
         maxTokens: Number(maxTokens.value) || undefined,
         provider: pickedProvider() ? provTag : '',
+        skipTested: !!skipTested.checked,
       }).then((j) => {
         start.disabled = false;
         if (!j.count) { status.textContent = j.message || 'Could not queue the runs.'; return; }
@@ -2319,7 +2405,7 @@ const _bgScript = r'''
       }
       if (j.autoCompact) bits.push('Automatic compact retry: ' + j.compactAttempt + ' / 2');
       if (j.upstreamRetries) bits.push('Upstream retries: ' + j.upstreamRetries + ' / ' + (j.upstreamRetryLimit || 2));
-      bits.push('Output cap: ' + (j.outputCapSent === false ? 'provider default (requested ' + kfmt(j.maxTokens) + ')' : kfmt(j.maxTokens)));
+      bits.push('Output cap: ' + (j.outputCapSent === false ? (j.autoCompact ? 'none (model maximum)' : 'provider default (requested ' + kfmt(j.maxTokens) + ')') : kfmt(j.maxTokens)));
       if (j.batch && running) bits.push('OpenRouter batch ' + (j.batchStatus || 'not submitted yet').replace(/_/g, ' '));
       bits.push(took);
       let pub = '';
