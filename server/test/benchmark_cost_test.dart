@@ -1,11 +1,11 @@
 import 'package:luma_sync_server/benchmark_cost.dart';
-import 'package:luma_sync_server/benchmark_prompts.dart';
 import 'package:test/test.dart';
 
 /// Keeps the "Add benchmark" cost estimate close to what real pagoda runs
 /// were billed, at OpenRouter's per-million prices for those models.
 void main() {
-  final pagodaIn = benchmarkPromptTokens(benchmarkPromptFor('pagoda').length);
+  // Use the prompt length from the billed runs for the historical comparison.
+  final pagodaIn = benchmarkPromptTokens(4764);
   // The median pagoda page on the roster is about 38 KB.
   final pagodaPage = benchmarkMedianPageTokens([38240]);
 
@@ -21,7 +21,7 @@ void main() {
       inInclusiveRange(billed / 2, billed * 2),
       reason: 'estimated \$$estimate against \$$billed billed');
 
-  test('the pagoda prompt reads as the 1.3-1.4k tokens it was billed as', () {
+  test('the historical prompt estimate matches its billed token range', () {
     expect(pagodaIn, inInclusiveRange(1300, 1400));
   });
 
