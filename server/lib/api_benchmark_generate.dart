@@ -440,22 +440,52 @@ extension BenchmarkGenerateApi on Api {
     if (!isValidAiModelId(model)) {
       return errorResponse(400, 'bad_request', 'Pick a model.');
     }
-    final effort = str('effort');
-    if (!kBenchmarkEfforts.containsKey(effort)) {
-      return errorResponse(
-          400, 'bad_request', 'Pick a valid reasoning effort.');
-    }
-    final kind = str('kind');
-    if (!kBenchmarkPrompts.containsKey(kind)) {
-      return errorResponse(400, 'bad_request', 'Pick a test.');
-    }
-    if (kBenchmarkManualKinds.contains(kind)) {
+    // Multi-test queues every picked test at every picked effort, each as a
+    // run of its own on the shared queue. Each run gets its test's default
+    // prompt and a name from the base name plus its effort.
+    final multi = body['multi'] == true;
+    List<String> strings(String k) => body[k] is List
+        ? [
+            for (final v in body[k] as List)
+              if (v is String) v.trim()
+          ].toSet().toList()
+        : const [];
+    final efforts = multi ? strings('efforts') : [str('effort')];
+    if (efforts.isEmpty ||
+        efforts.any((e) => !kBenchmarkEfforts.containsKey(e))) {
       return errorResponse(
           400,
           'bad_request',
-          'The ${kBenchmarkPrompts[kind]!.label} test is a binary model a '
-              'text reply cannot carry. Upload it by hand.');
+          multi
+              ? 'Pick at least one valid reasoning level.'
+              : 'Pick a valid reasoning effort.');
     }
+    final kinds = multi ? strings('kinds') : [str('kind')];
+    if (kinds.isEmpty || kinds.any((k) => !kBenchmarkPrompts.containsKey(k))) {
+      return errorResponse(400, 'bad_request',
+          multi ? 'Pick at least one test.' : 'Pick a test.');
+    }
+    for (final kind in kinds) {
+      if (kBenchmarkManualKinds.contains(kind)) {
+        return errorResponse(
+            400,
+            'bad_request',
+            'The ${kBenchmarkPrompts[kind]!.label} test is a binary model a '
+                'text reply cannot carry. Upload it by hand.');
+      }
+    }
+    if (multi) {
+      if (str('replaceId').isNotEmpty || str('batchId').isNotEmpty) {
+        return errorResponse(400, 'bad_request',
+            'A multi-test run can\'t regenerate a test or attach a batch.');
+      }
+      final runs = efforts.length * kinds.length;
+      if (runs > kBenchmarkMultiMaxRuns) {
+        return errorResponse(400, 'bad_request',
+            'That is $runs runs; queue at most $kBenchmarkMultiMaxRuns at once.');
+      }
+    }
+    final kind = kinds.first;
     // Regenerating keeps the entry's id, name and company: it is the same
     // contestant's test, written again.
     final replaceId = str('replaceId');
@@ -491,7 +521,8 @@ extension BenchmarkGenerateApi on Api {
     if (!AiBenchmarkStore.vendorPattern.hasMatch(vendor)) {
       return errorResponse(400, 'bad_request', 'Unknown company "$vendor".');
     }
-    var prompt = body['prompt'] is String ? body['prompt'] as String : '';
+    var prompt =
+        !multi && body['prompt'] is String ? body['prompt'] as String : '';
     if (prompt.trim().isEmpty) prompt = benchmarkPromptFor(kind);
     if (prompt.length > _maxPromptChars) {
       return errorResponse(400, 'bad_request',
@@ -546,33 +577,49 @@ extension BenchmarkGenerateApi on Api {
       for (final j in _benchmarkGenJobs)
         if (j.status == 'running') j.sceneId,
     };
-    final sceneId = replacing != null
-        ? replaceId
-        : benchmarkSceneId(kind, name, effort, taken);
-    final job = BenchmarkGenJob(
-      id: DateTime.now().microsecondsSinceEpoch.toRadixString(36),
-      kind: kind,
-      sceneId: sceneId,
-      replaces: replacing != null,
-      name: name,
-      vendor: vendor,
-      route: AiModeRoute(upstream, model,
-          reasoningEffort: effort.isEmpty ? null : effort),
-      prompt: benchmarkPromptWithLot(kind, prompt, sceneId),
-      maxTokens: maxTokens,
-      autoCompact: rawMax is! num && existingBatch.isEmpty,
-      startedAtMs: DateTime.now().millisecondsSinceEpoch,
-      batchId: existingBatch.isEmpty ? null : existingBatch,
-      provider: provider == null ? null : providerTag,
-      providerName: provider?['name'] as String?,
-      providerInput: provider?['input'] as double?,
-      providerOutput: provider?['output'] as double?,
-    );
-    _benchmarkGenJobs.add(job);
+    final idBase = DateTime.now().microsecondsSinceEpoch;
+    final jobs = <BenchmarkGenJob>[];
+    for (final effort in efforts) {
+      for (final k in kinds) {
+        final entryName = multi ? benchmarkDisplayName(name, effort) : name;
+        final sceneId = replacing != null
+            ? replaceId
+            : benchmarkSceneId(k, entryName, effort, taken);
+        taken.add(sceneId);
+        final runPrompt = multi ? benchmarkPromptFor(k) : prompt;
+        jobs.add(BenchmarkGenJob(
+          id: (idBase + jobs.length).toRadixString(36),
+          kind: k,
+          sceneId: sceneId,
+          replaces: replacing != null,
+          name: entryName,
+          vendor: vendor,
+          route: AiModeRoute(upstream, model,
+              reasoningEffort: effort.isEmpty ? null : effort),
+          prompt: benchmarkPromptWithLot(k, runPrompt, sceneId),
+          maxTokens: maxTokens,
+          autoCompact: rawMax is! num && existingBatch.isEmpty,
+          startedAtMs: DateTime.now().millisecondsSinceEpoch,
+          batchId: existingBatch.isEmpty ? null : existingBatch,
+          provider: provider == null ? null : providerTag,
+          providerName: provider?['name'] as String?,
+          providerInput: provider?['input'] as double?,
+          providerOutput: provider?['output'] as double?,
+        ));
+      }
+    }
+    _benchmarkGenJobs.addAll(jobs);
     await _pruneBenchmarkGenJobs();
     await _saveBenchmarkBatches();
     _scheduleBenchmarkGen();
-    return jsonResponse(200, job.toJson());
+    if (multi) {
+      return jsonResponse(200, {
+        'multi': true,
+        'count': jobs.length,
+        'jobs': [for (final j in jobs) j.toJson()],
+      });
+    }
+    return jsonResponse(200, jobs.single.toJson());
   }
 
   Future<Response> _adminBenchmarkGenStop(Request request) async {
@@ -593,6 +640,31 @@ extension BenchmarkGenerateApi on Api {
     job.wake?.complete();
     job.wake = null;
     return jsonResponse(200, {'ok': true});
+  }
+
+  /// Cancels every run still waiting its turn in the queue, e.g. the rest of
+  /// a multi-test. Runs already going carry on, and a submitted batch is
+  /// left alone since it is still running at OpenRouter.
+  Future<Response> _adminBenchmarkGenCancelQueued(Request request) async {
+    if (!_sameOrigin(request)) {
+      return errorResponse(403, 'bad_origin', 'Cross-origin request rejected.');
+    }
+    final now = DateTime.now().millisecondsSinceEpoch;
+    var cancelled = 0;
+    for (final job in _benchmarkGenJobs) {
+      if (job.status != 'running' || job.active || job.batchId != null) {
+        continue;
+      }
+      job
+        ..stopRequested = true
+        ..status = 'stopped'
+        ..finishedAtMs = now
+        ..resultStatus = 'STOPPED'
+        ..resultReason = 'Cancelled while queued';
+      cancelled++;
+    }
+    await _saveBenchmarkBatches();
+    return jsonResponse(200, {'ok': true, 'cancelled': cancelled});
   }
 
   Future<Response> _adminBenchmarkGenDismiss(Request request) async {
@@ -1301,6 +1373,15 @@ String _bgDialogHtml(
     '<button type="button" class="bn-icon-btn" data-close aria-label="Close">'
     '${Api._bnCloseIcon}</button></div>'
     '<div class="bg-body">'
+    '<div id="bgRunModeField" class="bg-runmode-field">'
+    '<div id="bgRunMode" class="bg-runmode" role="radiogroup" '
+    'aria-label="Run mode">'
+    '<button type="button" role="radio" data-value="single" '
+    'aria-checked="true" tabindex="0">Single run</button>'
+    '<button type="button" role="radio" data-value="multi" '
+    'aria-checked="false" tabindex="-1">Multi-test</button></div>'
+    '<span id="bgRunModeHint" class="bg-step-hint">One model, one test, one '
+    'reasoning level</span></div>'
     '<section class="bg-step" aria-labelledby="bgStep1">'
     '<div class="bg-step-head"><span class="bg-num" aria-hidden="true">1</span>'
     '<h3 id="bgStep1">API key</h3>'
@@ -1316,9 +1397,14 @@ String _bgDialogHtml(
     '<input id="bgSearch" class="bn-input" type="search" '
     'placeholder="Search name or model ID" aria-label="Search models" '
     'autocomplete="off">'
-    '<label class="bg-inline"><span>Reasoning</span>'
+    '<label id="bgEffortWrap" class="bg-inline"><span>Reasoning</span>'
     '<select id="bgEffort" class="bn-input"></select></label>'
     '</div>'
+    '<div id="bgEffortsField" class="bg-efforts-field" hidden>'
+    '<div class="bg-prov-head"><span id="bgEffortsLabel">Reasoning levels'
+    '</span><span class="muted">Every picked test runs at each</span></div>'
+    '<div id="bgEfforts" class="bg-efforts" role="group" '
+    'aria-labelledby="bgEffortsLabel"></div></div>'
     '<div id="bgModels" class="bg-models" role="listbox" '
     'aria-labelledby="bgStep2"></div>'
     '<label class="bm-field" style="margin-top:10px"><span>Model ID '
@@ -1342,10 +1428,14 @@ String _bgDialogHtml(
     '<section class="bg-step" aria-labelledby="bgStep3">'
     '<div class="bg-step-head"><span class="bg-num" aria-hidden="true">3</span>'
     '<h3 id="bgStep3">Test</h3>'
-    '<span class="bg-step-hint">Picks the prompt</span></div>'
+    '<span id="bgTestHint" class="bg-step-hint">Picks the prompt</span></div>'
     '<div id="bgTests" class="bg-tests" role="radiogroup" '
     'aria-labelledby="bgStep3"></div>'
-    '<details class="bg-prompt"><summary>Prompt '
+    '<div id="bgTestTools" class="bg-test-tools" hidden>'
+    '<button type="button" class="btn btn-ghost btn-sm" data-tests="all">'
+    'Select all</button><button type="button" class="btn btn-ghost btn-sm" '
+    'data-tests="none">Clear</button></div>'
+    '<details id="bgPromptBox" class="bg-prompt"><summary>Prompt '
     '<span id="bgPromptNote" class="muted"></span></summary>'
     '<textarea id="bgPrompt" class="bn-input bm-paste" spellcheck="false" '
     'aria-label="Prompt sent to the model"></textarea>'
@@ -1468,6 +1558,29 @@ button.bg-prov-row[aria-checked=true]{background:#1a1530;box-shadow:inset 3px 0 
 .bg-cost-table td.is-current{background:#1a1530;color:#ece8f7;font-weight:650;box-shadow:inset 0 0 0 1px #8a7ee0}
 .bg-cost-table td.is-capped{color:#e8c37a}
 .bg-cost-note{font-size:11.5px;color:#8d86a8;padding:6px 12px 10px}
+.bg-runmode-field{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding-top:6px}
+.bg-runmode-field[hidden]{display:none}
+.bg-runmode{display:inline-flex;padding:3px;border-radius:10px;background:#12101e;border:1px solid #241e36}
+.bg-runmode button{font:inherit;font-size:12.5px;font-weight:600;color:#9b94b3;background:none;border:0;border-radius:7px;padding:6px 14px;cursor:pointer}
+.bg-runmode button:hover{color:#ece8f7}
+.bg-runmode button[aria-checked=true]{background:#8a7ee0;color:#14111f}
+.bg-runmode button:focus-visible{outline:2px solid #8a7ee0;outline-offset:2px}
+.bg-inline[hidden]{display:none}
+.bg-efforts-field{margin-bottom:10px}
+.bg-efforts-field[hidden]{display:none}
+.bg-efforts{display:flex;flex-wrap:wrap;gap:6px}
+.bg-chip{font:inherit;font-size:12.5px;padding:6px 12px;border-radius:99px;background:#12101e;border:1px solid #241e36;color:#c5bed9;cursor:pointer;transition:border-color .15s,background .15s}
+.bg-chip:hover{border-color:#3a3160}
+.bg-chip[aria-checked=true]{border-color:#8a7ee0;background:#1a1530;color:#ece8f7;box-shadow:inset 0 0 0 1px #8a7ee0}
+.bg-chip:focus-visible{outline:2px solid #8a7ee0;outline-offset:2px}
+.bg-chip .bg-chip-note{color:#8d86a8;font-size:11px;margin-left:4px}
+.bg-tests .bg-opt[role=checkbox] .bg-opt-title::before{content:"";width:14px;height:14px;border-radius:4px;border:1.5px solid #4a4170;flex:none}
+.bg-tests .bg-opt[role=checkbox][aria-checked=true] .bg-opt-title::before{background:#8a7ee0;border-color:#8a7ee0;box-shadow:inset 0 0 0 2px #1a1530}
+.bg-test-tools{display:flex;gap:6px;margin-top:8px}
+.bg-test-tools[hidden]{display:none}
+.bg-queue{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12.5px;color:#c5bed9;padding:8px 12px;border-radius:10px;background:#16132a;border:1px solid #2a2346;font-variant-numeric:tabular-nums}
+.bg-queue b{color:#ece8f7}
+.bg-queue .btn{margin-left:auto}
 .bg-runs{display:flex;flex-direction:column;gap:8px;margin-top:12px}
 .bg-runs:empty{display:none}
 .bg-run{background:#12101e;border:1px solid #241e36;border-radius:12px;padding:12px 14px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;align-items:start}
@@ -1513,6 +1626,12 @@ const _bgScript = r'''
   // Set while regenerating an existing test: { id, kind, name }.
   let replace = null;
   let timer = null;
+  // Multi-test: every test in pickedKinds at every effort in pickedEfforts,
+  // each queued as a run of its own (the server runs 3 at a time).
+  let multi = false;
+  const pickedKinds = new Set(), pickedEfforts = new Set();
+  const runModeBox = $('bgRunMode'), effortsBox = $('bgEfforts');
+  let lastJobs = [];
   // OpenRouter's providers for the model in provFor; provTag is the one
   // picked, '' for letting OpenRouter route.
   let providers = null, provFor = '', provPending = '', provErr = '', provTag = '', provReq = 0, provTimer = null;
@@ -1559,7 +1678,7 @@ const _bgScript = r'''
   }
   function estimate(m, eff, t) {
     const cm = state.costModel;
-    const chars = t.kind === kind ? prompt.value.length : t.prompt.length;
+    const chars = !multi && t.kind === kind ? prompt.value.length : t.prompt.length;
     const input = Math.round(chars / cm.promptCharsPerToken);
     const r = resolvedEffort(m, eff);
     let out = !r ? t.pageTokens * cm.plainPageScale
@@ -1573,6 +1692,30 @@ const _bgScript = r'''
       cost: p ? (input * p.input + out * p.output) / 1e6 : null };
   }
   function currentTest() { return state && state.costModel ? state.tests.find((x) => x.kind === kind) : null; }
+  function multiTests() { return state ? state.tests.filter((t) => pickedKinds.has(t.kind) && !t.manual) : []; }
+  function multiCount() { return multiTests().length * pickedEfforts.size; }
+  function effortsInOrder() { return state ? state.efforts.map((e) => e.value).filter((v) => pickedEfforts.has(v)) : [...pickedEfforts]; }
+  // The estimate for what Start would queue on [m]: one run, or every
+  // multi-test pairing summed. Null when there is nothing to estimate.
+  function selectionCost(m) {
+    if (!state || !state.costModel) return null;
+    if (!multi) {
+      const t = currentTest();
+      return t && !t.manual ? estimate(m, effort.value, t) : null;
+    }
+    const tests = multiTests();
+    if (!tests.length || !pickedEfforts.size) return null;
+    const sum = { input: 0, out: 0, cost: 0, capped: false, ref: false };
+    tests.forEach((t) => pickedEfforts.forEach((eff) => {
+      const e = estimate(m, eff, t);
+      sum.input += e.input;
+      sum.out += e.out;
+      sum.cost = sum.cost == null || e.cost == null ? null : sum.cost + e.cost;
+      sum.capped = sum.capped || e.capped;
+      sum.ref = sum.ref || e.ref;
+    }));
+    return sum;
+  }
 
   // The provider list only applies to a streamed OpenRouter model.
   function providerApplies(id) { return key === 'openrouter' && id.includes('/') && !isBatch(id); }
@@ -1621,17 +1764,15 @@ const _bgScript = r'''
     if (provFor !== id) { note.textContent = ''; providersBox.innerHTML = '<div class="bg-empty">Loading OpenRouter’s providers…</div>'; return; }
     if (!providers) { note.textContent = ''; providersBox.innerHTML = '<div class="bg-empty">' + esc(provErr) + ' The run can still let OpenRouter pick.</div>'; return; }
     note.textContent = providers.length ? providers.length + ' serve' + (providers.length === 1 ? 's' : '') + ' this model · per million tokens' : '';
-    const t = currentTest();
     const cap = Number(maxTokens.value) || 0;
     function est(m) {
-      if (!t || t.manual || !priceOf(m)) return '–';
-      const e = estimate(m, effort.value, t);
-      return e.cost == null ? '–' : '≈ <b>' + esc(usd(e.cost)) + '</b>';
+      const e = priceOf(m) ? selectionCost(m) : null;
+      return !e || e.cost == null ? '–' : '≈ <b>' + esc(usd(e.cost)) + '</b>';
     }
     function was(p, v) { return p.discount ? '<s>' + esc(price(v / (1 - p.discount))) + '</s>' : ''; }
     function cell(v, cls) { return '<span' + (cls ? ' class="' + cls + '"' : '') + '>' + v + '</span>'; }
     const head = '<div class="bg-prov-row bg-prov-cols" aria-hidden="true"><span>Provider</span><span>Input</span><span>Output</span>'
-      + '<span class="bg-prov-wide">Cache read</span><span class="bg-prov-wide">Max out</span><span class="bg-prov-wide">Uptime</span><span>Est. / run</span></div>';
+      + '<span class="bg-prov-wide">Cache read</span><span class="bg-prov-wide">Max out</span><span class="bg-prov-wide">Uptime</span><span>' + (multi ? 'Est. total' : 'Est. / run') + '</span></div>';
     const auto = '<button type="button" role="radio" class="bg-prov-row" data-value="" aria-checked="false">'
       + '<span><span class="bg-prov-name">Auto</span><span class="bg-prov-sub">OpenRouter picks, and falls back on errors</span></span>'
       + cell(esc(model && price(model.input) || '–')) + cell(esc(model && price(model.output) || '–'))
@@ -1677,26 +1818,31 @@ const _bgScript = r'''
     if (!thinks(m)) return [''];
     const b = baseOf(m);
     const listed = b && Array.isArray(b.efforts) ? b.efforts : [];
-    return EFFORT_COLS.filter((e) => e === 'none' || e === effort.value || !listed.length || listed.includes(e));
+    return EFFORT_COLS.filter((e) => e === 'none' || e === effort.value || (multi && pickedEfforts.has(e)) || !listed.length || listed.includes(e));
   }
   function renderCost() {
     const line = $('bgCost'), table = $('bgCostTable');
     const t = currentTest(), id = modelId.value.trim();
-    if (!t || t.manual || !id) {
-      line.innerHTML = t && !t.manual ? '<span class="muted">Pick a model to see what a run costs.</span>' : '';
+    const n = multi ? multiCount() : 1;
+    if (multi ? !n || !id : !t || t.manual || !id) {
+      line.innerHTML = multi
+        ? '<span class="muted">' + (id ? 'Pick at least one test and reasoning level' : 'Pick a model') + ' to see what the runs cost.</span>'
+        : t && !t.manual ? '<span class="muted">Pick a model to see what a run costs.</span>' : '';
       table.innerHTML = '';
       return;
     }
     const prov = pickedProvider();
     const pm = withProvider(model, prov);
-    const e = estimate(pm, effort.value, t);
+    const e = selectionCost(pm);
     const parts = [e.cost == null
       ? '<span>Estimated cost: no price listed for this model</span>'
+      : multi ? '<span>Estimated total <b>≈ ' + usd(e.cost) + '</b> for ' + n + ' run' + (n === 1 ? '' : 's') + '</span>'
       : '<span>Estimated cost <b>≈ ' + usd(e.cost) + '</b> per run</span>'];
-    parts.push('<span>' + kfmt(e.input) + ' in · ' + kfmt(e.out) + ' out</span>');
+    parts.push('<span>' + kfmt(e.input) + ' in · ' + kfmt(e.out) + ' out' + (multi ? ' in all' : '') + '</span>');
     if (!maxTokens.value.trim()) parts.push('<span class="muted">Automatic: compact retries may add cost</span>');
     if (!thinks(model)) parts.push('<span class="muted">Lists no reasoning, so effort changes nothing</span>');
-    if (e.capped) parts.push('<span class="bg-cost-warn">Reaches the ' + kfmt(e.out) + ' output cap; the page may be cut off</span>');
+    if (e.capped) parts.push('<span class="bg-cost-warn">' + (multi ? 'Some runs reach the output cap; their pages may be cut off'
+      : 'Reaches the ' + kfmt(e.out) + ' output cap; the page may be cut off') + '</span>');
     if (e.ref) parts.push('<span class="muted">OpenRouter price for the same model</span>');
     if (prov) parts.push('<span class="muted">on ' + esc(prov.name) + '’s prices</span>');
     if (prov && prov.maxOutput && (Number(maxTokens.value) || 0) > prov.maxOutput) {
@@ -1705,14 +1851,14 @@ const _bgScript = r'''
     line.innerHTML = parts.join('');
 
     const cols = effortCols(model);
-    const cur = resolvedEffort(model, effort.value);
+    const curs = new Set(multi ? [...pickedEfforts].map((x) => resolvedEffort(model, x)) : [resolvedEffort(model, effort.value)]);
     const tests = state.tests.filter((x) => !x.manual);
     table.innerHTML = '<table><thead><tr><th>Test</th>'
       + cols.map((c) => '<th>' + esc(c ? EFFORT_LABEL[c] : 'Any effort') + '</th>').join('')
       + '</tr></thead><tbody>'
       + tests.map((x) => '<tr><td>' + esc(x.label) + '</td>' + cols.map((c) => {
         const r = estimate(pm, c, x);
-        const cls = [x.kind === kind && c === cur ? 'is-current' : '', r.capped ? 'is-capped' : ''].filter(Boolean).join(' ');
+        const cls = [(multi ? pickedKinds.has(x.kind) : x.kind === kind) && curs.has(c) ? 'is-current' : '', r.capped ? 'is-capped' : ''].filter(Boolean).join(' ');
         return '<td' + (cls ? ' class="' + cls + '"' : '')
           + ' title="' + esc(kfmt(r.input) + ' in · ' + kfmt(r.out) + ' out' + (r.capped ? ', at the output cap' : '')) + '">'
           + esc(r.cost == null ? '–' : usd(r.cost)) + '</td>';
@@ -1761,10 +1907,15 @@ const _bgScript = r'''
   function isBatch(id) { return key === 'openrouter' && id.endsWith(BATCH); }
   function syncStart() {
     const batch = isBatch(modelId.value.trim());
-    $('bgBatchIdField').hidden = !batch;
-    start.textContent = !batch ? (replace ? 'Regenerate' : 'Start run')
-      : $('bgBatchId').value.trim() ? 'Attach batch' : 'Submit batch';
-    start.disabled = manualNote || !!(state && !state.keys.some((k) => k.configured));
+    $('bgBatchIdField').hidden = !batch || multi;
+    if (multi) {
+      const n = multiCount();
+      start.textContent = n ? 'Queue ' + n + ' run' + (n === 1 ? '' : 's') : 'Queue runs';
+    } else {
+      start.textContent = !batch ? (replace ? 'Regenerate' : 'Start run')
+        : $('bgBatchId').value.trim() ? 'Attach batch' : 'Submit batch';
+    }
+    start.disabled = (!multi && manualNote) || !!(state && !state.keys.some((k) => k.configured));
   }
   function labelOf(u) { const k = state && state.keys.find((x) => x.upstream === u); return k ? k.label : u; }
   function renderKeys() {
@@ -1775,12 +1926,58 @@ const _bgScript = r'''
       + '</button>').join('');
     radio(keysBox, key);
   }
+  // Radios in a single run; checkboxes in a multi-test, where the tests
+  // that can only be uploaded by hand are left out.
   function renderTests() {
-    testsBox.innerHTML = state.tests.map((t) => '<button type="button" role="radio" class="bg-opt" data-value="' + esc(t.kind) + '" aria-checked="false"'
-      + (replace && replace.kind !== t.kind ? ' disabled' : '') + '>'
+    testsBox.setAttribute('role', multi ? 'group' : 'radiogroup');
+    testsBox.innerHTML = state.tests.map((t) => '<button type="button" role="' + (multi ? 'checkbox' : 'radio') + '" class="bg-opt" data-value="' + esc(t.kind) + '"'
+      + ' aria-checked="' + (multi && pickedKinds.has(t.kind) && !t.manual ? 'true' : 'false') + '"'
+      + ((replace && replace.kind !== t.kind) || (multi && t.manual) ? ' disabled' : '') + '>'
       + '<span class="bg-opt-title">' + esc(t.label) + '</span>'
-      + '<span class="bg-opt-sub">' + kfmt(t.prompt.length) + ' character prompt</span></button>').join('');
-    radio(testsBox, kind);
+      + '<span class="bg-opt-sub">' + (multi && t.manual ? 'Upload by hand' : kfmt(t.prompt.length) + ' character prompt') + '</span></button>').join('');
+    if (!multi) radio(testsBox, kind);
+  }
+  // The multi-test's reasoning levels. One the model doesn't list is still
+  // offered (lists go stale), just marked.
+  function renderEfforts() {
+    if (!state) return;
+    const b = baseOf(model);
+    const listed = b && Array.isArray(b.efforts) ? b.efforts : [];
+    effortsBox.innerHTML = state.efforts.map((e) => {
+      const off = !!e.value && e.value !== 'none' && (!thinks(model) || (listed.length > 0 && !listed.includes(e.value)));
+      return '<button type="button" role="checkbox" class="bg-chip" data-value="' + esc(e.value) + '" aria-checked="'
+        + (pickedEfforts.has(e.value) ? 'true' : 'false') + '"'
+        + (off ? ' title="This model doesn’t list this reasoning level"' : '') + '>'
+        + esc(EFFORT_LABEL[e.value] || e.label) + (off ? '<span class="bg-chip-note">not listed</span>' : '') + '</button>';
+    }).join('');
+  }
+  function toggle(set, value, b) {
+    if (set.has(value)) set.delete(value); else set.add(value);
+    b.setAttribute('aria-checked', set.has(value) ? 'true' : 'false');
+    renderModels();
+    autofill();
+  }
+  function setMulti(v) {
+    multi = (v === true || v === 'multi') && !replace;
+    radio(runModeBox, multi ? 'multi' : 'single');
+    $('bgRunModeHint').textContent = multi
+      ? 'Every picked test at every picked reasoning level, queued and run 3 at a time'
+      : 'One model, one test, one reasoning level';
+    if (multi) {
+      if (!pickedEfforts.size) pickedEfforts.add(effort.value);
+      const t = state && state.tests.find((x) => x.kind === kind);
+      if (!pickedKinds.size && t && !t.manual) pickedKinds.add(kind);
+      if (hintShown) { status.textContent = ''; hintShown = false; }
+    } else if (manualNote && state && kind) pickTest(kind);
+    $('bgEffortWrap').hidden = multi;
+    $('bgEffortsField').hidden = !multi;
+    $('bgPromptBox').hidden = multi;
+    $('bgTestTools').hidden = !multi;
+    $('bgStep3').textContent = multi ? 'Tests' : 'Test';
+    $('bgTestHint').textContent = multi ? 'Pick any number; each uses its default prompt' : 'Picks the prompt';
+    nameBox.placeholder = multi ? 'Sonnet 5.5' : 'Sonnet 5.5 (High)';
+    if (state) { renderTests(); renderEfforts(); renderModels(); }
+    autofill();
   }
   function renderModels() {
     const q = search.value.trim().toLowerCase();
@@ -1802,8 +1999,12 @@ const _bgScript = r'''
       const batch = isBatch(m.id);
       if (batch) stats.push('<span>Up to <b>24 h</b></span>');
       const t = currentTest();
-      if (t && !t.manual && priceOf(m)) {
-        const e = estimate(m, effort.value, t);
+      const e = priceOf(m) ? selectionCost(m) : null;
+      if (e && multi) {
+        const n = multiCount();
+        stats.push('<span class="bg-cost-chip" title="' + esc('Estimated cost of all ' + n + ' runs: '
+          + kfmt(e.input) + ' in · ' + kfmt(e.out) + ' out') + '">≈ <b>' + usd(e.cost) + '</b> total</span>');
+      } else if (e && t) {
         stats.push('<span class="bg-cost-chip" title="' + esc('Estimated cost of one ' + t.label + ' run: '
           + kfmt(e.input) + ' in · ' + kfmt(e.out) + ' out') + '">≈ <b>' + usd(e.cost) + '</b> / run</span>');
       }
@@ -1825,6 +2026,7 @@ const _bgScript = r'''
     modelId.value = '';
     search.value = '';
     renderModels();
+    if (multi) renderEfforts();
     autofill();
   }
   function pickModel(id) {
@@ -1832,6 +2034,7 @@ const _bgScript = r'''
     modelId.value = id;
     modelsBox.querySelectorAll('[role=option]').forEach((b) =>
       b.setAttribute('aria-selected', b.dataset.id === id ? 'true' : 'false'));
+    if (multi) renderEfforts();
     autofill();
   }
   function pickTest(k) {
@@ -1857,7 +2060,8 @@ const _bgScript = r'''
     const colon = base.indexOf(': ');
     if (colon > 0 && colon < 30) base = base.slice(colon + 2).trim();
     base = base.replace(/\s*\(batch\)$/i, '').replace(/:batch$/, '');
-    const e = ENTRY_EFFORT[effort.value];
+    // A multi-test's runs each add their own effort to this base name.
+    const e = !multi && ENTRY_EFFORT[effort.value];
     return (e ? base + ' (' + e + ')' : base).slice(0, 80);
   }
   function entryVendor() {
@@ -1882,22 +2086,52 @@ const _bgScript = r'''
     syncStart();
     renderCost();
     const n = nameBox.value.trim();
-    $('bgPreviewName').textContent = n || '—';
-    $('bgPreviewVendor').textContent = !replace && vendor.value ? 'by ' + vendor.options[vendor.selectedIndex].text : '';
-    const e = ENTRY_EFFORT[effort.value] ? effort.value : '';
-    const s = slug(n);
-    $('bgPreviewLabel').textContent = replace ? 'Rewrites the test of' : 'New entry';
-    $('bgPreviewId').textContent = replace ? replace.id
-      : kind && s ? [kind, s, e].filter(Boolean).join('_') : '';
+    const by = !replace && vendor.value ? 'by ' + vendor.options[vendor.selectedIndex].text : '';
+    if (multi) {
+      const count = multiCount();
+      const names = effortsInOrder().map((x) => ENTRY_EFFORT[x] ? n + ' (' + ENTRY_EFFORT[x] + ')' : n)
+        .filter((x, i, all) => x && all.indexOf(x) === i);
+      $('bgPreviewLabel').textContent = 'Queues';
+      $('bgPreviewName').textContent = count + ' run' + (count === 1 ? '' : 's');
+      $('bgPreviewVendor').textContent = [names.length ? 'as ' + names.join(', ') : '', by,
+        count > 3 ? '3 at a time, the rest wait in the queue' : ''].filter(Boolean).join(' · ');
+      $('bgPreviewId').textContent = '';
+    } else {
+      $('bgPreviewName').textContent = n || '—';
+      $('bgPreviewVendor').textContent = by;
+      const e = ENTRY_EFFORT[effort.value] ? effort.value : '';
+      const s = slug(n);
+      $('bgPreviewLabel').textContent = replace ? 'Rewrites the test of' : 'New entry';
+      $('bgPreviewId').textContent = replace ? replace.id
+        : kind && s ? [kind, s, e].filter(Boolean).join('_') : '';
+    }
     $('bgStep1').closest('.bg-step').classList.toggle('is-done', !!key);
-    $('bgStep2').closest('.bg-step').classList.toggle('is-done', !!modelId.value.trim());
-    $('bgStep3').closest('.bg-step').classList.toggle('is-done', !!kind);
+    $('bgStep2').closest('.bg-step').classList.toggle('is-done', !!modelId.value.trim() && (!multi || pickedEfforts.size > 0));
+    $('bgStep3').closest('.bg-step').classList.toggle('is-done', multi ? multiTests().length > 0 : !!kind);
     $('bgStep4').closest('.bg-step').classList.toggle('is-done', !!n);
   }
 
   radioKeys(keysBox, pickKey);
   radioKeys(testsBox, pickTest);
   radioKeys(providersBox, pickProvider);
+  radioKeys(runModeBox, setMulti);
+  testsBox.addEventListener('click', (e) => {
+    const b = e.target.closest('[role=checkbox]');
+    if (b && !b.disabled) toggle(pickedKinds, b.dataset.value, b);
+  });
+  effortsBox.addEventListener('click', (e) => {
+    const b = e.target.closest('[role=checkbox]');
+    if (b) toggle(pickedEfforts, b.dataset.value, b);
+  });
+  $('bgTestTools').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-tests]');
+    if (!b || !state) return;
+    pickedKinds.clear();
+    if (b.dataset.tests === 'all') state.tests.forEach((t) => { if (!t.manual) pickedKinds.add(t.kind); });
+    renderTests();
+    renderModels();
+    autofill();
+  });
   modelsBox.addEventListener('click', (e) => {
     const b = e.target.closest('[role=option]');
     if (b) pickModel(b.dataset.id);
@@ -1910,6 +2144,7 @@ const _bgScript = r'''
     model = modelsFor(key).find((m) => m.id === id) || null;
     modelsBox.querySelectorAll('[role=option]').forEach((b) =>
       b.setAttribute('aria-selected', model && b.dataset.id === id ? 'true' : 'false'));
+    if (multi) renderEfforts();
     autofill();
   });
   nameBox.addEventListener('input', () => { nameEdited = nameBox.value.trim() !== ''; preview(); });
@@ -1927,6 +2162,9 @@ const _bgScript = r'''
   function openDialog(rep) {
     replace = rep || null;
     if (replace && window.lumaBenchmarkMode) window.lumaBenchmarkMode('scene');
+    // Regenerating rewrites one existing test, so it is always a single run.
+    $('bgRunModeField').hidden = !!replace;
+    if (replace && multi) setMulti(false);
     nameBox.readOnly = !!replace;
     vendor.disabled = !!replace;
     if (replace) {
@@ -1968,6 +2206,7 @@ const _bgScript = r'''
         renderModels();
         if (!status.textContent) status.textContent = 'Pick the model that should write ' + replace.name + '’s test again. The current page is backed up first.';
       } else if (!kind || !s.tests.some((t) => t.kind === kind)) pickTest(s.tests[0].kind);
+      if (multi) setMulti(true);
       search.focus();
     }).catch((e) => { status.textContent = e.message || 'Could not load the keys and tests.'; });
   }
@@ -1979,6 +2218,27 @@ const _bgScript = r'''
     const id = modelId.value.trim();
     if (!key) { status.textContent = 'Pick an API key.'; return; }
     if (!id) { status.textContent = 'Pick a model.'; search.focus(); return; }
+    if (multi) {
+      const kinds = multiTests().map((x) => x.kind);
+      if (!pickedEfforts.size) { status.textContent = 'Pick at least one reasoning level.'; return; }
+      if (!kinds.length) { status.textContent = 'Pick at least one test.'; return; }
+      if (!nameBox.value.trim()) { status.textContent = 'Give the entries a name.'; nameBox.focus(); return; }
+      start.disabled = true;
+      status.textContent = 'Queueing…';
+      post('/admin/benchmarks/generate', {
+        multi: true, upstream: key, model: id, efforts: effortsInOrder(), kinds: kinds,
+        name: nameBox.value.trim(), vendor: vendor.value,
+        maxTokens: Number(maxTokens.value) || undefined,
+        provider: pickedProvider() ? provTag : '',
+      }).then((j) => {
+        start.disabled = false;
+        if (!j.count) { status.textContent = j.message || 'Could not queue the runs.'; return; }
+        nameEdited = vendorEdited = maxEdited = false;
+        dlg.close();
+        poll();
+      }).catch(() => { start.disabled = false; status.textContent = 'Could not queue the runs (network error).'; });
+      return;
+    }
     if (!kind) { status.textContent = 'Pick a test.'; return; }
     if (manualNote) return;
     if (!nameBox.value.trim()) { status.textContent = 'Give the entry a name.'; nameBox.focus(); return; }
@@ -2007,7 +2267,12 @@ const _bgScript = r'''
   const PHASE = { connecting: 'Connecting', thinking: 'Thinking', writing: 'Writing', saving: 'Saving', compacting: 'Retrying more compactly',
     submitting: 'Submitting', queued: 'Queued', generating: 'In batch' };
   function renderRuns(jobs) {
-    runsBox.innerHTML = (jobs || []).map((j) => {
+    lastJobs = jobs || [];
+    const queued = lastJobs.filter((j) => j.waiting && !j.batchId).length;
+    const going = lastJobs.filter((j) => j.status === 'running' && !j.waiting).length;
+    const head = queued ? '<div class="bg-queue"><span><b>' + going + '</b> running · <b>' + queued + '</b> queued'
+      + ' · 3 run at a time</span><button type="button" class="btn btn-ghost btn-sm" data-queue="cancel">Cancel queued</button></div>' : '';
+    runsBox.innerHTML = head + lastJobs.map((j) => {
       const running = j.status === 'running';
       const took = elapsed((j.finishedAtMs || Date.now()) - j.startedAtMs);
       const badge = running ? '<span class="badge warn">' + esc(PHASE[j.phase] || 'Running') + '</span>'
@@ -2067,6 +2332,14 @@ const _bgScript = r'''
     return (jobs || []).some((j) => j.status === 'running');
   }
   runsBox.addEventListener('click', (e) => {
+    const q = e.target.closest('button[data-queue]');
+    if (q) {
+      const n = lastJobs.filter((j) => j.waiting && !j.batchId).length;
+      if (!n || !confirm('Cancel the ' + n + ' queued run' + (n === 1 ? '' : 's') + '? Runs already going carry on.')) return;
+      q.disabled = true;
+      post('/admin/benchmarks/generate/cancel-queued').then(poll, poll);
+      return;
+    }
     const b = e.target.closest('button[data-act]');
     if (!b) return;
     const id = b.closest('.bg-run').dataset.id;

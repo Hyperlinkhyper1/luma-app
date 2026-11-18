@@ -52,6 +52,8 @@ class RepairAccounts implements Store {
   @override
   final Map<String, String> userIdByEmail = {};
   @override
+  Future<void> logActivity(String kind, String detail) async {}
+  @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
@@ -1110,6 +1112,86 @@ const s = "y";
       hold!.complete();
       await finished();
     });
+    test('multi-test queues every test at every effort, 3 running at once',
+        () async {
+      final previous = HttpOverrides.current;
+      HttpOverrides.global = _OfflineHttp();
+      final ids = <String>{};
+      List<Map> ours(Map state) => [
+            for (final j in (state['jobs'] as List).cast<Map>())
+              if (ids.contains(j['id'])) j
+          ];
+      try {
+        Future<Map> multi(Map<String, Object?> extra) =>
+            request('POST', '/admin/benchmarks/generate', body: {
+              'multi': true,
+              'upstream': 'openrouter',
+              'model': 'mistralai/mistral-nemo',
+              'name': 'Nemo',
+              'vendor': 'mistralai',
+              ...extra,
+            });
+        final noEffort = await multi({
+          'efforts': [],
+          'kinds': ['pagoda']
+        });
+        expect(noEffort['httpStatus'], 400, reason: '$noEffort');
+        final regen = await multi({
+          'efforts': ['low'],
+          'kinds': ['pagoda'],
+          'replaceId': 'pagoda_demo',
+        });
+        expect(regen['httpStatus'], 400, reason: '$regen');
+
+        final queued = await multi({
+          'efforts': ['low', 'high', ''],
+          'kinds': ['pagoda', 'galaxy'],
+        });
+        expect(queued['httpStatus'], 200, reason: '$queued');
+        expect(queued['count'], 6);
+        final jobs = (queued['jobs'] as List).cast<Map>();
+        ids.addAll([for (final j in jobs) j['id'] as String]);
+        expect(ids, hasLength(6));
+        expect([
+          for (final j in jobs) '${j['name']} · ${j['kind']}'
+        ], [
+          'Nemo (Low) · pagoda',
+          'Nemo (Low) · galaxy',
+          'Nemo (High) · pagoda',
+          'Nemo (High) · galaxy',
+          'Nemo · pagoda',
+          'Nemo · galaxy',
+        ]);
+        expect({for (final j in jobs) j['sceneId']}, hasLength(6));
+        expect([for (final j in jobs) j['waiting']],
+            [false, false, false, true, true, true]);
+
+        final cancelled =
+            await request('POST', '/admin/benchmarks/generate/cancel-queued');
+        expect(cancelled['httpStatus'], 200, reason: '$cancelled');
+        final after = ours(await request('GET', '/admin/benchmarks/generate'));
+        expect(after.where((j) => j['waiting'] == true), isEmpty);
+      } finally {
+        var state = await request('GET', '/admin/benchmarks/generate');
+        for (final j in ours(state)) {
+          if (j['status'] == 'running') {
+            await request('POST', '/admin/benchmarks/generate/${j['id']}/stop');
+          }
+        }
+        for (var n = 0;
+            n < 300 && ours(state).any((j) => j['status'] == 'running');
+            n++) {
+          await Future<void>.delayed(const Duration(milliseconds: 10));
+          state = await request('GET', '/admin/benchmarks/generate');
+        }
+        for (final j in ours(state)) {
+          await request(
+              'POST', '/admin/benchmarks/generate/${j['id']}/dismiss');
+        }
+        HttpOverrides.global = previous;
+      }
+      expect(ours(await request('GET', '/admin/benchmarks/generate')), isEmpty);
+    });
     test('an edit that unbalances the brackets is dropped, not built on',
         () async {
       await save();
@@ -1528,4 +1610,14 @@ const s = "y";
       });
     });
   });
+}
+
+/// Refuses every outgoing connection, so a run started by a test fails at
+/// once instead of reaching a real upstream.
+class _OfflineHttp extends HttpOverrides {
+  @override
+  HttpClient createHttpClient(SecurityContext? context) =>
+      super.createHttpClient(context)
+        ..connectionFactory = (uri, proxyHost, proxyPort) =>
+            Future.error(const SocketException('offline in tests'));
 }

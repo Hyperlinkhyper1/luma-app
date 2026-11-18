@@ -10,7 +10,7 @@ import 'package:cryptography/cryptography.dart';
 /// and LAN peer sync.
 ///
 /// ChaCha20-Poly1305 rather than AES-GCM: the transfer runs in pure Dart, and
-/// there GCM's GHASH made AES-GCM the whole bottleneck — around 15 MB/s to
+/// there GCM's GHASH made AES-GCM the whol e bottleneck — around 15 MB/s to
 /// seal a chunk on a desktop, several times less on a phone. ChaCha20-Poly1305
 /// is about three times faster in the same code and just as strong (it is
 /// what TLS 1.3 and WireGuard use), with the same 32-byte key, 12-byte nonce

@@ -98,6 +98,9 @@ const kBenchmarkEfforts = <String, String>{
   'xhigh': 'Xhigh',
 };
 
+/// The most runs one multi-test request may queue.
+const kBenchmarkMultiMaxRuns = 120;
+
 /// The page in a model's [reply], or null when there is none. Prefers the
 /// longest fenced block that holds a page (models fence despite being told
 /// not to), else the span from `<!doctype`/`<html` to the last `</html>`,
