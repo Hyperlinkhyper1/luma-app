@@ -18,7 +18,8 @@ async function render(jobs) {
     return elements.get(id);
   }
   runInNewContext(script, {
-    document: { getElementById: element },
+    document: { getElementById: element, addEventListener() {}, querySelector() { return null; }, querySelectorAll() { return []; } },
+    window: { addEventListener() {} },
     setTimeout() {}, clearTimeout() {},
     fetch: async () => ({ text: async () => JSON.stringify({ jobs }) }),
   });
@@ -53,7 +54,7 @@ test('truncated run exposes reason, usage, validation, finish reason and raw res
 });
 
 test('every outcome renders independently of lifecycle and escapes provider details', async () => {
-  for (const resultStatus of ['PROVIDER_BUSY', 'RATE_LIMITED', 'MODEL_ERROR', 'INVALID_OUTPUT', 'CONTENT_FILTERED']) {
+  for (const resultStatus of ['PROVIDER_BUSY', 'PROVIDER_ERROR', 'RATE_LIMITED', 'MODEL_ERROR', 'INVALID_OUTPUT', 'CONTENT_FILTERED']) {
     const html = await render([{ ...job, resultStatus, resultReason: '<img onerror=alert(1)>',
       outputCapSent: false, batch: true, batchId: 'batch1' }]);
     assert.match(html, new RegExp('>' + resultStatus + '</span>'));
@@ -65,5 +66,10 @@ test('every outcome renders independently of lifecycle and escapes provider deta
   }
   assert.match(await render([{ ...job, status: 'done', resultStatus: 'PASS' }]), /badge ok">PASS/);
   assert.match(await render([{ ...job, status: 'running', phase: 'writing' }]), />Writing</);
+  const retrying = await render([{ ...job, status: 'running', phase: 'retrying', upstreamRetries: 1,
+    upstreamRetryLimit: 2, retryReason: 'Upstream idle timeout exceeded' }]);
+  assert.match(retrying, />Upstream failed, retrying</);
+  assert.match(retrying, /Upstream retries: 1 \/ 2/);
+  assert.match(retrying, /Last upstream failure: Upstream idle timeout exceeded/);
   assert.match(await render([{ ...job, status: 'stopped' }]), />Stopped</);
 });

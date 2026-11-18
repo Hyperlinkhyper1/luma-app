@@ -123,7 +123,8 @@ class BenchmarkGenJob {
   /// running · done · failed · stopped
   String status = 'running';
 
-  /// connecting · thinking · writing · saving while streaming; a batch is
+  /// connecting · thinking · writing · retrying · saving while streaming;
+  /// compacting before a shorter retry; a batch is
   /// submitting · queued · generating · saving.
   String phase = 'queued';
   bool active = false;
@@ -140,6 +141,11 @@ class BenchmarkGenJob {
   int outputTokens = 0;
   bool outputCapSent = true;
   bool hasResult = false;
+
+  /// How many times the upstream failed on its own end (a 5xx, a timeout,
+  /// a dropped stream) and the run started over, and the last such failure.
+  int upstreamRetries = 0;
+  String? retryReason;
   String? error;
   Map<String, Object> publish = const {};
   bool hasOutput = false;
@@ -180,6 +186,9 @@ class BenchmarkGenJob {
         'outputTokens': outputTokens,
         'outputCapSent': outputCapSent,
         'hasResult': hasResult,
+        'upstreamRetries': upstreamRetries,
+        'upstreamRetryLimit': kBenchmarkRetryBackoff.length,
+        'retryReason': retryReason,
         'error': error,
         'hasOutput': hasOutput,
         'batch': batch,
@@ -863,6 +872,23 @@ extension BenchmarkGenerateApi on Api {
           return result;
         },
         canRetry: () => !job.stopRequested && DateTime.now().isBefore(deadline),
+        failedTransiently: (result) =>
+            result.$1 != HttpStatus.ok &&
+            benchmarkFailureIsTransient(
+                httpStatus: result.$1,
+                error: providerErrorMessage(result.$2) ?? result.$2),
+        onRetry: (retry, wait) {
+          job.client?.close(force: true);
+          job.client = null;
+          job.upstreamRetries = retry;
+          job.retryReason = acc.error ??
+              (job.httpStatus != null && job.httpStatus != HttpStatus.ok
+                  ? 'HTTP ${job.httpStatus}'
+                  : 'The stream stopped before the reply finished');
+          job.phase = 'retrying';
+          stderr.writeln('[luma] benchmark ${job.sceneId}: upstream failed '
+              '(${job.retryReason}); retry $retry in ${wait.inSeconds}s');
+        },
         beforeRetry: () async {
           job.client?.close(force: true);
           job.client = null;
@@ -1215,7 +1241,7 @@ extension BenchmarkGenerateApi on Api {
       if (acc.contentChars > 0) job.phase = 'writing';
       if (acc.done || job.stopRequested) break;
       if (DateTime.now().isAfter(deadline)) {
-        throw TimeoutException('total');
+        throw TimeoutException(kBenchmarkTotalTimeout);
       }
     }
     if (!job.stopRequested) checkBenchmarkStreamEnd(acc);
@@ -2265,6 +2291,7 @@ const _bgScript = r'''
   });
 
   const PHASE = { connecting: 'Connecting', thinking: 'Thinking', writing: 'Writing', saving: 'Saving', compacting: 'Retrying more compactly',
+    retrying: 'Upstream failed, retrying',
     submitting: 'Submitting', queued: 'Queued', generating: 'In batch' };
   function renderRuns(jobs) {
     lastJobs = jobs || [];
@@ -2291,6 +2318,7 @@ const _bgScript = r'''
         bits.push('Cost ≈ ' + usd(((j.tokens - out) * jp.input + out * jp.output) / 1e6));
       }
       if (j.autoCompact) bits.push('Automatic compact retry: ' + j.compactAttempt + ' / 2');
+      if (j.upstreamRetries) bits.push('Upstream retries: ' + j.upstreamRetries + ' / ' + (j.upstreamRetryLimit || 2));
       bits.push('Output cap: ' + (j.outputCapSent === false ? 'provider default (requested ' + kfmt(j.maxTokens) + ')' : kfmt(j.maxTokens)));
       if (j.batch && running) bits.push('OpenRouter batch ' + (j.batchStatus || 'not submitted yet').replace(/_/g, ' '));
       bits.push(took);
@@ -2323,6 +2351,7 @@ const _bgScript = r'''
         + (running ? '<div class="bg-bar" role="progressbar" aria-label="' + esc(j.name) + ' is running"></div>' : '')
         + '<div class="bg-run-line">' + esc(bits.join(' · ') + pub) + '</div>'
         + (j.resultReason ? '<div class="bg-run-line">Reason: ' + esc(j.resultReason) + '</div>' : '')
+        + (running && j.retryReason ? '<div class="bg-run-line">Last upstream failure: ' + esc(j.retryReason) + '</div>' : '')
         + (j.validation ? '<div class="bg-run-line">Validation: ' + esc(j.validation) + '</div>' : '')
         + (!running ? '<div class="bg-run-line">Finish reason: ' + esc(j.finishReason || 'Unknown')
           + (j.nativeFinishReason ? ' · Provider finish reason: ' + esc(j.nativeFinishReason) : '') + '</div>' : '')

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -7,6 +8,7 @@ import 'package:test/test.dart';
 void main() {
   const partial = '<!doctype html><html><style>.nav { color:';
   const page = '<!doctype html><html><body>Coffee</body></html>';
+  const noWait = [Duration.zero, Duration.zero];
   String chunk(String content) => 'data: ${jsonEncode({
             'choices': [
               {
@@ -51,7 +53,7 @@ void main() {
           acc.addLine(line);
         }
         checkBenchmarkStreamEnd(acc);
-      }, canRetry: () => true, beforeRetry: () async {});
+      }, canRetry: () => true, beforeRetry: () async {}, backoff: noWait);
       expect(attempts, 2);
       expect(acc.content, page);
       expect(acc.done, isTrue);
@@ -69,7 +71,7 @@ void main() {
       acc.addLine(chunk(attempts == 1 ? partial : page));
       if (attempts == 2) acc.addLine('data: [DONE]');
       checkBenchmarkStreamEnd(acc);
-    }, canRetry: () => true, beforeRetry: () async {});
+    }, canRetry: () => true, beforeRetry: () async {}, backoff: noWait);
     expect(attempts, 2);
     expect(acc.content, page);
   });
@@ -78,7 +80,7 @@ void main() {
       () async {
     for (final terminal in [
       'data: {"choices":[{"delta":{},"finish_reason":"length"}]}',
-      'data: {"error":{"message":"Rate limited","code":429}}',
+      'data: {"error":{"message":"Invalid request","code":400}}',
       'data: [DONE]',
     ]) {
       final acc = ChatStreamAccumulator()..addLine(terminal);
@@ -88,7 +90,7 @@ void main() {
           retryBenchmarkStream(acc, () async {
             attempts++;
             throw const HttpException('Connection closed while receiving data');
-          }, canRetry: () => true, beforeRetry: () async {}),
+          }, canRetry: () => true, beforeRetry: () async {}, backoff: noWait),
           throwsA(isA<HttpException>()));
       expect(attempts, 1);
     }
@@ -111,6 +113,7 @@ void main() {
       },
       canRetry: () => true,
       beforeRetry: () async {},
+      backoff: noWait,
     );
     expect(result, 200);
     expect(attempts, 2);
@@ -126,10 +129,10 @@ void main() {
         attempts++;
         acc.addLine(chunk(partial));
         throw const HttpException('Connection closed while receiving data');
-      }, canRetry: () => true, beforeRetry: () async {}),
+      }, canRetry: () => true, beforeRetry: () async {}, backoff: noWait),
       throwsA(isA<HttpException>()),
     );
-    expect(attempts, 2);
+    expect(attempts, 3);
     expect(acc.content, partial);
   });
 
@@ -141,10 +144,130 @@ void main() {
         attempts++;
         acc.addLine(chunk(partial));
         throw const HttpException('Connection closed while receiving data');
-      }, canRetry: () => false, beforeRetry: () async {}),
+      }, canRetry: () => false, beforeRetry: () async {}, backoff: noWait),
       throwsA(isA<HttpException>()),
     );
     expect(attempts, 1);
     expect(acc.content, partial);
+  });
+
+  test('an upstream server error mid-stream starts the run over', () async {
+    for (final failure in [
+      'data: {"error":{"message":"Upstream idle timeout exceeded"},'
+          '"choices":[{"delta":{},"finish_reason":"error"}]}',
+      'data: {"error":{"message":"Upstream error from Ant Digital: Server '
+          'error. Please try again later."},'
+          '"choices":[{"delta":{},"finish_reason":"error"}]}',
+      'data: {"error":{"message":"Gateway Timeout","code":504}}',
+    ]) {
+      final acc = ChatStreamAccumulator();
+      final retries = <int>[];
+      var attempts = 0;
+      final result = await retryBenchmarkStream<int>(
+        acc,
+        () async {
+          attempts++;
+          acc.addLine(chunk(attempts == 1 ? partial : page));
+          if (attempts == 1) {
+            acc.addLine(failure);
+          } else {
+            acc.addLine('data: [DONE]');
+          }
+          checkBenchmarkStreamEnd(acc);
+          return 200;
+        },
+        canRetry: () => true,
+        beforeRetry: () async {},
+        onRetry: (retry, _) => retries.add(retry),
+        backoff: noWait,
+      );
+      expect(result, 200);
+      expect(attempts, 2, reason: failure);
+      expect(retries, [1]);
+      expect(acc.content, page);
+      expect(acc.error, isNull);
+      expect(benchmarkGenerationResult(reply: acc.content).status, 'PASS');
+    }
+  });
+
+  test('a transient HTTP status retries; a request error does not', () async {
+    for (final (code, expected) in [(504, 3), (500, 3), (429, 3), (400, 1)]) {
+      final acc = ChatStreamAccumulator();
+      var attempts = 0;
+      final result = await retryBenchmarkStream<int>(
+        acc,
+        () async {
+          attempts++;
+          return code;
+        },
+        canRetry: () => true,
+        beforeRetry: () async {},
+        failedTransiently: (status) =>
+            benchmarkFailureIsTransient(httpStatus: status),
+        backoff: noWait,
+      );
+      expect(result, code);
+      expect(attempts, expected, reason: 'HTTP $code');
+    }
+  });
+
+  test('an idle timeout retries, the overall deadline never does', () async {
+    var attempts = 0;
+    final acc = ChatStreamAccumulator();
+    final result = await retryBenchmarkStream<int>(acc, () async {
+      attempts++;
+      if (attempts == 1) {
+        acc.addLine(chunk(partial));
+        throw TimeoutException('No stream event', const Duration(minutes: 8));
+      }
+      acc.addLine(chunk(page));
+      acc.addLine('data: [DONE]');
+      return 200;
+    }, canRetry: () => true, beforeRetry: () async {}, backoff: noWait);
+    expect(result, 200);
+    expect(attempts, 2);
+    expect(acc.content, page);
+
+    attempts = 0;
+    await expectLater(
+        retryBenchmarkStream<int>(ChatStreamAccumulator(), () async {
+          attempts++;
+          throw TimeoutException(kBenchmarkTotalTimeout);
+        }, canRetry: () => true, beforeRetry: () async {}, backoff: noWait),
+        throwsA(isA<TimeoutException>()));
+    expect(attempts, 1);
+  });
+
+  test('a persistent upstream failure keeps its last error after retries',
+      () async {
+    final acc = ChatStreamAccumulator();
+    var attempts = 0;
+    final result = await retryBenchmarkStream<int>(acc, () async {
+      attempts++;
+      acc.addLine(chunk(partial));
+      acc.addLine('data: {"error":{"message":"Server error","code":502}}');
+      return 200;
+    }, canRetry: () => true, beforeRetry: () async {}, backoff: noWait);
+    expect(result, 200);
+    expect(attempts, 3);
+    expect(acc.error, 'Server error');
+    expect(acc.content, partial);
+  });
+
+  test('stopping during the backoff wait sends nothing more', () async {
+    var stopped = false, attempts = 0, before = 0;
+    final acc = ChatStreamAccumulator();
+    await retryBenchmarkStream<int>(acc, () async {
+      attempts++;
+      acc.addLine('data: {"error":{"message":"Server error","code":500}}');
+      return 200;
+    },
+        canRetry: () => !stopped,
+        beforeRetry: () async => before++,
+        onRetry: (_, __) => stopped = true,
+        backoff: const [Duration(seconds: 5)]);
+    expect(attempts, 1);
+    expect(before, 0);
+    expect(acc.error, 'Server error');
   });
 }

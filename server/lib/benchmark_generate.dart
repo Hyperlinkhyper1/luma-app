@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -31,29 +32,113 @@ Future<T> retryBenchmarkCompacted<T>(
   }
 }
 
-/// Restarts one interrupted transport without joining two generated pages.
-/// Provider errors and completed model responses are never retried.
+/// How long to wait before each automatic restart of a run whose upstream
+/// failed on its own end; its length is the number of restarts.
+const kBenchmarkRetryBackoff = [Duration(seconds: 20), Duration(seconds: 60)];
+
+/// The message of the [TimeoutException] a run throws once it passes its
+/// overall deadline. Unlike an idle timeout, it is never retried.
+const kBenchmarkTotalTimeout = 'total';
+
+const _transientStatuses = {
+  408,
+  429,
+  500,
+  502,
+  503,
+  504,
+  520,
+  521,
+  522,
+  523,
+  524,
+  529
+};
+const _permanentStatuses = {400, 401, 402, 403, 404, 405, 413, 422};
+final _transientMessage = RegExp(
+    r'time ?out|timed out|server error|try again|temporarily|overloaded|'
+    r'unavailable|bad gateway|gateway|internal error|connection (reset|closed|error)',
+    caseSensitive: false);
+
+/// Whether a provider failure is the upstream's own trouble (overloaded,
+/// timed out, a 5xx) rather than anything about the request, so the same
+/// request is worth sending again.
+bool benchmarkFailureIsTransient({int? httpStatus, String? error}) {
+  if (httpStatus != null && _permanentStatuses.contains(httpStatus)) {
+    return false;
+  }
+  if (httpStatus != null && _transientStatuses.contains(httpStatus)) {
+    return true;
+  }
+  return error != null && _transientMessage.hasMatch(error);
+}
+
+/// Whether [acc] holds an error the upstream reported mid-stream that is
+/// worth retrying.
+bool benchmarkStreamFailedTransiently(ChatStreamAccumulator acc) =>
+    acc.error != null &&
+    benchmarkFailureIsTransient(
+        httpStatus: acc.errorCode ?? acc.providerStatus, error: acc.error);
+
+/// Restarts a request whose upstream failed on its own end: a dropped
+/// connection, an idle timeout, or a 5xx/timeout error (in the response or
+/// mid-stream). Each restart starts over, never joining two generated pages,
+/// and waits out [backoff] first. Request errors and completed model
+/// responses are never retried. [failedTransiently] says whether a returned
+/// result (an HTTP error status, say) is such a failure.
 Future<T> retryBenchmarkStream<T>(
   ChatStreamAccumulator acc,
   Future<T> Function() request, {
   required bool Function() canRetry,
   required Future<void> Function() beforeRetry,
+  bool Function(T result)? failedTransiently,
+  void Function(int retry, Duration wait)? onRetry,
+  List<Duration> backoff = kBenchmarkRetryBackoff,
 }) async {
+  bool interrupted() =>
+      !acc.done &&
+      (acc.error == null
+          ? acc.finishReason == null ||
+              acc.finishReason!.toLowerCase() == 'error'
+          : benchmarkStreamFailedTransiently(acc));
+
   for (var attempt = 0;; attempt++) {
+    Object? thrown;
+    StackTrace? trace;
+    late T result;
     try {
-      return await request();
-    } on IOException {
-      if (attempt >= 1 ||
-          !canRetry() ||
-          acc.done ||
-          acc.finishReason != null ||
-          acc.error != null) {
-        rethrow;
+      result = await request();
+      if (!(failedTransiently?.call(result) ?? false) &&
+          !benchmarkStreamFailedTransiently(acc)) {
+        return result;
       }
-      await beforeRetry();
-      if (!canRetry()) rethrow;
-      acc.reset();
+    } on IOException catch (e, s) {
+      if (!interrupted()) rethrow;
+      thrown = e;
+      trace = s;
+    } on TimeoutException catch (e, s) {
+      if (e.message == kBenchmarkTotalTimeout || !interrupted()) rethrow;
+      thrown = e;
+      trace = s;
     }
+    T giveUp() {
+      if (thrown != null) Error.throwWithStackTrace(thrown, trace!);
+      return result;
+    }
+
+    if (attempt >= backoff.length || !canRetry()) return giveUp();
+    onRetry?.call(attempt + 1, backoff[attempt]);
+    final until = DateTime.now().add(backoff[attempt]);
+    while (canRetry() && DateTime.now().isBefore(until)) {
+      final left = until.difference(DateTime.now());
+      await Future<void>.delayed(left < const Duration(seconds: 1)
+          ? left
+          : const Duration(seconds: 1));
+    }
+    if (!canRetry()) return giveUp();
+    await beforeRetry();
+    if (!canRetry()) return giveUp();
+    acc.reset();
   }
 }
 
@@ -208,6 +293,14 @@ BenchmarkGenerationResult benchmarkGenerationResult({
     return (
       status: 'PROVIDER_BUSY',
       reason: error ?? 'Provider temporarily unavailable',
+      validation: validation
+    );
+  }
+  if ((error != null || (httpStatus != null && httpStatus != 200)) &&
+      benchmarkFailureIsTransient(httpStatus: httpStatus, error: error)) {
+    return (
+      status: 'PROVIDER_ERROR',
+      reason: error ?? 'Provider returned HTTP $httpStatus',
       validation: validation
     );
   }
