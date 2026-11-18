@@ -866,6 +866,114 @@
       }
     }
   },
+  "assistantGreetingNight1": "Burning the midnight oil?",
+  "assistantGreetingNight1Name": "Burning the midnight oil, {name}?",
+  "@assistantGreetingNight1Name": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "assistantGreetingNight2": "Hey there, night owl",
+  "assistantGreetingNight2Name": "Hey there, night owl {name}",
+  "@assistantGreetingNight2Name": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "assistantGreetingNight3": "Still up? Me too",
+  "assistantGreetingNight3Name": "Still up, {name}? Me too",
+  "@assistantGreetingNight3Name": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "assistantGreetingMorning1": "Rise and shine",
+  "assistantGreetingMorning1Name": "Rise and shine, {name}",
+  "@assistantGreetingMorning1Name": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "assistantGreetingMorning2": "Morning! Coffee first?",
+  "assistantGreetingMorning2Name": "Morning, {name}! Coffee first?",
+  "@assistantGreetingMorning2Name": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "assistantGreetingMorning3": "Fresh day, fresh ideas",
+  "assistantGreetingMorning3Name": "Fresh day, fresh ideas, {name}",
+  "@assistantGreetingMorning3Name": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "assistantGreetingAfternoon1": "Afternoon! What's cooking?",
+  "assistantGreetingAfternoon1Name": "Afternoon, {name}! What's cooking?",
+  "@assistantGreetingAfternoon1Name": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "assistantGreetingAfternoon2": "Beating the afternoon slump?",
+  "assistantGreetingAfternoon2Name": "Beating the afternoon slump, {name}?",
+  "@assistantGreetingAfternoon2Name": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "assistantGreetingAfternoon3": "Hey, ready when you are",
+  "assistantGreetingAfternoon3Name": "Hey {name}, ready when you are",
+  "@assistantGreetingAfternoon3Name": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "assistantGreetingEvening1": "Evening! Winding down?",
+  "assistantGreetingEvening1Name": "Evening, {name}! Winding down?",
+  "@assistantGreetingEvening1Name": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "assistantGreetingEvening2": "The moon's out",
+  "assistantGreetingEvening2Name": "The moon's out, {name}",
+  "@assistantGreetingEvening2Name": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "assistantGreetingEvening3": "One more idea before bed?",
+  "assistantGreetingEvening3Name": "One more idea before bed, {name}?",
+  "@assistantGreetingEvening3Name": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "assistantHowCanIHelp": "How can I help you today?",
   "assistantReplyHint": "Reply to luma…",
   "assistantOutOfMessages": "You're out of messages for now",

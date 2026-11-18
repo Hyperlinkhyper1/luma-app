@@ -3017,6 +3017,150 @@ abstract class L {
   /// **'Good evening, {name}'**
   String assistantGreetingEveningName(String name);
 
+  /// No description provided for @assistantGreetingNight1.
+  ///
+  /// In en, this message translates to:
+  /// **'Burning the midnight oil?'**
+  String get assistantGreetingNight1;
+
+  /// No description provided for @assistantGreetingNight1Name.
+  ///
+  /// In en, this message translates to:
+  /// **'Burning the midnight oil, {name}?'**
+  String assistantGreetingNight1Name(String name);
+
+  /// No description provided for @assistantGreetingNight2.
+  ///
+  /// In en, this message translates to:
+  /// **'Hey there, night owl'**
+  String get assistantGreetingNight2;
+
+  /// No description provided for @assistantGreetingNight2Name.
+  ///
+  /// In en, this message translates to:
+  /// **'Hey there, night owl {name}'**
+  String assistantGreetingNight2Name(String name);
+
+  /// No description provided for @assistantGreetingNight3.
+  ///
+  /// In en, this message translates to:
+  /// **'Still up? Me too'**
+  String get assistantGreetingNight3;
+
+  /// No description provided for @assistantGreetingNight3Name.
+  ///
+  /// In en, this message translates to:
+  /// **'Still up, {name}? Me too'**
+  String assistantGreetingNight3Name(String name);
+
+  /// No description provided for @assistantGreetingMorning1.
+  ///
+  /// In en, this message translates to:
+  /// **'Rise and shine'**
+  String get assistantGreetingMorning1;
+
+  /// No description provided for @assistantGreetingMorning1Name.
+  ///
+  /// In en, this message translates to:
+  /// **'Rise and shine, {name}'**
+  String assistantGreetingMorning1Name(String name);
+
+  /// No description provided for @assistantGreetingMorning2.
+  ///
+  /// In en, this message translates to:
+  /// **'Morning! Coffee first?'**
+  String get assistantGreetingMorning2;
+
+  /// No description provided for @assistantGreetingMorning2Name.
+  ///
+  /// In en, this message translates to:
+  /// **'Morning, {name}! Coffee first?'**
+  String assistantGreetingMorning2Name(String name);
+
+  /// No description provided for @assistantGreetingMorning3.
+  ///
+  /// In en, this message translates to:
+  /// **'Fresh day, fresh ideas'**
+  String get assistantGreetingMorning3;
+
+  /// No description provided for @assistantGreetingMorning3Name.
+  ///
+  /// In en, this message translates to:
+  /// **'Fresh day, fresh ideas, {name}'**
+  String assistantGreetingMorning3Name(String name);
+
+  /// No description provided for @assistantGreetingAfternoon1.
+  ///
+  /// In en, this message translates to:
+  /// **'Afternoon! What\'s cooking?'**
+  String get assistantGreetingAfternoon1;
+
+  /// No description provided for @assistantGreetingAfternoon1Name.
+  ///
+  /// In en, this message translates to:
+  /// **'Afternoon, {name}! What\'s cooking?'**
+  String assistantGreetingAfternoon1Name(String name);
+
+  /// No description provided for @assistantGreetingAfternoon2.
+  ///
+  /// In en, this message translates to:
+  /// **'Beating the afternoon slump?'**
+  String get assistantGreetingAfternoon2;
+
+  /// No description provided for @assistantGreetingAfternoon2Name.
+  ///
+  /// In en, this message translates to:
+  /// **'Beating the afternoon slump, {name}?'**
+  String assistantGreetingAfternoon2Name(String name);
+
+  /// No description provided for @assistantGreetingAfternoon3.
+  ///
+  /// In en, this message translates to:
+  /// **'Hey, ready when you are'**
+  String get assistantGreetingAfternoon3;
+
+  /// No description provided for @assistantGreetingAfternoon3Name.
+  ///
+  /// In en, this message translates to:
+  /// **'Hey {name}, ready when you are'**
+  String assistantGreetingAfternoon3Name(String name);
+
+  /// No description provided for @assistantGreetingEvening1.
+  ///
+  /// In en, this message translates to:
+  /// **'Evening! Winding down?'**
+  String get assistantGreetingEvening1;
+
+  /// No description provided for @assistantGreetingEvening1Name.
+  ///
+  /// In en, this message translates to:
+  /// **'Evening, {name}! Winding down?'**
+  String assistantGreetingEvening1Name(String name);
+
+  /// No description provided for @assistantGreetingEvening2.
+  ///
+  /// In en, this message translates to:
+  /// **'The moon\'s out'**
+  String get assistantGreetingEvening2;
+
+  /// No description provided for @assistantGreetingEvening2Name.
+  ///
+  /// In en, this message translates to:
+  /// **'The moon\'s out, {name}'**
+  String assistantGreetingEvening2Name(String name);
+
+  /// No description provided for @assistantGreetingEvening3.
+  ///
+  /// In en, this message translates to:
+  /// **'One more idea before bed?'**
+  String get assistantGreetingEvening3;
+
+  /// No description provided for @assistantGreetingEvening3Name.
+  ///
+  /// In en, this message translates to:
+  /// **'One more idea before bed, {name}?'**
+  String assistantGreetingEvening3Name(String name);
+
   /// No description provided for @assistantHowCanIHelp.
   ///
   /// In en, this message translates to:
