@@ -86,6 +86,11 @@ export function reapOrphans({ table = processTable(), self = process.pid } = {})
   return orphans;
 }
 
+// The WebGL backend the last render settled on. Finding it means launching
+// Chromium once per candidate (up to three on a host whose GPU is mapped in
+// but unusable), so later renders try that one first.
+let knownBackend = null;
+
 export async function renderWithProcess(scene, signal) {
   const scratch = await fs.mkdtemp(path.join(os.tmpdir(), 'luma_renderer_'));
   let child;
@@ -110,7 +115,9 @@ export async function renderWithProcess(scene, signal) {
     }
     child = spawn(process.execPath, [path.join(toolDir, 'render_previews.mjs'), '--root', scratch,
       '--out', path.join(scratch, 'previews'), '--ids', scene.id, '--jobs', '1',
-      '--chromium-bin', process.env.LUMA_CHROMIUM_BIN ?? '/usr/bin/chromium'], {
+      '--chromium-bin', process.env.LUMA_CHROMIUM_BIN ?? '/usr/bin/chromium',
+      ...(knownBackend ? ['--backend', knownBackend] : []),
+      ...(process.env.LUMA_PREVIEW_MAX_FPS ? ['--max-fps', process.env.LUMA_PREVIEW_MAX_FPS] : [])], {
       detached: process.platform === 'linux',
       env: { PATH: process.platform === 'win32' ? process.env.PATH : '/usr/local/bin:/usr/bin:/bin',
         ...(process.platform === 'win32' ? { SystemRoot: process.env.SystemRoot } : {}),
@@ -129,6 +136,8 @@ export async function renderWithProcess(scene, signal) {
       child.once('close', resolve);
     });
     if (signal.aborted) throw new Error('Render cancelled.');
+    knownBackend = /^BACKEND ([a-z0-9-]+)$/m.exec(output)?.[1] ?? knownBackend;
+    if (code === 3) knownBackend = null;
     if (code !== 0 || !output.split(/\r?\n/).some((line) => line === `OK   ${scene.id}`)) {
       console.error(`Render of ${scene.id} exited with ${code}:\n${output.slice(-8000)}`);
       throw new SceneRenderError(output.split(/\r?\n/).find((line) => line.startsWith(`FAIL ${scene.id}:`)) ?? 'Renderer failed.');
@@ -189,8 +198,43 @@ export async function runLuauWithProcess(source, signal, { lute = process.env.LU
   }
 }
 
-export function createRendererServer({ render = renderWithProcess, runLuau = runLuauWithProcess, maxJobs = 6 } = {}) {
+// Every render is a Chromium of its own, and on SwiftShader each one takes
+// most of a core for a minute or more; the server's workers and banner
+// repairs together can ask for many at once. Renders past `renderSlots` wait
+// their turn instead of all running side by side.
+export function defaultRenderSlots(env = process.env, cpus = os.availableParallelism?.() ?? os.cpus().length) {
+  const set = Number.parseInt(env.LUMA_RENDERER_CONCURRENCY ?? '', 10);
+  if (Number.isInteger(set) && set > 0) return set;
+  return Math.max(1, Math.min(2, Math.floor(cpus / 2)));
+}
+
+export function createSlots(size) {
+  let free = size;
+  const waiting = [];
+  return {
+    get waiting() { return waiting.length; },
+    async acquire(signal) {
+      if (free > 0) { free--; return; }
+      await new Promise((resolve, reject) => {
+        const entry = { resolve, reject };
+        waiting.push(entry);
+        signal?.addEventListener('abort', () => {
+          const i = waiting.indexOf(entry);
+          if (i >= 0) { waiting.splice(i, 1); reject(new Error('Render cancelled.')); }
+        }, { once: true });
+      });
+    },
+    release() {
+      const next = waiting.shift();
+      if (next) next.resolve(); else free++;
+    },
+  };
+}
+
+export function createRendererServer({ render = renderWithProcess, runLuau = runLuauWithProcess, maxJobs = 12,
+  renderSlots = defaultRenderSlots() } = {}) {
   let active = 0;
+  const slots = createSlots(renderSlots);
   const server = http.createServer(async (request, response) => {
     if (request.method === 'GET' && request.url === '/health') {
       response.writeHead(200, { 'Content-Type': 'text/plain' }).end('ok');
@@ -231,7 +275,9 @@ export function createRendererServer({ render = renderWithProcess, runLuau = run
       let scene;
       try { scene = validateScene(JSON.parse(Buffer.concat(chunks).toString('utf8'))); }
       catch { response.writeHead(400).end('Invalid render request.'); return; }
-      const result = await render(scene, controller.signal);
+      await slots.acquire(controller.signal);
+      let result;
+      try { result = await render(scene, controller.signal); } finally { slots.release(); }
       if (!Buffer.isBuffer(result.png) || result.png.length > 16 * 1024 * 1024 || !result.png.subarray(0, 8).equals(pngSignature)) {
         throw new Error('Renderer did not produce a PNG.');
       }

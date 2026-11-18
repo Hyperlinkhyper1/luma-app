@@ -4,7 +4,7 @@ import http from 'node:http';
 import { createRequire } from 'node:module';
 import test from 'node:test';
 import { browserNetworkArgs, isolatePage, sceneUrl, vendorBody, vendorResource } from '../tool/renderer_network.mjs';
-import { createRendererServer, renderWithProcess, runLuauWithProcess, validateScene } from '../tool/renderer_service.mjs';
+import { createRendererServer, createSlots, defaultRenderSlots, renderWithProcess, runLuauWithProcess, validateScene } from '../tool/renderer_service.mjs';
 
 test('container syscall profile keeps default denial and supports glibc thread fallback', async () => {
   const profile = JSON.parse(await fs.readFile(new URL('../renderer-seccomp.json', import.meta.url), 'utf8'));
@@ -84,6 +84,47 @@ test('renderer API validates identity and returns PNG bytes without exposing err
     assert.equal(response.status, 400);
   }
   assert.throws(() => validateScene({ ...payload, kind: '../../secret' }));
+});
+
+test('renders past the slot count queue instead of running side by side', async (t) => {
+  const png = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 0]);
+  let running = 0;
+  let peak = 0;
+  const server = createRendererServer({ renderSlots: 2, render: async () => {
+    peak = Math.max(peak, ++running);
+    await new Promise((r) => setTimeout(r, 40));
+    running--;
+    return { png, backend: 'sandbox', detail: '' };
+  } });
+  await new Promise((r) => server.listen(0, '127.0.0.1', r));
+  t.after(() => new Promise((r) => { server.closeAllConnections(); server.close(r); }));
+  const endpoint = `http://127.0.0.1:${server.address().port}/render`;
+  const body = JSON.stringify({ id: 'pc_test', kind: 'pc', scene: Buffer.from('<html></html>').toString('base64') });
+  const statuses = await Promise.all(Array.from({ length: 5 }, () =>
+    fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body }).then((r) => r.status)));
+  assert.deepEqual(statuses, [200, 200, 200, 200, 200]);
+  assert.equal(peak, 2);
+});
+
+test('a cancelled render leaves the queue without taking a slot', async () => {
+  const slots = createSlots(1);
+  await slots.acquire();
+  const controller = new AbortController();
+  const waiting = slots.acquire(controller.signal);
+  assert.equal(slots.waiting, 1);
+  controller.abort();
+  await assert.rejects(waiting, /cancelled/);
+  assert.equal(slots.waiting, 0);
+  slots.release();
+  await slots.acquire();
+});
+
+test('render slots default to half the cores, at most two, unless set', () => {
+  assert.equal(defaultRenderSlots({}, 1), 1);
+  assert.equal(defaultRenderSlots({}, 4), 2);
+  assert.equal(defaultRenderSlots({}, 32), 2);
+  assert.equal(defaultRenderSlots({ LUMA_RENDERER_CONCURRENCY: '5' }, 4), 5);
+  assert.equal(defaultRenderSlots({ LUMA_RENDERER_CONCURRENCY: '' }, 4), 2);
 });
 
 test('Chromium renders vendored Three.js while HTTP, files, WebSockets and worker requests stay blocked',
