@@ -190,6 +190,7 @@ Future<FishJob?> _settle(FishLibrary library, String id) async {
     final job = await _json(library.job(_get('/'), id));
     if (!const {'queued', 'generating', 'previewing', 'committing'}
         .contains(job['status'])) {
+      await library.idle;
       return null;
     }
     await Future<void>.delayed(const Duration(milliseconds: 20));

@@ -605,6 +605,17 @@ class FishLibrary {
 
   final Map<String, FishJob> _jobs = {};
   bool _jobsLoaded = false;
+  final Set<Future<void>> _runs = {};
+
+  /// Completes once every job run in flight has finished, including its
+  /// last save. A job reads as ready before that save lands.
+  Future<void> get idle => Future.wait(_runs.toList());
+
+  void _start(FishJob job, String? image) {
+    final run = _run(job, image);
+    _runs.add(run);
+    unawaited(run.whenComplete(() => _runs.remove(run)));
+  }
   File get _jobsFile => File('$dataDir/fish_jobs.json');
   File _previewFile(String id) => File('$dataDir/fish_previews/$id.json');
 
@@ -767,7 +778,7 @@ class FishLibrary {
     }
     _jobs[job.id] = job;
     await _saveJobs();
-    unawaited(_run(job, image as String?));
+    _start(job, image as String?);
     return jsonResponse(201, job.detail());
   }
 
@@ -789,7 +800,7 @@ class FishLibrary {
     job.status = 'queued';
     job.error = null;
     await _saveJobs();
-    unawaited(_run(job, null));
+    _start(job, null);
     return jsonResponse(200, job.detail());
   }
 
