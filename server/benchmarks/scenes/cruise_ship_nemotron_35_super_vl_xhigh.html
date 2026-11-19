@@ -8,8 +8,8 @@
   body { margin: 0; overflow: hidden; background: #000; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
   canvas { display: block; position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
   #ui {
-    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    position: absolute; top: 20px; left: 20px; padding: 20px; border-radius: 8px;
+    display: flex; flex-direction: column; align-items: flex-start;
     color: #fff; background: rgba(0, 10, 20, 0.85); z-index: 10; pointer-events: auto;
   }
   #ui h1 { margin: 0 0 10px; font-size: 2rem; letter-spacing: 2px; text-transform: uppercase; color: #00d2ff; text-shadow: 0 0 20px rgba(0,210,255,0.5); }
@@ -117,6 +117,9 @@ function init() {
   });
   controls.addEventListener('lock', () => {
     ui.style.display = 'none';
+    const deck7Y = 5 + 6 * DECK_HEIGHT;
+    camera.position.set(0, deck7Y + PLAYER_HEIGHT, 30);
+    camera.lookAt(-60, deck7Y + PLAYER_HEIGHT, 25);
     isLocked = true;
   });
   controls.addEventListener('unlock', () => {
@@ -126,7 +129,7 @@ function init() {
 
   // Build world
   createShip();
-  createSea();
+  seaMat = createSea();
   createLifeboatsDeck7();
   createWeatherSystem();
 
@@ -138,10 +141,9 @@ function init() {
   document.addEventListener('keyup', onKeyUp);
   window.addEventListener('resize', onWindowResize);
 
-  // Start position: Deck 7 next to lifeboats
-  const deck7Y = 5 + 6 * DECK_HEIGHT;
-  camera.position.set(0, deck7Y + PLAYER_HEIGHT, 28);
-  controls.getObject().position.copy(camera.position);
+  // Show the ship before boarding, then move to the deck when pointer lock starts.
+  camera.position.set(235, 145, 300);
+  camera.lookAt(0, 48, 0);
 
   animate();
 }
@@ -294,11 +296,11 @@ function createSea() {
     varying vec3 vNormal;
     void main() {
       vec3 pos = position;
-      float wave = sin(pos.x * 0.08 + uTime * 1.5) * cos(pos.z * 0.08 + uTime * 1.2) * 1.6;
+      float wave = sin(pos.x * 0.08 + uTime * 1.5) * cos(pos.y * 0.08 + uTime * 1.2) * 1.6;
       wave += sin(pos.x * 0.17 - uTime * 1.0) * 0.8;
-      pos.y += wave;
+      pos.z += wave;
       vWave = wave;
-      vNormal = normalize(normal + vec3(dFdx(wave), 1.0, dFdy(wave)));
+      vNormal = normal;
       gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
     }
   `;
@@ -325,8 +327,7 @@ function createSea() {
     },
     vertexShader,
     fragmentShader,
-    side: THREE.DoubleSide,
-    fog: true
+    side: THREE.DoubleSide
   });
 
   sea = new THREE.Mesh(new THREE.PlaneGeometry(4000, 4000, 128, 128), seaMat);
@@ -338,7 +339,7 @@ function createSea() {
   return seaMat;
 }
 
-const seaMat = createSea();
+let seaMat;
 
 // --- WEATHER / PARTICLES ---
 function createWeatherSystem() {

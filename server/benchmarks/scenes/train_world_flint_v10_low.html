@@ -39,7 +39,7 @@ input[type=range]{width:100px}
 <div id="trainPanel"><div id="trainList">No trains</div></div>
 <div id="howPanel"><div id="howText">Signalling: blocks hold one train. Signals show RED, YELLOW, GREEN. Routes reserve switches before clearing. Trains obey signals and brake for red.</div></div>
 <div id="loading">Generating world…</div>
-<div id="webglError">WebGL is not available in this browser.</div>
+<div id="webglError" hidden>WebGL is not available in this browser.</div>
 </div>
 <script type="importmap">
 {"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
@@ -52,7 +52,13 @@ let scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87ceeb);
 let camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, 1000);
 camera.position.set(25, 12, 25);
-let renderer = new THREE.WebGLRenderer({antialias:true});
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({antialias:true});
+} catch (error) {
+  document.getElementById('webglError').hidden = false;
+  throw error;
+}
 renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.getElementById('canvas-container').appendChild(renderer.domElement);
@@ -127,7 +133,7 @@ function createSteam(){ let g=new THREE.Group();
 }
 function createEmu(){ let g=new THREE.Group();
  let door=new THREE.Mesh(new THREE.BoxGeometry(0.1,0.8,0.4), new THREE.MeshStandardMaterial({color:0x333})); door.position.set(0,1,1.1); g.add(door);
- let pantograph=new THREE.Mesh(new THREE.Mesh( new THREE.BoxGeometry(2,0.05,0.05), new THREE.MeshStandardMaterial({color:0x888})), new THREE.Vector3(0,2.5,0)); g.add(pantograph);
+ let pantograph=new THREE.Mesh(new THREE.BoxGeometry(2,0.05,0.05), new THREE.MeshStandardMaterial({color:0x888})); pantograph.position.set(0,2.5,0); g.add(pantograph);
  for(let i=0;i<3;i++){ let car=new THREE.Mesh(new THREE.BoxGeometry(2,0.8,4), new THREE.MeshStandardMaterial({color:0x2255aa})); car.position.set(0,0.8+i*1.2,0); g.add(car); }
  g.position.set(8,1,0);
  scene.add(g);
@@ -136,7 +142,7 @@ function createEmu(){ let g=new THREE.Group();
 function createDiesel(){ let g=new THREE.Group();
  let engine=new THREE.Mesh(new THREE.BoxGeometry(2,1.5,3), new THREE.MeshStandardMaterial({color:0x333})); engine.position.y=1.5; g.add(engine);
  let tank=new THREE.Mesh(new THREE.CylinderGeometry(0.8,0.8,1.5,8), new THREE.MeshStandardMaterial({color:0x884422})); tank.position.set(0,2.2,0); tank.rotation.z=Math.PI/2; g.add(tank);
- let box=new THREE.Mesh(new THREE.BoxGeometry(2,1.5,3), new THREE.MeshStandardMaterial({color:0x776655})); box.position.set(0,0,3.5; g.add(box); // syntax error? fix below
+ let box=new THREE.Mesh(new THREE.BoxGeometry(2,1.5,3), new THREE.MeshStandardMaterial({color:0x776655})); box.position.set(0,0,3.5); g.add(box);
  g.position.set(0,1,0);
  scene.add(g);
  return {id:'DIE',name:'Freight',group:g,speed:1.5,state:'RUNNING',block:'N3',nextSignal:'S3',aspect:'RED',direction:-1,wheels:[]};

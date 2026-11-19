@@ -99,7 +99,8 @@ input.range{flex:1;accent-color:#6396ff;}
 <script type="module">
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { RectLight } from 'three/addons/lights/RectLight.js';
+import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
+const RectLight = THREE.RectAreaLight;
 import { PMREMGenerator } from 'three';
 
 const WEBGL_ERR = document.getElementById('webgl-error');
@@ -204,18 +205,17 @@ async function buildEnvironment(renderer) {
   back.position.set(0,4,-8); es.add(back);
   const l1 = new RectLight(0xffffff, 40, 6, 4); l1.position.set(0,5,-6); l1.lookAt(0,0,0); es.add(l1);
   const l2 = new RectLight(0xffffff, 20, 3, 2); l2.position.set(-5,4,0); l2.rotation.y = Math.PI/2; es.add(l2);
-  const l3 = new RectLight(0xffffff, 20, 3, 2); l2.position.set(5,4,0); l3.rotation.y = -Math.PI/2; es.add(l3);
+  const l3 = new RectLight(0xffffff, 20, 3, 2); l3.position.set(5,4,0); l3.rotation.y = -Math.PI/2; es.add(l3);
 
   try {
     const gen = new PMREMGenerator(renderer);
-    envTex = gen.generateFromScene(es).texture;
+    envTex = gen.fromScene(es).texture;
     gen.dispose();
   } catch(e) {
     console.warn('PMREM fallback', e);
-    envTex = new THREE.RoomEnvironment().texture;
+    envTex = null;
   }
-  envTex.mapping = THREE.EquirectangularReflectionMapping;
-  es.dispose();
+
 }
 
 // ---------- Car ----------
@@ -548,7 +548,6 @@ const Car = (function() {
     part(new THREE.BoxGeometry(0.5, 0.3, 0.55), mat, new THREE.Vector3(0, -0.02, 1.65), null, null, 'GEARBOX');
 
     // Suspension corners
-    const suspMat = new THREE.MeshStandardMaterial({color0x445566 && 0});
     const susMat = new THREE.MeshStandardMaterial({color:0x445566, metalness:0.6});
     const springMat = new THREE.MeshStandardMaterial({color:0xff2222});
     const corners = [
@@ -620,6 +619,11 @@ function init() {
 }
 
 function buildShowroom() {
+  RectAreaLightUniformsLib.init();
+  scene.add(new THREE.HemisphereLight(0xbacde6, 0x33333d, 1.2));
+  const keyLight = new THREE.DirectionalLight(0xffffff, 2);
+  keyLight.position.set(-4, 8, 5);
+  scene.add(keyLight);
   // floor
   const floorGeo = new THREE.PlaneGeometry(60, 60);
   const floorMat = new THREE.MeshStandardMaterial({color:0x0f0f14, roughness:0.18, metalness:0.55, envMap: envTex, envMapIntensity:0.8});
@@ -649,6 +653,7 @@ function buildShowroom() {
   // car group
   const carGrp = new THREE.Group();
   STATE.carGroup = carGrp;
+  carGrp.position.y = 0.5;
   scene.add(carGrp);
 
   STATE.body = Car.buildBody();

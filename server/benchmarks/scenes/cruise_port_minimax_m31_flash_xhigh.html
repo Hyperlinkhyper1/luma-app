@@ -161,7 +161,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 import { Sky } from 'three/addons/objects/Sky.js';
 import { Water } from 'three/addons/objects/Water.js';
-import { RoundedBoxGeometry } from 'three/addons/geometry/RoundedBoxGeometry.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 
 const $ = id => document.getElementById(id);
 const loading = $('loading');
@@ -729,10 +729,10 @@ for(const side of [-1,1]){
   }
 }
 for(let i=0;i<4;i++){
-  const x=55+i*13,z=-20.1;
+  const x=55+i*13,y=12,z=-20.1;
   const tender=new THREE.Mesh(new THREE.CapsuleGeometry(.78,2.5,5,10),material(0x287d9d));
-  tender.rotation.z=Math.PI/2;tender.position.set(x,12,z);tender.scale.z=.55;ship.add(tender);
-  cylinder(ship,.11,.11,2.4,x,13,z,mats.white,8,false);
+  tender.rotation.z=Math.PI/2;tender.position.set(x,y,z);tender.scale.z=.55;ship.add(tender);
+  cylinder(ship,.11,.11,2.4,x,y+1,z,mats.white,8,false);
   box(ship,2,.14,.14,x+1,y+2,z,mats.white);
 }
 
@@ -982,7 +982,7 @@ function setActiveView(name){
   viewButtons.forEach(b=>b.classList.toggle('active',b.dataset.view===name));
 }
 function moveCamera(position,target,duration=1.5){
-  cameraTween={p0:camera.position.clone(),p1:position.clone(),t0:controls.target.clone(),t1:target.clone(),t:0,duration};
+  cameraTween={p0:camera.position.clone(),p1:position.clone(),t0:orbit.target.clone(),t1:target.clone(),t:0,duration};
 }
 function setView(name){
   shipView=false;
@@ -1001,7 +1001,7 @@ function setView(name){
   }else if(name==='ship'){
     const p=ship.localToWorld(new THREE.Vector3(18,40,7));
     const t=ship.localToWorld(new THREE.Vector3(0,7,-135));
-    camera.position.copy(p);controls.target.copy(t);camera.lookAt(t);shipView=true;cameraTween=null;setActiveView(name);
+    camera.position.copy(p);orbit.target.copy(t);camera.lookAt(t);shipView=true;cameraTween=null;setActiveView(name);
   }
 }
 viewButtons.forEach(b=>b.addEventListener('click',()=>setView(b.dataset.view)));
@@ -1017,7 +1017,7 @@ function enterWalk(){
 function exitWalk(){
   walkMode=false;orbit.enabled=true;keys.clear();
   const dir=new THREE.Vector3();camera.getWorldDirection(dir);
-  controls.target.copy(camera.position).addScaledVector(dir,70);orbit.update();
+  orbit.target.copy(camera.position).addScaledVector(dir,70);orbit.update();
   ui.classList.remove('hidden');
   statusEl.textContent='AURORA LISBOA is berthed · Drag to orbit · Scroll to zoom';
 }
@@ -1240,7 +1240,7 @@ function animate(){
   if(shipView){
     const p=ship.localToWorld(new THREE.Vector3(18,40,7));
     const t=ship.localToWorld(new THREE.Vector3(0,7,-135));
-    camera.position.copy(p);controls.target.copy(t);camera.lookAt(t);
+    camera.position.copy(p);orbit.target.copy(t);camera.lookAt(t);
   }
 
   // First-person quay movement.
@@ -1261,7 +1261,7 @@ function animate(){
     cameraTween.t+=dt;
     const p=clamp(cameraTween.t/cameraTween.duration,0,1),e=smooth(p);
     camera.position.lerpVectors(cameraTween.p0,cameraTween.p1,e);
-    controls.target.lerpVectors(cameraTween.t0,cameraTween.t1,e);
+    orbit.target.lerpVectors(cameraTween.t0,cameraTween.t1,e);
     if(p>=1)cameraTween=null;
   }
   orbit.update();
@@ -1275,7 +1275,7 @@ addEventListener('resize',()=>{
 updateTime();
 setView('aerial');
 animate();
-setTimeout(()=>loading.classList.add('done'),450);
+loading.remove();
 </script>
 </body>
 </html>

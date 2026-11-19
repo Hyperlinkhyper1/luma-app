@@ -2959,7 +2959,7 @@ function frame(){
 
   if(!started){
     started = true;
-    setTimeout(()=>{ boot.classList.add('hide'); }, 120);
+    setTimeout(()=>{ boot.classList.add('hide'); setTimeout(()=>boot.remove(), 800); }, 120);
     say('Ready');
     toast('Signalling live — three trains on the road');
     setView('overview', true);

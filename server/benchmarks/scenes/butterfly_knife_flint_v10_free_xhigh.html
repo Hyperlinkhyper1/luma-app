@@ -111,6 +111,7 @@ input[type=range]{width:90px}
 <script type="module">
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
 const app = document.getElementById('app');
 const captionEl = document.getElementById('caption');
@@ -118,7 +119,6 @@ const loadingEl = document.getElementById('loading');
 const errorEl = document.getElementById('webgl-error');
 const moveButtons = document.querySelectorAll('.movebtn');
 const camButtons = document.querySelectorAll('[data-cam]');
-const controls = new OrbitControls();
 let renderer, scene, camera, controls2, knife, bladeGroup, safePivot, bitePivot, latchGroup, trailLine;
 let currentMove = null, moveStart = 0, moveDuration = 1, moveId = '';
 let keysPressed = {};
@@ -140,7 +140,7 @@ function init() {
     camera.position.set(3.2, 2.2, 4.5);
 
     const pmrem = new THREE.PMREMGenerator(renderer);
-    scene.environment = pmrem.fromScene(new THREE.RoomEnvironment(), 0.04).texture;
+    scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
@@ -151,7 +151,7 @@ function init() {
     controls.target.set(0, 0, 0);
     controls2 = controls;
 
-    const key = new THREE.KeyLight(0xfff1dd, 2.2);
+    const key = new THREE.DirectionalLight(0xfff1dd, 2.2);
     key.position.set(4, 6, 5);
     key.castShadow = true;
     key.shadow.mapSize.width = 1024;
@@ -246,9 +246,11 @@ function init() {
       renderer.setSize(window.innerWidth, window.innerHeight);
     };
     window.addEventListener('resize', resize);
+    return true;
   } catch (e) {
     errorEl.classList.add('show');
     console.error(e);
+    return false;
   }
 }
 
@@ -483,10 +485,10 @@ function resize() {
   renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
-window.addEventListener('resize', resize);
-init();
-startAudio();
-start();
+if (init()) {
+  startAudio();
+  start();
+}
 window.__setMovePose = setMovePose;
 window.__playMove = playMove;
 window.__getMove = () => moveId;
