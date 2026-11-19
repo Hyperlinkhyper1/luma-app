@@ -74,6 +74,13 @@ set_target_properties(${BINARY_NAME}
 # them to the application.
 include(flutter/generated_plugins.cmake)
 
+# hotkey_manager_linux 0.2.0 leaves a pointer unset when a hotkey lookup
+# misses, which newer clang reports and -Werror above turns into a failed
+# build. Only that warning, only for that plugin.
+if(TARGET hotkey_manager_linux_plugin)
+  target_compile_options(hotkey_manager_linux_plugin PRIVATE -Wno-sometimes-uninitialized)
+endif()
+
 
 # === Installation ===
 # By default, "installing" just makes a relocatable bundle in the build
