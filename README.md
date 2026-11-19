@@ -52,7 +52,7 @@ A local budgeting tool with five sub-tabs:
 Bank statement import is supported for **ING** (Excel/CSV export) and
 **BUUT** (PDF statements), auto-categorized against the merchant database.
 
-### Password Manager
+### Password     Manager
 An encrypted local vault for logins:
 
 - Every password (and 2FA secret) is encrypted at rest with its own

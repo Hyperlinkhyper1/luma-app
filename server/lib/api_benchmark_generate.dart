@@ -123,7 +123,8 @@ class BenchmarkGenJob {
   /// running · done · failed · stopped
   String status = 'running';
 
-  /// connecting · thinking · writing · saving while streaming; a batch is
+  /// connecting · thinking · writing · retrying · saving while streaming;
+  /// compacting before a shorter retry; a batch is
   /// submitting · queued · generating · saving.
   String phase = 'queued';
   bool active = false;
@@ -140,6 +141,18 @@ class BenchmarkGenJob {
   int outputTokens = 0;
   bool outputCapSent = true;
   bool hasResult = false;
+
+  /// How many times the upstream failed on its own end (a 5xx, a timeout,
+  /// a dropped stream) and the run started over, and the last such failure.
+  int upstreamRetries = 0;
+  String? retryReason;
+
+  /// Every upstream failure that made the run start over, oldest first, so
+  /// a run that finally gives up still says what went wrong before.
+  List<String> retryReasons = [];
+
+  /// The last error response's `Retry-After`, for the next restart's wait.
+  String? retryAfter;
   String? error;
   Map<String, Object> publish = const {};
   bool hasOutput = false;
@@ -180,6 +193,10 @@ class BenchmarkGenJob {
         'outputTokens': outputTokens,
         'outputCapSent': outputCapSent,
         'hasResult': hasResult,
+        'upstreamRetries': upstreamRetries,
+        'upstreamRetryLimit': kBenchmarkRetryBackoff.length,
+        'retryReason': retryReason,
+        'retryReasons': retryReasons,
         'error': error,
         'hasOutput': hasOutput,
         'batch': batch,
@@ -341,8 +358,10 @@ extension BenchmarkGenerateApi on Api {
   Future<Response> _adminBenchmarkGenState(Request request) async {
     final configured = config.configuredAiUpstreams;
     final pageSizes = <String, List<int>>{};
+    final tested = <String>{};
     for (final entry in await aiBenchmarks.list()) {
       (pageSizes[entry.kind] ??= []).add(entry.sizeBytes);
+      tested.add(benchmarkTestedKey(entry.kind, entry.model));
     }
     return jsonResponse(200, {
       'tests': [
@@ -371,6 +390,7 @@ extension BenchmarkGenerateApi on Api {
           {'value': e.key, 'label': e.key.isEmpty ? "Model's default" : e.key},
       ],
       'defaultMaxTokens': _defaultMaxTokens,
+      'tested': [...tested],
       'github': benchmarkGithub.enabled,
       'jobs': [for (final j in _benchmarkGenJobs.reversed) j.toJson()],
     });
@@ -440,22 +460,52 @@ extension BenchmarkGenerateApi on Api {
     if (!isValidAiModelId(model)) {
       return errorResponse(400, 'bad_request', 'Pick a model.');
     }
-    final effort = str('effort');
-    if (!kBenchmarkEfforts.containsKey(effort)) {
-      return errorResponse(
-          400, 'bad_request', 'Pick a valid reasoning effort.');
-    }
-    final kind = str('kind');
-    if (!kBenchmarkPrompts.containsKey(kind)) {
-      return errorResponse(400, 'bad_request', 'Pick a test.');
-    }
-    if (kBenchmarkManualKinds.contains(kind)) {
+    // Multi-test queues every picked test at every picked effort, each as a
+    // run of its own on the shared queue. Each run gets its test's default
+    // prompt and a name from the base name plus its effort.
+    final multi = body['multi'] == true;
+    List<String> strings(String k) => body[k] is List
+        ? [
+            for (final v in body[k] as List)
+              if (v is String) v.trim()
+          ].toSet().toList()
+        : const [];
+    final efforts = multi ? strings('efforts') : [str('effort')];
+    if (efforts.isEmpty ||
+        efforts.any((e) => !kBenchmarkEfforts.containsKey(e))) {
       return errorResponse(
           400,
           'bad_request',
-          'The ${kBenchmarkPrompts[kind]!.label} test is a binary model a '
-              'text reply cannot carry. Upload it by hand.');
+          multi
+              ? 'Pick at least one valid reasoning level.'
+              : 'Pick a valid reasoning effort.');
     }
+    final kinds = multi ? strings('kinds') : [str('kind')];
+    if (kinds.isEmpty || kinds.any((k) => !kBenchmarkPrompts.containsKey(k))) {
+      return errorResponse(400, 'bad_request',
+          multi ? 'Pick at least one test.' : 'Pick a test.');
+    }
+    for (final kind in kinds) {
+      if (kBenchmarkManualKinds.contains(kind)) {
+        return errorResponse(
+            400,
+            'bad_request',
+            'The ${kBenchmarkPrompts[kind]!.label} test is a binary model a '
+                'text reply cannot carry. Upload it by hand.');
+      }
+    }
+    if (multi) {
+      if (str('replaceId').isNotEmpty || str('batchId').isNotEmpty) {
+        return errorResponse(400, 'bad_request',
+            'A multi-test run can\'t regenerate a test or attach a batch.');
+      }
+      final runs = efforts.length * kinds.length;
+      if (runs > kBenchmarkMultiMaxRuns) {
+        return errorResponse(400, 'bad_request',
+            'That is $runs runs; queue at most $kBenchmarkMultiMaxRuns at once.');
+      }
+    }
+    final kind = kinds.first;
     // Regenerating keeps the entry's id, name and company: it is the same
     // contestant's test, written again.
     final replaceId = str('replaceId');
@@ -491,7 +541,8 @@ extension BenchmarkGenerateApi on Api {
     if (!AiBenchmarkStore.vendorPattern.hasMatch(vendor)) {
       return errorResponse(400, 'bad_request', 'Unknown company "$vendor".');
     }
-    var prompt = body['prompt'] is String ? body['prompt'] as String : '';
+    var prompt =
+        !multi && body['prompt'] is String ? body['prompt'] as String : '';
     if (prompt.trim().isEmpty) prompt = benchmarkPromptFor(kind);
     if (prompt.length > _maxPromptChars) {
       return errorResponse(400, 'bad_request',
@@ -541,38 +592,78 @@ extension BenchmarkGenerateApi on Api {
             'OpenRouter does not serve $model through $providerTag.');
       }
     }
+    final entries = await aiBenchmarks.editableEntries();
     final taken = {
-      for (final e in await aiBenchmarks.editableEntries()) e['id'] as String,
+      for (final e in entries) e['id'] as String,
       for (final j in _benchmarkGenJobs)
         if (j.status == 'running') j.sceneId,
     };
-    final sceneId = replacing != null
-        ? replaceId
-        : benchmarkSceneId(kind, name, effort, taken);
-    final job = BenchmarkGenJob(
-      id: DateTime.now().microsecondsSinceEpoch.toRadixString(36),
-      kind: kind,
-      sceneId: sceneId,
-      replaces: replacing != null,
-      name: name,
-      vendor: vendor,
-      route: AiModeRoute(upstream, model,
-          reasoningEffort: effort.isEmpty ? null : effort),
-      prompt: benchmarkPromptWithLot(kind, prompt, sceneId),
-      maxTokens: maxTokens,
-      autoCompact: rawMax is! num && existingBatch.isEmpty,
-      startedAtMs: DateTime.now().millisecondsSinceEpoch,
-      batchId: existingBatch.isEmpty ? null : existingBatch,
-      provider: provider == null ? null : providerTag,
-      providerName: provider?['name'] as String?,
-      providerInput: provider?['input'] as double?,
-      providerOutput: provider?['output'] as double?,
-    );
-    _benchmarkGenJobs.add(job);
+    // "Only untested" leaves out every pairing the roster already has a test
+    // for under the same name, or that a run is already writing.
+    final tested = multi && body['skipTested'] == true
+        ? {
+            for (final e in entries)
+              benchmarkTestedKey(e['kind'] as String, e['model'] as String),
+            for (final j in _benchmarkGenJobs)
+              if (j.status == 'running') benchmarkTestedKey(j.kind, j.name),
+          }
+        : const <String>{};
+    var skipped = 0;
+    // An empty max output sends no cap at all: the model writes up to its
+    // own maximum, and only then do compact retries start.
+    final auto = rawMax is! num && existingBatch.isEmpty;
+    final idBase = DateTime.now().microsecondsSinceEpoch;
+    final jobs = <BenchmarkGenJob>[];
+    for (final effort in efforts) {
+      for (final k in kinds) {
+        final entryName = multi ? benchmarkDisplayName(name, effort) : name;
+        if (tested.contains(benchmarkTestedKey(k, entryName))) {
+          skipped++;
+          continue;
+        }
+        final sceneId = replacing != null
+            ? replaceId
+            : benchmarkSceneId(k, entryName, effort, taken);
+        taken.add(sceneId);
+        final runPrompt = multi ? benchmarkPromptFor(k) : prompt;
+        jobs.add(BenchmarkGenJob(
+          id: (idBase + jobs.length).toRadixString(36),
+          kind: k,
+          sceneId: sceneId,
+          replaces: replacing != null,
+          name: entryName,
+          vendor: vendor,
+          route: AiModeRoute(upstream, model,
+              reasoningEffort: effort.isEmpty ? null : effort),
+          prompt: benchmarkPromptWithLot(k, runPrompt, sceneId),
+          maxTokens: maxTokens,
+          autoCompact: auto,
+          startedAtMs: DateTime.now().millisecondsSinceEpoch,
+          batchId: existingBatch.isEmpty ? null : existingBatch,
+          provider: provider == null ? null : providerTag,
+          providerName: provider?['name'] as String?,
+          providerInput: provider?['input'] as double?,
+          providerOutput: provider?['output'] as double?,
+        )..outputCapSent = !auto);
+      }
+    }
+    if (jobs.isEmpty) {
+      return errorResponse(409, 'already_tested',
+          'Every picked test already has a run for $name at those reasoning levels.');
+    }
+    _benchmarkGenJobs.addAll(jobs);
     await _pruneBenchmarkGenJobs();
     await _saveBenchmarkBatches();
     _scheduleBenchmarkGen();
-    return jsonResponse(200, job.toJson());
+    if (multi) {
+      return jsonResponse(200, {
+        'multi': true,
+        'count': jobs.length,
+        'skipped': skipped,
+        'jobs': [for (final j in jobs) j.toJson()],
+      });
+    }
+    return jsonResponse(200, jobs.single.toJson());
   }
 
   Future<Response> _adminBenchmarkGenStop(Request request) async {
@@ -593,6 +684,31 @@ extension BenchmarkGenerateApi on Api {
     job.wake?.complete();
     job.wake = null;
     return jsonResponse(200, {'ok': true});
+  }
+
+  /// Cancels every run still waiting its turn in the queue, e.g. the rest of
+  /// a multi-test. Runs already going carry on, and a submitted batch is
+  /// left alone since it is still running at OpenRouter.
+  Future<Response> _adminBenchmarkGenCancelQueued(Request request) async {
+    if (!_sameOrigin(request)) {
+      return errorResponse(403, 'bad_origin', 'Cross-origin request rejected.');
+    }
+    final now = DateTime.now().millisecondsSinceEpoch;
+    var cancelled = 0;
+    for (final job in _benchmarkGenJobs) {
+      if (job.status != 'running' || job.active || job.batchId != null) {
+        continue;
+      }
+      job
+        ..stopRequested = true
+        ..status = 'stopped'
+        ..finishedAtMs = now
+        ..resultStatus = 'STOPPED'
+        ..resultReason = 'Cancelled while queued';
+      cancelled++;
+    }
+    await _saveBenchmarkBatches();
+    return jsonResponse(200, {'ok': true, 'cancelled': cancelled});
   }
 
   Future<Response> _adminBenchmarkGenDismiss(Request request) async {
@@ -703,17 +819,22 @@ extension BenchmarkGenerateApi on Api {
       } else {
         await _runBenchmarkStream(job, acc);
       }
-    } on TimeoutException {
+    } on TimeoutException catch (e) {
       await _saveBenchmarkGenOutput(job, acc.content);
       job.status = job.stopRequested ? 'stopped' : 'failed';
-      job.error ??= job.stopRequested
-          ? null
-          : job.batch
-              ? 'The batch still wasn\'t done after '
-                  '${_batchTimeout.inHours} hours.'
-              : 'The upstream went quiet for ${_idleTimeout.inMinutes} '
-                  'minutes, or the run passed ${_totalTimeout.inMinutes} '
-                  'minutes.';
+      if (!job.stopRequested && job.batch) {
+        job.error ??= 'The batch still wasn\'t done after '
+            '${_batchTimeout.inHours} hours.';
+      } else if (!job.stopRequested && job.error == null) {
+        final timeout = benchmarkTimeoutResult(
+          total: e.message == kBenchmarkTotalTimeout,
+          idle: _idleTimeout,
+          limit: _totalTimeout,
+          failures: job.retryReasons,
+        );
+        job.error = timeout.reason;
+        job.resultStatus = timeout.status;
+      }
     } catch (e) {
       await _saveBenchmarkGenOutput(job, acc.content);
       job.status = job.stopRequested ? 'stopped' : 'failed';
@@ -777,7 +898,8 @@ extension BenchmarkGenerateApi on Api {
       () => retryBenchmarkStream(
         acc,
         () async {
-          var result = await _streamBenchmarkGen(job, acc, withMaxTokens: true);
+          var result = await _streamBenchmarkGen(job, acc,
+              withMaxTokens: job.outputCapSent);
           // Some models cap output below what was asked and refuse the request
           // outright; their own maximum is the next best thing.
           if (result.$1 == HttpStatus.badRequest &&
@@ -791,6 +913,32 @@ extension BenchmarkGenerateApi on Api {
           return result;
         },
         canRetry: () => !job.stopRequested && DateTime.now().isBefore(deadline),
+        failedTransiently: (result) =>
+            result.$1 != HttpStatus.ok &&
+            benchmarkFailureIsTransient(
+                httpStatus: result.$1,
+                error: providerErrorMessage(result.$2) ?? result.$2),
+        waitFor: (attempt, planned) => benchmarkRetryWait(
+          attempt: attempt,
+          planned: planned,
+          rateLimited: job.httpStatus == HttpStatus.tooManyRequests ||
+              acc.errorCode == HttpStatus.tooManyRequests ||
+              acc.providerStatus == HttpStatus.tooManyRequests,
+          retryAfter: job.retryAfter,
+        ),
+        onRetry: (retry, wait) {
+          job.client?.close(force: true);
+          job.client = null;
+          job.upstreamRetries = retry;
+          job.retryReason = acc.error ??
+              (job.httpStatus != null && job.httpStatus != HttpStatus.ok
+                  ? 'HTTP ${job.httpStatus}'
+                  : 'The stream stopped before the reply finished');
+          job.retryReasons = [...job.retryReasons, job.retryReason!];
+          job.phase = 'retrying';
+          stderr.writeln('[luma] benchmark ${job.sceneId}: upstream failed '
+              '(${job.retryReason}); retry $retry in ${wait.inSeconds}s');
+        },
         beforeRetry: () async {
           job.client?.close(force: true);
           job.client = null;
@@ -1118,9 +1266,11 @@ extension BenchmarkGenerateApi on Api {
     }
     req.headers.contentType = ContentType.json;
     req.add(utf8.encode(jsonEncode(body)));
+    job.retryAfter = null;
     final res = await req.close().timeout(_idleTimeout);
     job.httpStatus = res.statusCode;
     if (res.statusCode != HttpStatus.ok) {
+      job.retryAfter = res.headers.value(HttpHeaders.retryAfterHeader);
       final text = await res
           .transform(utf8.decoder)
           .join()
@@ -1143,7 +1293,7 @@ extension BenchmarkGenerateApi on Api {
       if (acc.contentChars > 0) job.phase = 'writing';
       if (acc.done || job.stopRequested) break;
       if (DateTime.now().isAfter(deadline)) {
-        throw TimeoutException('total');
+        throw TimeoutException(kBenchmarkTotalTimeout);
       }
     }
     if (!job.stopRequested) checkBenchmarkStreamEnd(acc);
@@ -1301,6 +1451,15 @@ String _bgDialogHtml(
     '<button type="button" class="bn-icon-btn" data-close aria-label="Close">'
     '${Api._bnCloseIcon}</button></div>'
     '<div class="bg-body">'
+    '<div id="bgRunModeField" class="bg-runmode-field">'
+    '<div id="bgRunMode" class="bg-runmode" role="radiogroup" '
+    'aria-label="Run mode">'
+    '<button type="button" role="radio" data-value="single" '
+    'aria-checked="true" tabindex="0">Single run</button>'
+    '<button type="button" role="radio" data-value="multi" '
+    'aria-checked="false" tabindex="-1">Multi-test</button></div>'
+    '<span id="bgRunModeHint" class="bg-step-hint">One model, one test, one '
+    'reasoning level</span></div>'
     '<section class="bg-step" aria-labelledby="bgStep1">'
     '<div class="bg-step-head"><span class="bg-num" aria-hidden="true">1</span>'
     '<h3 id="bgStep1">API key</h3>'
@@ -1316,9 +1475,14 @@ String _bgDialogHtml(
     '<input id="bgSearch" class="bn-input" type="search" '
     'placeholder="Search name or model ID" aria-label="Search models" '
     'autocomplete="off">'
-    '<label class="bg-inline"><span>Reasoning</span>'
+    '<label id="bgEffortWrap" class="bg-inline"><span>Reasoning</span>'
     '<select id="bgEffort" class="bn-input"></select></label>'
     '</div>'
+    '<div id="bgEffortsField" class="bg-efforts-field" hidden>'
+    '<div class="bg-prov-head"><span id="bgEffortsLabel">Reasoning levels'
+    '</span><span class="muted">Every picked test runs at each</span></div>'
+    '<div id="bgEfforts" class="bg-efforts" role="group" '
+    'aria-labelledby="bgEffortsLabel"></div></div>'
     '<div id="bgModels" class="bg-models" role="listbox" '
     'aria-labelledby="bgStep2"></div>'
     '<label class="bm-field" style="margin-top:10px"><span>Model ID '
@@ -1342,10 +1506,16 @@ String _bgDialogHtml(
     '<section class="bg-step" aria-labelledby="bgStep3">'
     '<div class="bg-step-head"><span class="bg-num" aria-hidden="true">3</span>'
     '<h3 id="bgStep3">Test</h3>'
-    '<span class="bg-step-hint">Picks the prompt</span></div>'
+    '<span id="bgTestHint" class="bg-step-hint">Picks the prompt</span></div>'
     '<div id="bgTests" class="bg-tests" role="radiogroup" '
     'aria-labelledby="bgStep3"></div>'
-    '<details class="bg-prompt"><summary>Prompt '
+    '<div id="bgTestTools" class="bg-test-tools" hidden>'
+    '<button type="button" class="btn btn-ghost btn-sm" data-tests="all">'
+    'Select all</button><button type="button" class="btn btn-ghost btn-sm" '
+    'data-tests="none">Clear</button>'
+    '<label class="bg-skip"><input id="bgSkipTested" type="checkbox" checked>'
+    'Skip tests this model already has</label></div>'
+    '<details id="bgPromptBox" class="bg-prompt"><summary>Prompt '
     '<span id="bgPromptNote" class="muted"></span></summary>'
     '<textarea id="bgPrompt" class="bn-input bm-paste" spellcheck="false" '
     'aria-label="Prompt sent to the model"></textarea>'
@@ -1368,8 +1538,9 @@ String _bgDialogHtml(
     '<label class="bm-field"><span>Max output tokens</span>'
     '<input id="bgMaxTokens" class="bn-input" type="number" min="1000" '
     'max="256000" step="1000" inputmode="numeric" placeholder="Automatic">'
-    '<span class="muted">Clear for automatic compact retries if output is cut off. '
-    'Retries can add cost.</span></label>'
+    '<span class="muted">Clear for no cap: the model writes up to its own '
+    'maximum and retries more compactly if it still runs out. Retries can '
+    'add cost.</span></label>'
     '</div>'
     '<div class="bg-preview" aria-live="polite"><span id="bgPreviewLabel" '
     'class="muted">New entry</span> <strong id="bgPreviewName">—</strong> <span id="bgPreviewVendor" '
@@ -1468,6 +1639,32 @@ button.bg-prov-row[aria-checked=true]{background:#1a1530;box-shadow:inset 3px 0 
 .bg-cost-table td.is-current{background:#1a1530;color:#ece8f7;font-weight:650;box-shadow:inset 0 0 0 1px #8a7ee0}
 .bg-cost-table td.is-capped{color:#e8c37a}
 .bg-cost-note{font-size:11.5px;color:#8d86a8;padding:6px 12px 10px}
+.bg-runmode-field{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding-top:6px}
+.bg-runmode-field[hidden]{display:none}
+.bg-runmode{display:inline-flex;padding:3px;border-radius:10px;background:#12101e;border:1px solid #241e36}
+.bg-runmode button{font:inherit;font-size:12.5px;font-weight:600;color:#9b94b3;background:none;border:0;border-radius:7px;padding:6px 14px;cursor:pointer}
+.bg-runmode button:hover{color:#ece8f7}
+.bg-runmode button[aria-checked=true]{background:#8a7ee0;color:#14111f}
+.bg-runmode button:focus-visible{outline:2px solid #8a7ee0;outline-offset:2px}
+.bg-inline[hidden]{display:none}
+.bg-efforts-field{margin-bottom:10px}
+.bg-efforts-field[hidden]{display:none}
+.bg-efforts{display:flex;flex-wrap:wrap;gap:6px}
+.bg-chip{font:inherit;font-size:12.5px;padding:6px 12px;border-radius:99px;background:#12101e;border:1px solid #241e36;color:#c5bed9;cursor:pointer;transition:border-color .15s,background .15s}
+.bg-chip:hover{border-color:#3a3160}
+.bg-chip[aria-checked=true]{border-color:#8a7ee0;background:#1a1530;color:#ece8f7;box-shadow:inset 0 0 0 1px #8a7ee0}
+.bg-chip:focus-visible{outline:2px solid #8a7ee0;outline-offset:2px}
+.bg-chip .bg-chip-note{color:#8d86a8;font-size:11px;margin-left:4px}
+.bg-tests .bg-opt[role=checkbox] .bg-opt-title::before{content:"";width:14px;height:14px;border-radius:4px;border:1.5px solid #4a4170;flex:none}
+.bg-tests .bg-opt[role=checkbox][aria-checked=true] .bg-opt-title::before{background:#8a7ee0;border-color:#8a7ee0;box-shadow:inset 0 0 0 2px #1a1530}
+.bg-test-tools{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:8px}
+.bg-skip{display:inline-flex;align-items:center;gap:7px;margin-left:auto;font-size:12.5px;color:#c5bed9;cursor:pointer}
+.bg-skip input{accent-color:#8a7ee0;width:15px;height:15px;margin:0}
+.bg-tests .bg-opt.is-tested .bg-opt-sub{color:#7ee08a}
+.bg-test-tools[hidden]{display:none}
+.bg-queue{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12.5px;color:#c5bed9;padding:8px 12px;border-radius:10px;background:#16132a;border:1px solid #2a2346;font-variant-numeric:tabular-nums}
+.bg-queue b{color:#ece8f7}
+.bg-queue .btn{margin-left:auto}
 .bg-runs{display:flex;flex-direction:column;gap:8px;margin-top:12px}
 .bg-runs:empty{display:none}
 .bg-run{background:#12101e;border:1px solid #241e36;border-radius:12px;padding:12px 14px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;align-items:start}
@@ -1513,6 +1710,13 @@ const _bgScript = r'''
   // Set while regenerating an existing test: { id, kind, name }.
   let replace = null;
   let timer = null;
+  // Multi-test: every test in pickedKinds at every effort in pickedEfforts,
+  // each queued as a run of its own (the server runs 3 at a time).
+  let multi = false;
+  const pickedKinds = new Set(), pickedEfforts = new Set();
+  const runModeBox = $('bgRunMode'), effortsBox = $('bgEfforts');
+  let lastJobs = [];
+  const skipTested = $('bgSkipTested');
   // OpenRouter's providers for the model in provFor; provTag is the one
   // picked, '' for letting OpenRouter route.
   let providers = null, provFor = '', provPending = '', provErr = '', provTag = '', provReq = 0, provTimer = null;
@@ -1559,7 +1763,7 @@ const _bgScript = r'''
   }
   function estimate(m, eff, t) {
     const cm = state.costModel;
-    const chars = t.kind === kind ? prompt.value.length : t.prompt.length;
+    const chars = !multi && t.kind === kind ? prompt.value.length : t.prompt.length;
     const input = Math.round(chars / cm.promptCharsPerToken);
     const r = resolvedEffort(m, eff);
     let out = !r ? t.pageTokens * cm.plainPageScale
@@ -1573,6 +1777,69 @@ const _bgScript = r'''
       cost: p ? (input * p.input + out * p.output) / 1e6 : null };
   }
   function currentTest() { return state && state.costModel ? state.tests.find((x) => x.kind === kind) : null; }
+  function multiTests() { return state ? state.tests.filter((t) => pickedKinds.has(t.kind) && !t.manual) : []; }
+  function effortsInOrder() { return state ? state.efforts.map((e) => e.value).filter((v) => pickedEfforts.has(v)) : [...pickedEfforts]; }
+  // Tests the roster or a run already has, keyed like benchmarkTestedKey on
+  // the server: "kind|entry name", the name trimmed and in lower case.
+  function testedKeys() {
+    const keys = new Set(state && Array.isArray(state.tested) ? state.tested : []);
+    lastJobs.forEach((j) => {
+      if (j.status === 'running' || j.status === 'done') keys.add(j.kind + '|' + String(j.name || '').trim().toLowerCase());
+    });
+    return keys;
+  }
+  function entryNameAt(eff) {
+    const n = nameBox.value.trim();
+    return (ENTRY_EFFORT[eff] ? n + ' (' + ENTRY_EFFORT[eff] + ')' : n).slice(0, 80).trim();
+  }
+  function isTested(keys, k, eff) { return keys.has(k + '|' + entryNameAt(eff).toLowerCase()); }
+  // Every test × reasoning level pairing Start would queue, less the ones
+  // already tested while "Skip tests this model already has" is on.
+  function multiPairs() {
+    const keys = skipTested.checked ? testedKeys() : null;
+    const out = [];
+    effortsInOrder().forEach((eff) => multiTests().forEach((t) => {
+      if (!keys || !isTested(keys, t.kind, eff)) out.push({ t: t, eff: eff });
+    }));
+    return out;
+  }
+  function multiCount() { return multiPairs().length; }
+  // Says on each test card how much of the picked levels it already has.
+  function markTested() {
+    if (!multi || !state) return;
+    const keys = testedKeys(), effs = effortsInOrder();
+    testsBox.querySelectorAll('[role=checkbox]').forEach((b) => {
+      const t = state.tests.find((x) => x.kind === b.dataset.value);
+      if (!t || t.manual) return;
+      const done = effs.filter((eff) => isTested(keys, t.kind, eff)).length;
+      b.classList.toggle('is-tested', done > 0 && done === effs.length);
+      b.querySelector('.bg-opt-sub').textContent = !done ? kfmt(t.prompt.length) + ' character prompt'
+        : done === effs.length ? 'Already tested' + (effs.length > 1 ? ' at every picked level' : '')
+        : 'Tested at ' + done + ' of ' + effs.length + ' picked levels';
+    });
+    $('bgTestTools').querySelector('[data-tests=all]').textContent = skipTested.checked ? 'Select all untested' : 'Select all';
+  }
+  // The estimate for what Start would queue on [m]: one run, or every
+  // multi-test pairing summed. Null when there is nothing to estimate.
+  function selectionCost(m) {
+    if (!state || !state.costModel) return null;
+    if (!multi) {
+      const t = currentTest();
+      return t && !t.manual ? estimate(m, effort.value, t) : null;
+    }
+    const pairs = multiPairs();
+    if (!pairs.length) return null;
+    const sum = { input: 0, out: 0, cost: 0, capped: false, ref: false };
+    pairs.forEach((p) => {
+      const e = estimate(m, p.eff, p.t);
+      sum.input += e.input;
+      sum.out += e.out;
+      sum.cost = sum.cost == null || e.cost == null ? null : sum.cost + e.cost;
+      sum.capped = sum.capped || e.capped;
+      sum.ref = sum.ref || e.ref;
+    });
+    return sum;
+  }
 
   // The provider list only applies to a streamed OpenRouter model.
   function providerApplies(id) { return key === 'openrouter' && id.includes('/') && !isBatch(id); }
@@ -1621,17 +1888,15 @@ const _bgScript = r'''
     if (provFor !== id) { note.textContent = ''; providersBox.innerHTML = '<div class="bg-empty">Loading OpenRouter’s providers…</div>'; return; }
     if (!providers) { note.textContent = ''; providersBox.innerHTML = '<div class="bg-empty">' + esc(provErr) + ' The run can still let OpenRouter pick.</div>'; return; }
     note.textContent = providers.length ? providers.length + ' serve' + (providers.length === 1 ? 's' : '') + ' this model · per million tokens' : '';
-    const t = currentTest();
     const cap = Number(maxTokens.value) || 0;
     function est(m) {
-      if (!t || t.manual || !priceOf(m)) return '–';
-      const e = estimate(m, effort.value, t);
-      return e.cost == null ? '–' : '≈ <b>' + esc(usd(e.cost)) + '</b>';
+      const e = priceOf(m) ? selectionCost(m) : null;
+      return !e || e.cost == null ? '–' : '≈ <b>' + esc(usd(e.cost)) + '</b>';
     }
     function was(p, v) { return p.discount ? '<s>' + esc(price(v / (1 - p.discount))) + '</s>' : ''; }
     function cell(v, cls) { return '<span' + (cls ? ' class="' + cls + '"' : '') + '>' + v + '</span>'; }
     const head = '<div class="bg-prov-row bg-prov-cols" aria-hidden="true"><span>Provider</span><span>Input</span><span>Output</span>'
-      + '<span class="bg-prov-wide">Cache read</span><span class="bg-prov-wide">Max out</span><span class="bg-prov-wide">Uptime</span><span>Est. / run</span></div>';
+      + '<span class="bg-prov-wide">Cache read</span><span class="bg-prov-wide">Max out</span><span class="bg-prov-wide">Uptime</span><span>' + (multi ? 'Est. total' : 'Est. / run') + '</span></div>';
     const auto = '<button type="button" role="radio" class="bg-prov-row" data-value="" aria-checked="false">'
       + '<span><span class="bg-prov-name">Auto</span><span class="bg-prov-sub">OpenRouter picks, and falls back on errors</span></span>'
       + cell(esc(model && price(model.input) || '–')) + cell(esc(model && price(model.output) || '–'))
@@ -1677,26 +1942,31 @@ const _bgScript = r'''
     if (!thinks(m)) return [''];
     const b = baseOf(m);
     const listed = b && Array.isArray(b.efforts) ? b.efforts : [];
-    return EFFORT_COLS.filter((e) => e === 'none' || e === effort.value || !listed.length || listed.includes(e));
+    return EFFORT_COLS.filter((e) => e === 'none' || e === effort.value || (multi && pickedEfforts.has(e)) || !listed.length || listed.includes(e));
   }
   function renderCost() {
     const line = $('bgCost'), table = $('bgCostTable');
     const t = currentTest(), id = modelId.value.trim();
-    if (!t || t.manual || !id) {
-      line.innerHTML = t && !t.manual ? '<span class="muted">Pick a model to see what a run costs.</span>' : '';
+    const n = multi ? multiCount() : 1;
+    if (multi ? !n || !id : !t || t.manual || !id) {
+      line.innerHTML = multi
+        ? '<span class="muted">' + (id ? 'Pick at least one test and reasoning level' : 'Pick a model') + ' to see what the runs cost.</span>'
+        : t && !t.manual ? '<span class="muted">Pick a model to see what a run costs.</span>' : '';
       table.innerHTML = '';
       return;
     }
     const prov = pickedProvider();
     const pm = withProvider(model, prov);
-    const e = estimate(pm, effort.value, t);
+    const e = selectionCost(pm);
     const parts = [e.cost == null
       ? '<span>Estimated cost: no price listed for this model</span>'
+      : multi ? '<span>Estimated total <b>≈ ' + usd(e.cost) + '</b> for ' + n + ' run' + (n === 1 ? '' : 's') + '</span>'
       : '<span>Estimated cost <b>≈ ' + usd(e.cost) + '</b> per run</span>'];
-    parts.push('<span>' + kfmt(e.input) + ' in · ' + kfmt(e.out) + ' out</span>');
+    parts.push('<span>' + kfmt(e.input) + ' in · ' + kfmt(e.out) + ' out' + (multi ? ' in all' : '') + '</span>');
     if (!maxTokens.value.trim()) parts.push('<span class="muted">Automatic: compact retries may add cost</span>');
     if (!thinks(model)) parts.push('<span class="muted">Lists no reasoning, so effort changes nothing</span>');
-    if (e.capped) parts.push('<span class="bg-cost-warn">Reaches the ' + kfmt(e.out) + ' output cap; the page may be cut off</span>');
+    if (e.capped) parts.push('<span class="bg-cost-warn">' + (multi ? 'Some runs reach the output cap; their pages may be cut off'
+      : 'Reaches the ' + kfmt(e.out) + ' output cap; the page may be cut off') + '</span>');
     if (e.ref) parts.push('<span class="muted">OpenRouter price for the same model</span>');
     if (prov) parts.push('<span class="muted">on ' + esc(prov.name) + '’s prices</span>');
     if (prov && prov.maxOutput && (Number(maxTokens.value) || 0) > prov.maxOutput) {
@@ -1705,14 +1975,14 @@ const _bgScript = r'''
     line.innerHTML = parts.join('');
 
     const cols = effortCols(model);
-    const cur = resolvedEffort(model, effort.value);
+    const curs = new Set(multi ? [...pickedEfforts].map((x) => resolvedEffort(model, x)) : [resolvedEffort(model, effort.value)]);
     const tests = state.tests.filter((x) => !x.manual);
     table.innerHTML = '<table><thead><tr><th>Test</th>'
       + cols.map((c) => '<th>' + esc(c ? EFFORT_LABEL[c] : 'Any effort') + '</th>').join('')
       + '</tr></thead><tbody>'
       + tests.map((x) => '<tr><td>' + esc(x.label) + '</td>' + cols.map((c) => {
         const r = estimate(pm, c, x);
-        const cls = [x.kind === kind && c === cur ? 'is-current' : '', r.capped ? 'is-capped' : ''].filter(Boolean).join(' ');
+        const cls = [(multi ? pickedKinds.has(x.kind) : x.kind === kind) && curs.has(c) ? 'is-current' : '', r.capped ? 'is-capped' : ''].filter(Boolean).join(' ');
         return '<td' + (cls ? ' class="' + cls + '"' : '')
           + ' title="' + esc(kfmt(r.input) + ' in · ' + kfmt(r.out) + ' out' + (r.capped ? ', at the output cap' : '')) + '">'
           + esc(r.cost == null ? '–' : usd(r.cost)) + '</td>';
@@ -1761,10 +2031,15 @@ const _bgScript = r'''
   function isBatch(id) { return key === 'openrouter' && id.endsWith(BATCH); }
   function syncStart() {
     const batch = isBatch(modelId.value.trim());
-    $('bgBatchIdField').hidden = !batch;
-    start.textContent = !batch ? (replace ? 'Regenerate' : 'Start run')
-      : $('bgBatchId').value.trim() ? 'Attach batch' : 'Submit batch';
-    start.disabled = manualNote || !!(state && !state.keys.some((k) => k.configured));
+    $('bgBatchIdField').hidden = !batch || multi;
+    if (multi) {
+      const n = multiCount();
+      start.textContent = n ? 'Queue ' + n + ' run' + (n === 1 ? '' : 's') : 'Queue runs';
+    } else {
+      start.textContent = !batch ? (replace ? 'Regenerate' : 'Start run')
+        : $('bgBatchId').value.trim() ? 'Attach batch' : 'Submit batch';
+    }
+    start.disabled = (!multi && manualNote) || !!(state && !state.keys.some((k) => k.configured));
   }
   function labelOf(u) { const k = state && state.keys.find((x) => x.upstream === u); return k ? k.label : u; }
   function renderKeys() {
@@ -1775,12 +2050,58 @@ const _bgScript = r'''
       + '</button>').join('');
     radio(keysBox, key);
   }
+  // Radios in a single run; checkboxes in a multi-test, where the tests
+  // that can only be uploaded by hand are left out.
   function renderTests() {
-    testsBox.innerHTML = state.tests.map((t) => '<button type="button" role="radio" class="bg-opt" data-value="' + esc(t.kind) + '" aria-checked="false"'
-      + (replace && replace.kind !== t.kind ? ' disabled' : '') + '>'
+    testsBox.setAttribute('role', multi ? 'group' : 'radiogroup');
+    testsBox.innerHTML = state.tests.map((t) => '<button type="button" role="' + (multi ? 'checkbox' : 'radio') + '" class="bg-opt" data-value="' + esc(t.kind) + '"'
+      + ' aria-checked="' + (multi && pickedKinds.has(t.kind) && !t.manual ? 'true' : 'false') + '"'
+      + ((replace && replace.kind !== t.kind) || (multi && t.manual) ? ' disabled' : '') + '>'
       + '<span class="bg-opt-title">' + esc(t.label) + '</span>'
-      + '<span class="bg-opt-sub">' + kfmt(t.prompt.length) + ' character prompt</span></button>').join('');
-    radio(testsBox, kind);
+      + '<span class="bg-opt-sub">' + (multi && t.manual ? 'Upload by hand' : kfmt(t.prompt.length) + ' character prompt') + '</span></button>').join('');
+    if (!multi) radio(testsBox, kind);
+  }
+  // The multi-test's reasoning levels. One the model doesn't list is still
+  // offered (lists go stale), just marked.
+  function renderEfforts() {
+    if (!state) return;
+    const b = baseOf(model);
+    const listed = b && Array.isArray(b.efforts) ? b.efforts : [];
+    effortsBox.innerHTML = state.efforts.map((e) => {
+      const off = !!e.value && e.value !== 'none' && (!thinks(model) || (listed.length > 0 && !listed.includes(e.value)));
+      return '<button type="button" role="checkbox" class="bg-chip" data-value="' + esc(e.value) + '" aria-checked="'
+        + (pickedEfforts.has(e.value) ? 'true' : 'false') + '"'
+        + (off ? ' title="This model doesn’t list this reasoning level"' : '') + '>'
+        + esc(EFFORT_LABEL[e.value] || e.label) + (off ? '<span class="bg-chip-note">not listed</span>' : '') + '</button>';
+    }).join('');
+  }
+  function toggle(set, value, b) {
+    if (set.has(value)) set.delete(value); else set.add(value);
+    b.setAttribute('aria-checked', set.has(value) ? 'true' : 'false');
+    renderModels();
+    autofill();
+  }
+  function setMulti(v) {
+    multi = (v === true || v === 'multi') && !replace;
+    radio(runModeBox, multi ? 'multi' : 'single');
+    $('bgRunModeHint').textContent = multi
+      ? 'Every picked test at every picked reasoning level, queued and run 3 at a time'
+      : 'One model, one test, one reasoning level';
+    if (multi) {
+      if (!pickedEfforts.size) pickedEfforts.add(effort.value);
+      const t = state && state.tests.find((x) => x.kind === kind);
+      if (!pickedKinds.size && t && !t.manual) pickedKinds.add(kind);
+      if (hintShown) { status.textContent = ''; hintShown = false; }
+    } else if (manualNote && state && kind) pickTest(kind);
+    $('bgEffortWrap').hidden = multi;
+    $('bgEffortsField').hidden = !multi;
+    $('bgPromptBox').hidden = multi;
+    $('bgTestTools').hidden = !multi;
+    $('bgStep3').textContent = multi ? 'Tests' : 'Test';
+    $('bgTestHint').textContent = multi ? 'Pick any number; each uses its default prompt' : 'Picks the prompt';
+    nameBox.placeholder = multi ? 'Sonnet 5.5' : 'Sonnet 5.5 (High)';
+    if (state) { renderTests(); renderEfforts(); renderModels(); }
+    autofill();
   }
   function renderModels() {
     const q = search.value.trim().toLowerCase();
@@ -1802,8 +2123,12 @@ const _bgScript = r'''
       const batch = isBatch(m.id);
       if (batch) stats.push('<span>Up to <b>24 h</b></span>');
       const t = currentTest();
-      if (t && !t.manual && priceOf(m)) {
-        const e = estimate(m, effort.value, t);
+      const e = priceOf(m) ? selectionCost(m) : null;
+      if (e && multi) {
+        const n = multiCount();
+        stats.push('<span class="bg-cost-chip" title="' + esc('Estimated cost of all ' + n + ' runs: '
+          + kfmt(e.input) + ' in · ' + kfmt(e.out) + ' out') + '">≈ <b>' + usd(e.cost) + '</b> total</span>');
+      } else if (e && t) {
         stats.push('<span class="bg-cost-chip" title="' + esc('Estimated cost of one ' + t.label + ' run: '
           + kfmt(e.input) + ' in · ' + kfmt(e.out) + ' out') + '">≈ <b>' + usd(e.cost) + '</b> / run</span>');
       }
@@ -1825,6 +2150,7 @@ const _bgScript = r'''
     modelId.value = '';
     search.value = '';
     renderModels();
+    if (multi) renderEfforts();
     autofill();
   }
   function pickModel(id) {
@@ -1832,6 +2158,7 @@ const _bgScript = r'''
     modelId.value = id;
     modelsBox.querySelectorAll('[role=option]').forEach((b) =>
       b.setAttribute('aria-selected', b.dataset.id === id ? 'true' : 'false'));
+    if (multi) renderEfforts();
     autofill();
   }
   function pickTest(k) {
@@ -1857,7 +2184,8 @@ const _bgScript = r'''
     const colon = base.indexOf(': ');
     if (colon > 0 && colon < 30) base = base.slice(colon + 2).trim();
     base = base.replace(/\s*\(batch\)$/i, '').replace(/:batch$/, '');
-    const e = ENTRY_EFFORT[effort.value];
+    // A multi-test's runs each add their own effort to this base name.
+    const e = !multi && ENTRY_EFFORT[effort.value];
     return (e ? base + ' (' + e + ')' : base).slice(0, 80);
   }
   function entryVendor() {
@@ -1882,22 +2210,61 @@ const _bgScript = r'''
     syncStart();
     renderCost();
     const n = nameBox.value.trim();
-    $('bgPreviewName').textContent = n || '—';
-    $('bgPreviewVendor').textContent = !replace && vendor.value ? 'by ' + vendor.options[vendor.selectedIndex].text : '';
-    const e = ENTRY_EFFORT[effort.value] ? effort.value : '';
-    const s = slug(n);
-    $('bgPreviewLabel').textContent = replace ? 'Rewrites the test of' : 'New entry';
-    $('bgPreviewId').textContent = replace ? replace.id
-      : kind && s ? [kind, s, e].filter(Boolean).join('_') : '';
+    const by = !replace && vendor.value ? 'by ' + vendor.options[vendor.selectedIndex].text : '';
+    if (multi) {
+      const count = multiCount();
+      const skipped = multiTests().length * pickedEfforts.size - count;
+      const names = effortsInOrder().map((x) => ENTRY_EFFORT[x] ? n + ' (' + ENTRY_EFFORT[x] + ')' : n)
+        .filter((x, i, all) => x && all.indexOf(x) === i);
+      $('bgPreviewLabel').textContent = 'Queues';
+      $('bgPreviewName').textContent = count + ' run' + (count === 1 ? '' : 's');
+      $('bgPreviewVendor').textContent = [names.length ? 'as ' + names.join(', ') : '', by,
+        skipped ? skipped + ' already tested, skipped' : '',
+        count > 3 ? '3 at a time, the rest wait in the queue' : ''].filter(Boolean).join(' · ');
+      markTested();
+      $('bgPreviewId').textContent = '';
+    } else {
+      $('bgPreviewName').textContent = n || '—';
+      $('bgPreviewVendor').textContent = by;
+      const e = ENTRY_EFFORT[effort.value] ? effort.value : '';
+      const s = slug(n);
+      $('bgPreviewLabel').textContent = replace ? 'Rewrites the test of' : 'New entry';
+      $('bgPreviewId').textContent = replace ? replace.id
+        : kind && s ? [kind, s, e].filter(Boolean).join('_') : '';
+    }
     $('bgStep1').closest('.bg-step').classList.toggle('is-done', !!key);
-    $('bgStep2').closest('.bg-step').classList.toggle('is-done', !!modelId.value.trim());
-    $('bgStep3').closest('.bg-step').classList.toggle('is-done', !!kind);
+    $('bgStep2').closest('.bg-step').classList.toggle('is-done', !!modelId.value.trim() && (!multi || pickedEfforts.size > 0));
+    $('bgStep3').closest('.bg-step').classList.toggle('is-done', multi ? multiTests().length > 0 : !!kind);
     $('bgStep4').closest('.bg-step').classList.toggle('is-done', !!n);
   }
 
   radioKeys(keysBox, pickKey);
   radioKeys(testsBox, pickTest);
   radioKeys(providersBox, pickProvider);
+  radioKeys(runModeBox, setMulti);
+  testsBox.addEventListener('click', (e) => {
+    const b = e.target.closest('[role=checkbox]');
+    if (b && !b.disabled) toggle(pickedKinds, b.dataset.value, b);
+  });
+  effortsBox.addEventListener('click', (e) => {
+    const b = e.target.closest('[role=checkbox]');
+    if (b) toggle(pickedEfforts, b.dataset.value, b);
+  });
+  $('bgTestTools').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-tests]');
+    if (!b || !state) return;
+    pickedKinds.clear();
+    // With skipping on, "all" means every test still missing one of the
+    // picked levels for this model.
+    const keys = skipTested.checked ? testedKeys() : null;
+    const effs = effortsInOrder();
+    if (b.dataset.tests === 'all') state.tests.forEach((t) => {
+      if (!t.manual && (!keys || !effs.length || effs.some((eff) => !isTested(keys, t.kind, eff)))) pickedKinds.add(t.kind);
+    });
+    renderTests();
+    renderModels();
+    autofill();
+  });
   modelsBox.addEventListener('click', (e) => {
     const b = e.target.closest('[role=option]');
     if (b) pickModel(b.dataset.id);
@@ -1910,8 +2277,10 @@ const _bgScript = r'''
     model = modelsFor(key).find((m) => m.id === id) || null;
     modelsBox.querySelectorAll('[role=option]').forEach((b) =>
       b.setAttribute('aria-selected', model && b.dataset.id === id ? 'true' : 'false'));
+    if (multi) renderEfforts();
     autofill();
   });
+  skipTested.addEventListener('change', () => { renderModels(); autofill(); });
   nameBox.addEventListener('input', () => { nameEdited = nameBox.value.trim() !== ''; preview(); });
   vendor.addEventListener('change', () => { vendorEdited = true; preview(); });
   maxTokens.addEventListener('input', () => { maxEdited = true; renderCost(); renderModels(); renderProviders(); });
@@ -1927,6 +2296,9 @@ const _bgScript = r'''
   function openDialog(rep) {
     replace = rep || null;
     if (replace && window.lumaBenchmarkMode) window.lumaBenchmarkMode('scene');
+    // Regenerating rewrites one existing test, so it is always a single run.
+    $('bgRunModeField').hidden = !!replace;
+    if (replace && multi) setMulti(false);
     nameBox.readOnly = !!replace;
     vendor.disabled = !!replace;
     if (replace) {
@@ -1968,6 +2340,7 @@ const _bgScript = r'''
         renderModels();
         if (!status.textContent) status.textContent = 'Pick the model that should write ' + replace.name + '’s test again. The current page is backed up first.';
       } else if (!kind || !s.tests.some((t) => t.kind === kind)) pickTest(s.tests[0].kind);
+      if (multi) setMulti(true);
       search.focus();
     }).catch((e) => { status.textContent = e.message || 'Could not load the keys and tests.'; });
   }
@@ -1979,6 +2352,29 @@ const _bgScript = r'''
     const id = modelId.value.trim();
     if (!key) { status.textContent = 'Pick an API key.'; return; }
     if (!id) { status.textContent = 'Pick a model.'; search.focus(); return; }
+    if (multi) {
+      const kinds = multiTests().map((x) => x.kind);
+      if (!pickedEfforts.size) { status.textContent = 'Pick at least one reasoning level.'; return; }
+      if (!kinds.length) { status.textContent = 'Pick at least one test.'; return; }
+      if (!nameBox.value.trim()) { status.textContent = 'Give the entries a name.'; nameBox.focus(); return; }
+      if (!multiCount()) { status.textContent = 'Every picked test already has a run for ' + nameBox.value.trim() + ' at those levels.'; return; }
+      start.disabled = true;
+      status.textContent = 'Queueing…';
+      post('/admin/benchmarks/generate', {
+        multi: true, upstream: key, model: id, efforts: effortsInOrder(), kinds: kinds,
+        name: nameBox.value.trim(), vendor: vendor.value,
+        maxTokens: Number(maxTokens.value) || undefined,
+        provider: pickedProvider() ? provTag : '',
+        skipTested: !!skipTested.checked,
+      }).then((j) => {
+        start.disabled = false;
+        if (!j.count) { status.textContent = j.message || 'Could not queue the runs.'; return; }
+        nameEdited = vendorEdited = maxEdited = false;
+        dlg.close();
+        poll();
+      }).catch(() => { start.disabled = false; status.textContent = 'Could not queue the runs (network error).'; });
+      return;
+    }
     if (!kind) { status.textContent = 'Pick a test.'; return; }
     if (manualNote) return;
     if (!nameBox.value.trim()) { status.textContent = 'Give the entry a name.'; nameBox.focus(); return; }
@@ -2005,9 +2401,15 @@ const _bgScript = r'''
   });
 
   const PHASE = { connecting: 'Connecting', thinking: 'Thinking', writing: 'Writing', saving: 'Saving', compacting: 'Retrying more compactly',
+    retrying: 'Upstream failed, retrying',
     submitting: 'Submitting', queued: 'Queued', generating: 'In batch' };
   function renderRuns(jobs) {
-    runsBox.innerHTML = (jobs || []).map((j) => {
+    lastJobs = jobs || [];
+    const queued = lastJobs.filter((j) => j.waiting && !j.batchId).length;
+    const going = lastJobs.filter((j) => j.status === 'running' && !j.waiting).length;
+    const head = queued ? '<div class="bg-queue"><span><b>' + going + '</b> running · <b>' + queued + '</b> queued'
+      + ' · 3 run at a time</span><button type="button" class="btn btn-ghost btn-sm" data-queue="cancel">Cancel queued</button></div>' : '';
+    runsBox.innerHTML = head + lastJobs.map((j) => {
       const running = j.status === 'running';
       const took = elapsed((j.finishedAtMs || Date.now()) - j.startedAtMs);
       const badge = running ? '<span class="badge warn">' + esc(PHASE[j.phase] || 'Running') + '</span>'
@@ -2026,7 +2428,8 @@ const _bgScript = r'''
         bits.push('Cost ≈ ' + usd(((j.tokens - out) * jp.input + out * jp.output) / 1e6));
       }
       if (j.autoCompact) bits.push('Automatic compact retry: ' + j.compactAttempt + ' / 2');
-      bits.push('Output cap: ' + (j.outputCapSent === false ? 'provider default (requested ' + kfmt(j.maxTokens) + ')' : kfmt(j.maxTokens)));
+      if (j.upstreamRetries) bits.push('Upstream retries: ' + j.upstreamRetries + ' / ' + (j.upstreamRetryLimit || 2));
+      bits.push('Output cap: ' + (j.outputCapSent === false ? (j.autoCompact ? 'none (model maximum)' : 'provider default (requested ' + kfmt(j.maxTokens) + ')') : kfmt(j.maxTokens)));
       if (j.batch && running) bits.push('OpenRouter batch ' + (j.batchStatus || 'not submitted yet').replace(/_/g, ' '));
       bits.push(took);
       let pub = '';
@@ -2058,6 +2461,8 @@ const _bgScript = r'''
         + (running ? '<div class="bg-bar" role="progressbar" aria-label="' + esc(j.name) + ' is running"></div>' : '')
         + '<div class="bg-run-line">' + esc(bits.join(' · ') + pub) + '</div>'
         + (j.resultReason ? '<div class="bg-run-line">Reason: ' + esc(j.resultReason) + '</div>' : '')
+        + (running && j.retryReason ? '<div class="bg-run-line">Last upstream failure: ' + esc(j.retryReason) + '</div>' : '')
+        + (!running && j.status !== 'done' && j.retryReasons && j.retryReasons.length ? '<div class="bg-run-line">Before restarting: ' + esc(j.retryReasons.join(' · ')) + '</div>' : '')
         + (j.validation ? '<div class="bg-run-line">Validation: ' + esc(j.validation) + '</div>' : '')
         + (!running ? '<div class="bg-run-line">Finish reason: ' + esc(j.finishReason || 'Unknown')
           + (j.nativeFinishReason ? ' · Provider finish reason: ' + esc(j.nativeFinishReason) : '') + '</div>' : '')
@@ -2067,6 +2472,14 @@ const _bgScript = r'''
     return (jobs || []).some((j) => j.status === 'running');
   }
   runsBox.addEventListener('click', (e) => {
+    const q = e.target.closest('button[data-queue]');
+    if (q) {
+      const n = lastJobs.filter((j) => j.waiting && !j.batchId).length;
+      if (!n || !confirm('Cancel the ' + n + ' queued run' + (n === 1 ? '' : 's') + '? Runs already going carry on.')) return;
+      q.disabled = true;
+      post('/admin/benchmarks/generate/cancel-queued').then(poll, poll);
+      return;
+    }
     const b = e.target.closest('button[data-act]');
     if (!b) return;
     const id = b.closest('.bg-run').dataset.id;

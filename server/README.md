@@ -260,6 +260,15 @@ SwiftShader. The defaults are unprivileged unused group IDs (65534 and 65533;
 compose rejects two identical entries) rather than guessed host group IDs;
 adapt device names to those present on the host.
 
+Each render is a Chromium of its own, and on SwiftShader every frame it draws
+costs CPU. Three settings keep that bounded: the container is capped at
+`LUMA_RENDERER_CPUS` cores (default 2); at most `LUMA_RENDERER_CONCURRENCY`
+scenes render at once and the rest queue (default half the cores, at most 2);
+and scenes draw at most `LUMA_PREVIEW_MAX_FPS` frames a second while they settle
+(default 20; Pagoda scenes are held at 10 by `shot_control.mjs`). The service
+also remembers which WebGL backend worked, so it does not launch Chromium once
+per candidate backend on every render.
+
 Scene requests are intercepted: HTML and pinned Three.js versions, model-viewer
 and Tween.js are supplied from local files. Other HTTP requests, local files,
 frames and forms are blocked. A dead browser proxy also blocks worker and

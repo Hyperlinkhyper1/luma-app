@@ -8,6 +8,7 @@ import 'package:luma_sync_server/ai_price_guard.dart';
 import 'package:luma_sync_server/ai_usage_store.dart';
 import 'package:luma_sync_server/api.dart';
 import 'package:luma_sync_server/benchmark_generate.dart';
+import 'package:luma_sync_server/benchmark_prompts.dart';
 import 'package:luma_sync_server/benchmark_repair.dart';
 import 'package:luma_sync_server/chat_store.dart';
 import 'package:luma_sync_server/family_store.dart';
@@ -51,6 +52,8 @@ class RepairRenderer extends PreviewRenderService {
 class RepairAccounts implements Store {
   @override
   final Map<String, String> userIdByEmail = {};
+  @override
+  Future<void> logActivity(String kind, String detail) async {}
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
@@ -1087,6 +1090,45 @@ const s = "y";
       expect(calls, 1);
       expect(renderer.failureFor('pagoda_demo'), isNotNull);
     });
+    test('adding a pagoda with an API key sends the expanded default prompt',
+        () async {
+      final upstream = _BenchmarkPromptRequest();
+      await HttpOverrides.runZoned(() async {
+        final state = await request('GET', '/admin/benchmarks/generate');
+        final pagoda = (state['tests'] as List)
+            .cast<Map>()
+            .singleWhere((test) => test['kind'] == 'pagoda');
+        final run = await request('POST', '/admin/benchmarks/generate', body: {
+          'upstream': 'openrouter',
+          'model': 'mistralai/mistral-nemo',
+          'kind': 'pagoda',
+          'name': 'Nemo',
+          'vendor': 'mistralai',
+          'prompt': '',
+        });
+        expect(run['httpStatus'], 200, reason: '$run');
+
+        final body =
+            await upstream.body.future.timeout(const Duration(seconds: 5));
+        final message = (body['messages'] as List).single as Map;
+        expect(message['content'], benchmarkPromptFor('pagoda'));
+        expect(message['content'], pagoda['prompt']);
+        expect(message['content'], contains('144×128 cells'));
+        expect(message['content'], contains('bamboo forest'));
+        expect(message['content'], contains('three separate pools'));
+        expect(message['content'], contains('raked Zen garden'));
+
+        Map result = {};
+        final deadline = DateTime.now().add(const Duration(seconds: 5));
+        do {
+          result = await request(
+              'GET', '/admin/benchmarks/generate/${run['id']}/result');
+          if (result['httpStatus'] == 200) break;
+          await Future<void>.delayed(const Duration(milliseconds: 20));
+        } while (DateTime.now().isBefore(deadline));
+        expect(result['httpStatus'], 200, reason: '$result');
+      }, createHttpClient: (_) => _BenchmarkPromptClient(upstream));
+    });
     test('regenerating checks the test exists, matches and is not busy',
         () async {
       await save();
@@ -1109,6 +1151,113 @@ const s = "y";
       expect(busy['httpStatus'], 409, reason: '$busy');
       hold!.complete();
       await finished();
+    });
+    test('multi-test queues every test at every effort, 3 running at once',
+        () async {
+      final previous = HttpOverrides.current;
+      HttpOverrides.global = _OfflineHttp();
+      final ids = <String>{};
+      List<Map> ours(Map state) => [
+            for (final j in (state['jobs'] as List).cast<Map>())
+              if (ids.contains(j['id'])) j
+          ];
+      try {
+        Future<Map> multi(Map<String, Object?> extra) =>
+            request('POST', '/admin/benchmarks/generate', body: {
+              'multi': true,
+              'upstream': 'openrouter',
+              'model': 'mistralai/mistral-nemo',
+              'name': 'Nemo',
+              'vendor': 'mistralai',
+              ...extra,
+            });
+        final noEffort = await multi({
+          'efforts': [],
+          'kinds': ['pagoda']
+        });
+        expect(noEffort['httpStatus'], 400, reason: '$noEffort');
+        final regen = await multi({
+          'efforts': ['low'],
+          'kinds': ['pagoda'],
+          'replaceId': 'pagoda_demo',
+        });
+        expect(regen['httpStatus'], 400, reason: '$regen');
+
+        final queued = await multi({
+          'efforts': ['low', 'high', ''],
+          'kinds': ['pagoda', 'galaxy'],
+        });
+        expect(queued['httpStatus'], 200, reason: '$queued');
+        expect(queued['count'], 6);
+        final jobs = (queued['jobs'] as List).cast<Map>();
+        ids.addAll([for (final j in jobs) j['id'] as String]);
+        expect(ids, hasLength(6));
+        expect([
+          for (final j in jobs) '${j['name']} · ${j['kind']}'
+        ], [
+          'Nemo (Low) · pagoda',
+          'Nemo (Low) · galaxy',
+          'Nemo (High) · pagoda',
+          'Nemo (High) · galaxy',
+          'Nemo · pagoda',
+          'Nemo · galaxy',
+        ]);
+        expect({for (final j in jobs) j['sceneId']}, hasLength(6));
+        // No max output given: no cap is sent, and compact retries are on.
+        expect([for (final j in jobs) j['outputCapSent']], everyElement(false));
+        expect([for (final j in jobs) j['autoCompact']], everyElement(true));
+        expect([for (final j in jobs) j['waiting']],
+            [false, false, false, true, true, true]);
+
+        final cancelled =
+            await request('POST', '/admin/benchmarks/generate/cancel-queued');
+        expect(cancelled['httpStatus'], 200, reason: '$cancelled');
+        final after = ours(await request('GET', '/admin/benchmarks/generate'));
+        expect(after.where((j) => j['waiting'] == true), isEmpty);
+
+        // Skipping what is already tested: the roster has a pagoda test
+        // for "Original model" at the model's default effort.
+        final state = await request('GET', '/admin/benchmarks/generate');
+        expect(state['tested'], contains('pagoda|original model'));
+        final allTested = await multi({
+          'name': 'Original model',
+          'efforts': [''],
+          'kinds': ['pagoda'],
+          'skipTested': true,
+        });
+        expect(allTested['httpStatus'], 409, reason: '$allTested');
+        final rest = await multi({
+          'name': 'Original model',
+          'efforts': [''],
+          'kinds': ['pagoda', 'galaxy'],
+          'skipTested': true,
+        });
+        expect(rest['httpStatus'], 200, reason: '$rest');
+        expect(rest['count'], 1);
+        expect(rest['skipped'], 1);
+        final restJobs = (rest['jobs'] as List).cast<Map>();
+        ids.addAll([for (final j in restJobs) j['id'] as String]);
+        expect(restJobs.single['kind'], 'galaxy');
+      } finally {
+        var state = await request('GET', '/admin/benchmarks/generate');
+        for (final j in ours(state)) {
+          if (j['status'] == 'running') {
+            await request('POST', '/admin/benchmarks/generate/${j['id']}/stop');
+          }
+        }
+        for (var n = 0;
+            n < 300 && ours(state).any((j) => j['status'] == 'running');
+            n++) {
+          await Future<void>.delayed(const Duration(milliseconds: 10));
+          state = await request('GET', '/admin/benchmarks/generate');
+        }
+        for (final j in ours(state)) {
+          await request(
+              'POST', '/admin/benchmarks/generate/${j['id']}/dismiss');
+        }
+        HttpOverrides.global = previous;
+      }
+      expect(ours(await request('GET', '/admin/benchmarks/generate')), isEmpty);
     });
     test('an edit that unbalances the brackets is dropped, not built on',
         () async {
@@ -1528,4 +1677,67 @@ const s = "y";
       });
     });
   });
+}
+
+/// Refuses every outgoing connection, so a run started by a test fails at
+/// once instead of reaching a real upstream.
+class _OfflineHttp extends HttpOverrides {
+  @override
+  HttpClient createHttpClient(SecurityContext? context) =>
+      super.createHttpClient(context)
+        ..connectionFactory = (uri, proxyHost, proxyPort) =>
+            Future.error(const SocketException('offline in tests'));
+}
+
+class _BenchmarkPromptClient implements HttpClient {
+  _BenchmarkPromptClient(this.request);
+
+  final _BenchmarkPromptRequest request;
+
+  @override
+  Future<HttpClientRequest> postUrl(Uri url) async => request;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
+}
+
+class _BenchmarkPromptRequest implements HttpClientRequest {
+  final body = Completer<Map<String, dynamic>>();
+
+  @override
+  final HttpHeaders headers = _BenchmarkPromptHeaders();
+
+  @override
+  void add(List<int> bytes) {
+    body.complete(jsonDecode(utf8.decode(bytes)) as Map<String, dynamic>);
+  }
+
+  @override
+  Future<HttpClientResponse> close() async => _BenchmarkPromptResponse();
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
+}
+
+class _BenchmarkPromptHeaders implements HttpHeaders {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
+}
+
+class _BenchmarkPromptResponse extends Stream<List<int>>
+    implements HttpClientResponse {
+  @override
+  int get statusCode => HttpStatus.badRequest;
+
+  @override
+  final HttpHeaders headers = _BenchmarkPromptHeaders();
+
+  @override
+  StreamSubscription<List<int>> listen(void Function(List<int>)? onData,
+          {Function? onError, void Function()? onDone, bool? cancelOnError}) =>
+      const Stream<List<int>>.empty().listen(onData,
+          onError: onError, onDone: onDone, cancelOnError: cancelOnError);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
 }

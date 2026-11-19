@@ -65,3 +65,67 @@ List<FlSpot> monotoneCs2ChartSpots(List<FlSpot> spots) {
   }
   return result;
 }
+
+/// Horizontal pixels each plotted point gets once a history is denser than
+/// the chart can show. Readings closer than this are averaged together.
+const double kCs2ChartPixelsPerPoint = 6;
+
+/// Readings need at least this much horizontal room between them before
+/// each one is marked with a dot; any closer and the dots merge into a
+/// beaded smear, so the chart draws the line alone.
+const double kCs2ChartMinDotGap = 14;
+
+/// Averages [spots] (oldest first) into equal-width time buckets so no more
+/// than one point lands in each [kCs2ChartPixelsPerPoint] of [plotWidth].
+/// The first and last spots are kept exactly, so the line still starts and
+/// ends on real values; a history sparse enough to fit is returned as is.
+List<FlSpot> thinCs2ChartSpots(List<FlSpot> spots, double plotWidth) {
+  final maxPoints = math.max(3, plotWidth ~/ kCs2ChartPixelsPerPoint);
+  if (spots.length <= maxPoints) return spots;
+  final first = spots.first;
+  final last = spots.last;
+  final span = last.x - first.x;
+  if (span <= 0) return [first, last];
+  final buckets = maxPoints - 2;
+  final xs = List<double>.filled(buckets, 0);
+  final ys = List<double>.filled(buckets, 0);
+  final counts = List<int>.filled(buckets, 0);
+  for (var i = 1; i < spots.length - 1; i++) {
+    final index = ((spots[i].x - first.x) / span * buckets).floor().clamp(
+      0,
+      buckets - 1,
+    );
+    xs[index] += spots[i].x;
+    ys[index] += spots[i].y;
+    counts[index]++;
+  }
+  return [
+    first,
+    for (var i = 0; i < buckets; i++)
+      if (counts[i] > 0) FlSpot(xs[i] / counts[i], ys[i] / counts[i]),
+    last,
+  ];
+}
+
+/// Whether every pair of neighbouring [spots] sits at least
+/// [kCs2ChartMinDotGap] pixels apart on a [plotWidth]-wide axis running from
+/// [minX] to [maxX] — i.e. whether a dot per reading reads as points rather
+/// than clutter.
+bool cs2ChartDotsFit(
+  List<FlSpot> spots,
+  double minX,
+  double maxX,
+  double plotWidth,
+) {
+  if (spots.length < 2) return true;
+  final span = maxX - minX;
+  if (span <= 0 || plotWidth <= 0) return false;
+  if (spots.length * kCs2ChartMinDotGap > plotWidth) return false;
+  final pxPerUnit = plotWidth / span;
+  for (var i = 1; i < spots.length; i++) {
+    if ((spots[i].x - spots[i - 1].x) * pxPerUnit < kCs2ChartMinDotGap) {
+      return false;
+    }
+  }
+  return true;
+}

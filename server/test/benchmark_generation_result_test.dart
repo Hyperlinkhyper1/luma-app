@@ -84,7 +84,7 @@ void main() {
 
   test('provider failures cannot pass with partial or complete output', () {
     for (final reply in ['', partial, page]) {
-      for (final code in [429, 503, 502, 529, 401, 500]) {
+      for (final code in [429, 503, 502, 529, 401, 500, 504]) {
         final status = benchmarkGenerationResult(
                 reply: reply, httpStatus: code, error: 'Provider error')
             .status;
@@ -94,7 +94,16 @@ void main() {
                 ? 'RATE_LIMITED'
                 : [502, 503, 529].contains(code)
                     ? 'PROVIDER_BUSY'
-                    : 'MODEL_ERROR');
+                    : [500, 504].contains(code)
+                        ? 'PROVIDER_ERROR'
+                        : 'MODEL_ERROR');
+      }
+      for (final message in [
+        'Upstream idle timeout exceeded',
+        'Upstream error from Ant Digital: Server error. Please try again later.',
+      ]) {
+        expect(benchmarkGenerationResult(reply: reply, error: message).status,
+            'PROVIDER_ERROR');
       }
       expect(
           benchmarkGenerationResult(reply: reply, error: 'Stream error').status,

@@ -82,6 +82,12 @@ services:
     shm_size: 512mb
     pids_limit: 512
     mem_limit: 4g
+    # Hard ceiling on the headless Chromium renders, so a batch of banners
+    # can never take the whole machine.
+    cpus: ${LUMA_RENDERER_CPUS:-2}
+    environment:
+      LUMA_RENDERER_CONCURRENCY: ${LUMA_RENDERER_CONCURRENCY:-}
+      LUMA_PREVIEW_MAX_FPS: ${LUMA_PREVIEW_MAX_FPS:-20}
     # Remove this mapping on a host without a GPU; SwiftShader is automatic.
     devices:
       - /dev/dri:/dev/dri

@@ -27,6 +27,7 @@ import '../notes/notes_repository.dart';
 import 'account/assistant_panels.dart';
 import 'ai_key_store.dart';
 import 'assistant_compose_mode.dart';
+import 'assistant_greeting.dart';
 import 'assistant_files.dart';
 import 'local_model_store.dart';
 import 'ai_tools.dart';
@@ -1443,19 +1444,6 @@ class _HomeView extends StatelessWidget {
     final luma = context.luma;
     final t = L.of(context);
     final name = _displayName(context, syncService);
-    final hour = DateTime.now().hour;
-    final greeting = hour < 12
-        ? (name == null
-              ? t.assistantGreetingMorning
-              : t.assistantGreetingMorningName(name))
-        : hour < 18
-        ? (name == null
-              ? t.assistantGreetingAfternoon
-              : t.assistantGreetingAfternoonName(name))
-        : (name == null
-              ? t.assistantGreetingEvening
-              : t.assistantGreetingEveningName(name));
-
     final suggestions = [
       (
         Icons.extension_rounded,
@@ -1498,8 +1486,8 @@ class _HomeView extends StatelessWidget {
                       const ChatMoon(size: 40),
                       const SizedBox(width: 14),
                       Flexible(
-                        child: Text(
-                          greeting,
+                        child: AssistantGreeting(
+                          name: name,
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             color: luma.textPrimary,

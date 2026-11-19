@@ -122,6 +122,70 @@ class PreviewRenderStatus {
 ///
 /// Separately from the dashboard, `LUMA_PREVIEW_RENDER=1` lets [kick] render
 /// missing banners unprompted.
+/// Why a scene's banner last failed to render, remembered across jobs and
+/// restarts until the scene renders again.
+class RenderFailure {
+  RenderFailure({
+    required this.error,
+    required this.atMs,
+    required this.firstAtMs,
+    this.count = 1,
+    this.notes = '',
+    this.sceneFault = true,
+    this.mode,
+  });
+
+  /// The renderer's reason, e.g. `TimeoutError: no canvas (console error:
+  /// ReferenceError: THREE is not defined)`.
+  final String error;
+
+  /// What the renderer noted about the scene before it failed.
+  final String notes;
+
+  /// The latest and the first failure of the current streak, and how many
+  /// renders in a row have failed. Zero times come from older files.
+  int atMs;
+  final int firstAtMs;
+  int count;
+
+  /// False when the renderer, not the scene, gave out.
+  final bool sceneFault;
+
+  /// Which kind of job hit it (`missing`, `all`, `selected`).
+  final String? mode;
+
+  Map<String, dynamic> toJson() => {
+        'error': error,
+        if (notes.isNotEmpty) 'notes': notes,
+        'atMs': atMs,
+        'firstAtMs': firstAtMs,
+        'count': count,
+        'sceneFault': sceneFault,
+        if (mode != null) 'mode': mode,
+      };
+
+  /// Reads a saved entry; older files kept just the error string.
+  static RenderFailure? fromJson(Object? raw) {
+    if (raw is String) {
+      return raw.trim().isEmpty
+          ? null
+          : RenderFailure(error: raw, atMs: 0, firstAtMs: 0);
+    }
+    if (raw is! Map || raw['error'] is! String) return null;
+    int number(Object? v) => v is num ? v.toInt() : 0;
+    final count = number(raw['count']);
+    return RenderFailure(
+      error: raw['error'] as String,
+      notes: raw['notes'] is String ? raw['notes'] as String : '',
+      atMs: number(raw['atMs']),
+      firstAtMs: number(raw['firstAtMs']),
+      count: count < 1 ? 1 : count,
+      sceneFault: raw['sceneFault'] != false,
+      mode: raw['mode'] is String ? raw['mode'] as String : null,
+    );
+  }
+}
+
 /// Where a scene's script first fails to parse, counted in the HTML file.
 typedef SourceProblem = ({int line, int column, String message});
 
@@ -612,10 +676,14 @@ class PreviewRenderService {
 
             await render().timeout(const Duration(minutes: 10));
           } catch (e) {
+            final notes = item.detail;
             item
               ..state = status.stopped ? 'skipped' : 'failed'
               ..detail = status.stopped ? '' : '$e';
-            if (!status.stopped) recordFailure(id, item.detail);
+            if (!status.stopped) {
+              recordFailure(id, item.detail,
+                  notes: notes, sceneFault: e is! SocketException);
+            }
           } finally {
             item
               ..stage = ''
@@ -634,8 +702,16 @@ class PreviewRenderService {
       for (final item in status.items) {
         if (item.state == 'queued' || item.state == 'rendering') {
           item.state = status.stopped ? 'skipped' : 'failed';
+          if (!status.stopped) {
+            if (item.detail.isEmpty) {
+              item.detail = status.error ?? 'renderer job ended first';
+            }
+            recordFailure(item.id, item.detail,
+                sceneFault: false, save: false);
+          }
         }
       }
+      if (!status.stopped) _saveFailures();
       status
         ..running = false
         ..finishedAtMs = DateTime.now().millisecondsSinceEpoch;
@@ -647,23 +723,24 @@ class PreviewRenderService {
     }
   }
 
-  Map<String, String>? _failures;
+  Map<String, RenderFailure>? _failures;
 
   File get _failuresFile => File('$dataDir${Platform.pathSeparator}'
       'preview_render_failures.json');
 
-  Map<String, String> get _failureMap {
+  Map<String, RenderFailure> get _failureMap {
     final cached = _failures;
     if (cached != null) return cached;
-    final loaded = <String, String>{};
+    final loaded = <String, RenderFailure>{};
     try {
       final file = _failuresFile;
       if (file.existsSync()) {
         final raw = jsonDecode(file.readAsStringSync());
         if (raw is Map) {
           for (final e in raw.entries) {
-            if (e.key is String && e.value is String) {
-              loaded[e.key as String] = e.value as String;
+            final failure = RenderFailure.fromJson(e.value);
+            if (e.key is String && failure != null) {
+              loaded[e.key as String] = failure;
             }
           }
         }
@@ -678,11 +755,19 @@ class PreviewRenderService {
   /// rendered since. Kept on disk because a render job's own status is
   /// replaced by the next job (a repaired scene queues one), and a repair
   /// needs the error long after the job that hit it.
-  String? failureFor(String id) => _failureMap[id];
+  String? failureFor(String id) => _failureMap[id]?.error;
 
-  /// Recorded errors for scenes that still exist, so a deleted test doesn't
-  /// linger as something to repair.
-  Future<Map<String, String>> recordedFailures() async {
+  /// Recorded errors the scene itself caused, for scenes that still exist:
+  /// a deleted test doesn't linger as something to repair, and a renderer
+  /// crash is never handed to a repair model as the scene's fault.
+  Future<Map<String, String>> recordedFailures() async => {
+        for (final e in (await failureRecords()).entries)
+          if (e.value.sceneFault) e.key: e.value.error,
+      };
+
+  /// Every remembered render problem for scenes that still exist, for the
+  /// admin dashboard: what went wrong, when, and how many renders in a row.
+  Future<Map<String, RenderFailure>> failureRecords() async {
     final known = {
       for (final c in await (await _store()).previewCoverage()) c.id,
     };
@@ -692,18 +777,47 @@ class PreviewRenderService {
     };
   }
 
-  void recordFailure(String id, String? detail) {
+  /// Remembers why [id] failed to render, or forgets it when [detail] is
+  /// null or empty (it rendered). [notes] are what the renderer said about
+  /// the scene before it failed. [sceneFault] is false when the renderer
+  /// itself gave out (crash, unreachable service): that is still shown, but
+  /// never replaces a scene error already on record.
+  void recordFailure(String id, String? detail,
+      {String notes = '', bool sceneFault = true, bool save = true}) {
     final map = _failureMap;
     final text = detail?.trim() ?? '';
+    final now = DateTime.now().millisecondsSinceEpoch;
     if (text.isEmpty) {
       if (map.remove(id) == null) return;
     } else {
-      if (map[id] == text) return;
-      map[id] = text;
+      final before = map[id];
+      if (before != null && before.sceneFault && !sceneFault) {
+        before
+          ..count += 1
+          ..atMs = now;
+      } else {
+        map[id] = RenderFailure(
+          error: text,
+          notes: notes.trim(),
+          atMs: now,
+          firstAtMs:
+              before == null || before.firstAtMs == 0 ? now : before.firstAtMs,
+          count: (before?.count ?? 0) + 1,
+          sceneFault: sceneFault,
+          mode: status.mode?.name,
+        );
+      }
     }
+    if (save) _saveFailures();
+  }
+
+  void _saveFailures() {
+    final map = _failureMap;
     try {
       final tmp = File('${_failuresFile.path}.tmp');
-      tmp.writeAsStringSync(jsonEncode(map), flush: true);
+      tmp.writeAsStringSync(
+          jsonEncode({for (final e in map.entries) e.key: e.value.toJson()}),
+          flush: true);
       tmp.renameSync(_failuresFile.path);
     } catch (_) {
       // Still remembered in memory; the next change tries the disk again.
@@ -769,12 +883,14 @@ class PreviewRenderService {
         recordFailure(ok.group(1)!, null);
         current = null;
       } else if (fail != null) {
-        _item(fail.group(1)!)
+        final failed = _item(fail.group(1)!);
+        final notes = failed?.detail ?? '';
+        failed
           ?..state = 'failed'
           ..detail = fail.group(2)!
           ..stage = ''
           ..finishedAtMs = now;
-        recordFailure(fail.group(1)!, fail.group(2)!);
+        recordFailure(fail.group(1)!, fail.group(2)!, notes: notes);
         current = null;
       } else if (step != null) {
         _item(step.group(1)!)
@@ -800,19 +916,26 @@ class PreviewRenderService {
     }).asFuture<void>();
     final code = await process.exitCode;
     await Future.wait([out, err]).catchError((_) => const <void>[]);
-    for (final item in status.items) {
-      if (item.state == 'queued' || item.state == 'rendering') {
-        item.state = status.stopped ? 'skipped' : 'failed';
-        if (!status.stopped && item.detail.isEmpty) {
-          item.detail = 'renderer exited before this scene';
-        }
-      }
-    }
     if (code != 0 && !status.stopped) {
       status.error = lastError.isNotEmpty
           ? lastError
           : 'The renderer exited with code $code.';
     }
+    for (final item in status.items) {
+      if (item.state == 'queued' || item.state == 'rendering') {
+        final wasRendering = item.state == 'rendering';
+        item.state = status.stopped ? 'skipped' : 'failed';
+        if (status.stopped) continue;
+        final notes = item.detail;
+        item.detail = wasRendering
+            ? 'renderer exited while rendering this scene'
+            : 'renderer exited before this scene';
+        if (status.error case final error?) item.detail += ': $error';
+        recordFailure(item.id, item.detail,
+            notes: notes, sceneFault: false, save: false);
+      }
+    }
+    if (!status.stopped) _saveFailures();
     status
       ..running = false
       ..finishedAtMs = DateTime.now().millisecondsSinceEpoch;

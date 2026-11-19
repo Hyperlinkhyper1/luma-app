@@ -1632,6 +1632,102 @@ class LZh extends L {
   }
 
   @override
+  String get assistantGreetingNight1 => '还在挑灯夜战？';
+
+  @override
+  String assistantGreetingNight1Name(String name) {
+    return '还在挑灯夜战吗，$name？';
+  }
+
+  @override
+  String get assistantGreetingNight2 => '你好呀，夜猫子';
+
+  @override
+  String assistantGreetingNight2Name(String name) {
+    return '你好呀，夜猫子$name';
+  }
+
+  @override
+  String get assistantGreetingNight3 => '还没睡？我也是';
+
+  @override
+  String assistantGreetingNight3Name(String name) {
+    return '还没睡吗，$name？我也是';
+  }
+
+  @override
+  String get assistantGreetingMorning1 => '起床啦，新的一天';
+
+  @override
+  String assistantGreetingMorning1Name(String name) {
+    return '起床啦，$name';
+  }
+
+  @override
+  String get assistantGreetingMorning2 => '早！先来杯咖啡？';
+
+  @override
+  String assistantGreetingMorning2Name(String name) {
+    return '早，$name！先来杯咖啡？';
+  }
+
+  @override
+  String get assistantGreetingMorning3 => '新的一天，新的灵感';
+
+  @override
+  String assistantGreetingMorning3Name(String name) {
+    return '新的一天，新的灵感，$name';
+  }
+
+  @override
+  String get assistantGreetingAfternoon1 => '下午好！在忙什么呢？';
+
+  @override
+  String assistantGreetingAfternoon1Name(String name) {
+    return '下午好，$name！在忙什么呢？';
+  }
+
+  @override
+  String get assistantGreetingAfternoon2 => '下午犯困了吗？';
+
+  @override
+  String assistantGreetingAfternoon2Name(String name) {
+    return '下午犯困了吗，$name？';
+  }
+
+  @override
+  String get assistantGreetingAfternoon3 => '嘿，随时为你效劳';
+
+  @override
+  String assistantGreetingAfternoon3Name(String name) {
+    return '嘿，$name，随时为你效劳';
+  }
+
+  @override
+  String get assistantGreetingEvening1 => '晚上好！放松一下？';
+
+  @override
+  String assistantGreetingEvening1Name(String name) {
+    return '晚上好，$name！放松一下？';
+  }
+
+  @override
+  String get assistantGreetingEvening2 => '月亮出来啦';
+
+  @override
+  String assistantGreetingEvening2Name(String name) {
+    return '月亮出来啦，$name';
+  }
+
+  @override
+  String get assistantGreetingEvening3 => '睡前再来一个点子？';
+
+  @override
+  String assistantGreetingEvening3Name(String name) {
+    return '睡前再来一个点子吗，$name？';
+  }
+
+  @override
   String get assistantHowCanIHelp => '今天有什么可以帮你？';
 
   @override

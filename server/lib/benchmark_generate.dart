@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -31,30 +32,198 @@ Future<T> retryBenchmarkCompacted<T>(
   }
 }
 
-/// Restarts one interrupted transport without joining two generated pages.
-/// Provider errors and completed model responses are never retried.
+/// How long to wait before each automatic restart of a run whose upstream
+/// failed on its own end; its length is the number of restarts.
+const kBenchmarkRetryBackoff = [Duration(seconds: 20), Duration(seconds: 60)];
+
+/// The waits used instead when the upstream answered 429 without saying how
+/// long to wait: free endpoints rate-limit for minutes, not seconds, so the
+/// regular backoff only spends the restart on another 429.
+const kBenchmarkRateLimitBackoff = [Duration(minutes: 2), Duration(minutes: 5)];
+
+/// The longest a restart waits, whatever `Retry-After` asks for.
+const kBenchmarkMaxRetryWait = Duration(minutes: 10);
+
+/// How long to wait before restart [attempt] (0-based) of a run whose last
+/// request failed. A rate-limited request honours the upstream's
+/// `Retry-After` (seconds or an HTTP date), else [kBenchmarkRateLimitBackoff];
+/// anything else keeps [planned].
+Duration benchmarkRetryWait({
+  required int attempt,
+  required Duration planned,
+  required bool rateLimited,
+  String? retryAfter,
+  DateTime? now,
+}) {
+  if (!rateLimited) return planned;
+  Duration? asked;
+  final value = retryAfter?.trim();
+  if (value != null && value.isNotEmpty) {
+    final seconds = int.tryParse(value);
+    if (seconds != null) {
+      asked = Duration(seconds: seconds);
+    } else {
+      try {
+        asked = HttpDate.parse(value).difference(now ?? DateTime.now());
+      } on Object {
+        asked = null;
+      }
+    }
+  }
+  final fallback = kBenchmarkRateLimitBackoff[
+      attempt.clamp(0, kBenchmarkRateLimitBackoff.length - 1)];
+  var wait = asked ?? fallback;
+  if (wait < planned) wait = planned;
+  return wait > kBenchmarkMaxRetryWait ? kBenchmarkMaxRetryWait : wait;
+}
+
+/// The result of a streamed run that ended in a timeout. [total] is the
+/// run's overall deadline, otherwise the upstream sent nothing for [idle].
+/// Neither is the model's fault, so neither is a MODEL_ERROR; [failures]
+/// are the upstream failures that made the run start over first.
+({String status, String reason}) benchmarkTimeoutResult({
+  required bool total,
+  required Duration idle,
+  required Duration limit,
+  List<String> failures = const [],
+}) {
+  final history = failures.isEmpty
+      ? ''
+      : ' after ${failures.length} restart${failures.length == 1 ? '' : 's'} '
+          '(${failures.join('; ')})';
+  return total
+      ? (
+          status: 'TIMED_OUT',
+          reason: 'The run passed its ${limit.inMinutes}-minute limit before '
+              'the page was finished$history.'
+        )
+      : (
+          status: 'PROVIDER_ERROR',
+          reason: 'The upstream sent nothing for ${idle.inMinutes} '
+              'minutes$history.'
+        );
+}
+
+/// The message of the [TimeoutException] a run throws once it passes its
+/// overall deadline. Unlike an idle timeout, it is never retried.
+const kBenchmarkTotalTimeout = 'total';
+
+const _transientStatuses = {
+  408,
+  429,
+  500,
+  502,
+  503,
+  504,
+  520,
+  521,
+  522,
+  523,
+  524,
+  529
+};
+const _permanentStatuses = {400, 401, 402, 403, 404, 405, 413, 422};
+final _transientMessage = RegExp(
+    r'time ?out|timed out|server error|try again|temporarily|overloaded|'
+    r'unavailable|bad gateway|gateway|internal error|connection (reset|closed|error)',
+    caseSensitive: false);
+
+/// Whether a provider failure is the upstream's own trouble (overloaded,
+/// timed out, a 5xx) rather than anything about the request, so the same
+/// request is worth sending again.
+bool benchmarkFailureIsTransient({int? httpStatus, String? error}) {
+  if (httpStatus != null && _permanentStatuses.contains(httpStatus)) {
+    return false;
+  }
+  if (httpStatus != null && _transientStatuses.contains(httpStatus)) {
+    return true;
+  }
+  return error != null && _transientMessage.hasMatch(error);
+}
+
+/// Whether [acc] holds an error the upstream reported mid-stream that is
+/// worth retrying.
+bool benchmarkStreamFailedTransiently(ChatStreamAccumulator acc) =>
+    acc.error != null &&
+    benchmarkFailureIsTransient(
+        httpStatus: acc.errorCode ?? acc.providerStatus, error: acc.error);
+
+/// Restarts a request whose upstream failed on its own end: a dropped
+/// connection, an idle timeout, or a 5xx/timeout error (in the response or
+/// mid-stream). Each restart starts over, never joining two generated pages,
+/// and waits out [backoff] first ([waitFor] may lengthen a wait, for a rate
+/// limit say). Request errors and completed model
+/// responses are never retried. [failedTransiently] says whether a returned
+/// result (an HTTP error status, say) is such a failure.
 Future<T> retryBenchmarkStream<T>(
   ChatStreamAccumulator acc,
   Future<T> Function() request, {
   required bool Function() canRetry,
   required Future<void> Function() beforeRetry,
+  bool Function(T result)? failedTransiently,
+  void Function(int retry, Duration wait)? onRetry,
+  Duration Function(int attempt, Duration planned)? waitFor,
+  List<Duration> backoff = kBenchmarkRetryBackoff,
 }) async {
+  bool interrupted() =>
+      !acc.done &&
+      (acc.error == null
+          ? acc.finishReason == null ||
+              acc.finishReason!.toLowerCase() == 'error'
+          : benchmarkStreamFailedTransiently(acc));
+
   for (var attempt = 0;; attempt++) {
+    Object? thrown;
+    StackTrace? trace;
+    late T result;
     try {
-      return await request();
-    } on IOException {
-      if (attempt >= 1 ||
-          !canRetry() ||
-          acc.done ||
-          acc.finishReason != null ||
-          acc.error != null) {
-        rethrow;
+      result = await request();
+      if (!(failedTransiently?.call(result) ?? false) &&
+          !benchmarkStreamFailedTransiently(acc) &&
+          !benchmarkEndedInProviderError(acc)) {
+        return result;
       }
-      await beforeRetry();
-      if (!canRetry()) rethrow;
-      acc.reset();
+    } on IOException catch (e, s) {
+      if (!interrupted()) rethrow;
+      thrown = e;
+      trace = s;
+    } on TimeoutException catch (e, s) {
+      if (e.message == kBenchmarkTotalTimeout || !interrupted()) rethrow;
+      thrown = e;
+      trace = s;
     }
+    T giveUp() {
+      if (thrown != null) Error.throwWithStackTrace(thrown, trace!);
+      return result;
+    }
+
+    if (attempt >= backoff.length || !canRetry()) return giveUp();
+    final wait = waitFor?.call(attempt, backoff[attempt]) ?? backoff[attempt];
+    onRetry?.call(attempt + 1, wait);
+    final until = DateTime.now().add(wait);
+    while (canRetry() && DateTime.now().isBefore(until)) {
+      final left = until.difference(DateTime.now());
+      await Future<void>.delayed(left < const Duration(seconds: 1)
+          ? left
+          : const Duration(seconds: 1));
+    }
+    if (!canRetry()) return giveUp();
+    await beforeRetry();
+    if (!canRetry()) return giveUp();
+    acc.reset();
   }
+}
+
+/// Whether the provider closed the stream with finish reason `error` but no
+/// error message, before a complete page arrived. That is the provider's own
+/// failure (free endpoints do it under load, often mid-reasoning), so the
+/// run is worth starting over like a dropped connection.
+bool benchmarkEndedInProviderError(ChatStreamAccumulator acc) {
+  if (acc.error != null || acc.finishReason?.toLowerCase() != 'error') {
+    return false;
+  }
+  final page = extractBenchmarkHtml(acc.content);
+  return page == null || !benchmarkHtmlComplete(page);
 }
 
 /// EOF without a terminal event is a broken stream, even if HTTP was 200.
@@ -97,6 +266,15 @@ const kBenchmarkEfforts = <String, String>{
   'high': 'High',
   'xhigh': 'Xhigh',
 };
+
+/// What makes two runs the same contestant's test: the test and the entry's
+/// name, ignoring case and spacing at the ends. The dashboard builds the same
+/// key to tell which tests a model still lacks.
+String benchmarkTestedKey(String kind, String name) =>
+    '$kind|${name.trim().toLowerCase()}';
+
+/// The most runs one multi-test request may queue.
+const kBenchmarkMultiMaxRuns = 120;
 
 /// The page in a model's [reply], or null when there is none. Prefers the
 /// longest fenced block that holds a page (models fence despite being told
@@ -205,6 +383,14 @@ BenchmarkGenerationResult benchmarkGenerationResult({
     return (
       status: 'PROVIDER_BUSY',
       reason: error ?? 'Provider temporarily unavailable',
+      validation: validation
+    );
+  }
+  if ((error != null || (httpStatus != null && httpStatus != 200)) &&
+      benchmarkFailureIsTransient(httpStatus: httpStatus, error: error)) {
+    return (
+      status: 'PROVIDER_ERROR',
+      reason: error ?? 'Provider returned HTTP $httpStatus',
       validation: validation
     );
   }

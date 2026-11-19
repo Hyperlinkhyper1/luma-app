@@ -204,177 +204,191 @@ class _PriceChart extends StatelessWidget {
     final minY = math.max(0.0, low - pad);
     final maxY = high + pad;
 
-    return Semantics(
-      label: _chartSummary(series, t),
-      excludeSemantics: true,
-      child: LineChart(
-        duration: reduceMotion
-            ? Duration.zero
-            : const Duration(milliseconds: 220),
-        curve: Curves.easeOutCubic,
-        LineChartData(
-          minX: minX,
-          maxX: maxX == minX ? minX + 1 : maxX,
-          minY: minY,
-          maxY: maxY == minY ? minY + 1 : maxY,
-          clipData: const FlClipData(
-            top: true,
-            bottom: true,
-            left: false,
-            right: false,
-          ),
-          gridData: FlGridData(
-            show: true,
-            drawVerticalLine: false,
-            horizontalInterval: math.max((maxY - minY) / 3, 1),
-            getDrawingHorizontalLine: (_) => FlLine(
-              color: luma.border.withValues(alpha: 0.6),
-              strokeWidth: 1,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final plotWidth = math.max(0.0, constraints.maxWidth - 56);
+        final points = thinCs2ChartSpots([
+          for (final sample in series.samples)
+            FlSpot(
+              sample.at.millisecondsSinceEpoch.toDouble(),
+              sample.priceCents.toDouble(),
             ),
-          ),
-          borderData: FlBorderData(show: false),
-          titlesData: FlTitlesData(
-            topTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
+        ], plotWidth);
+        final lineSpots = monotoneCs2ChartSpots(points);
+        final readings = [
+          for (final sample in series.observations)
+            FlSpot(
+              sample.at.millisecondsSinceEpoch.toDouble(),
+              sample.priceCents.toDouble(),
             ),
-            rightTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            leftTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 56,
-                interval: math.max((maxY - minY) / 3, 1),
-                getTitlesWidget: (value, meta) {
-                  if (value <= meta.min || value >= meta.max) {
-                    return const SizedBox.shrink();
-                  }
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 6),
-                    child: Text(
-                      formatSteamPrice(value.round(), series.currency),
-                      style: TextStyle(
-                        color: luma.textMuted,
-                        fontSize: 10,
-                        fontFeatures: const [FontFeature.tabularFigures()],
-                      ),
-                      textAlign: TextAlign.right,
-                    ),
-                  );
-                },
+        ];
+        final showDots = cs2ChartDotsFit(readings, minX, maxX, plotWidth);
+        return Semantics(
+          label: _chartSummary(series, t),
+          excludeSemantics: true,
+          child: LineChart(
+            duration: reduceMotion
+                ? Duration.zero
+                : const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+            LineChartData(
+              minX: minX,
+              maxX: maxX == minX ? minX + 1 : maxX,
+              minY: minY,
+              maxY: maxY == minY ? minY + 1 : maxY,
+              clipData: const FlClipData(
+                top: true,
+                bottom: true,
+                left: false,
+                right: false,
               ),
-            ),
-            bottomTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 26,
-                interval: math.max((maxX - minX) / 3, 1),
-                getTitlesWidget: (value, meta) {
-                  if (value <= meta.min || value >= meta.max) {
-                    return const SizedBox.shrink();
-                  }
-                  final at = DateTime.fromMillisecondsSinceEpoch(value.toInt());
-                  return Padding(
-                    padding: const EdgeInsets.only(top: 6),
-                    child: Text(
-                      _axisLabel(series.range, at),
-                      style: TextStyle(color: luma.textMuted, fontSize: 10),
-                    ),
-                  );
-                },
+              gridData: FlGridData(
+                show: true,
+                drawVerticalLine: false,
+                horizontalInterval: math.max((maxY - minY) / 3, 1),
+                getDrawingHorizontalLine: (_) => FlLine(
+                  color: luma.border.withValues(alpha: 0.6),
+                  strokeWidth: 1,
+                ),
               ),
-            ),
-          ),
-          lineTouchData: LineTouchData(
-            getTouchedSpotIndicator: (bar, indexes) => [
-              for (final _ in indexes)
-                if (!bar.dotData.show)
-                  null
-                else
-                  TouchedSpotIndicatorData(
-                    FlLine(color: luma.textMuted, strokeWidth: 1),
-                    FlDotData(
-                      getDotPainter: (spot, percent, bar, index) =>
-                          FlDotCirclePainter(
-                            radius: 5,
-                            color: luma.accent,
-                            strokeWidth: 2,
-                            strokeColor: luma.surface,
-                          ),
-                    ),
-                  ),
-            ],
-            touchTooltipData: LineTouchTooltipData(
-              getTooltipColor: (_) => luma.rail,
-              tooltipRoundedRadius: 8,
-              fitInsideHorizontally: true,
-              fitInsideVertically: true,
-              getTooltipItems: (spots) => [
-                for (final spot in spots)
-                  spot.barIndex == 0
-                      ? null
-                      : LineTooltipItem(
-                          '${formatSteamPrice(spot.y.round(), series.currency)}\n'
-                          '${DateFormat('d MMM, HH:mm').format(DateTime.fromMillisecondsSinceEpoch(spot.x.toInt()))}',
-                          TextStyle(
-                            color: luma.textPrimary,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
+              borderData: FlBorderData(show: false),
+              titlesData: FlTitlesData(
+                topTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                leftTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 56,
+                    interval: math.max((maxY - minY) / 3, 1),
+                    getTitlesWidget: (value, meta) {
+                      if (value <= meta.min || value >= meta.max) {
+                        return const SizedBox.shrink();
+                      }
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 6),
+                        child: Text(
+                          formatSteamPrice(value.round(), series.currency),
+                          style: TextStyle(
+                            color: luma.textMuted,
+                            fontSize: 10,
                             fontFeatures: const [FontFeature.tabularFigures()],
                           ),
+                          textAlign: TextAlign.right,
                         ),
-              ],
-            ),
-          ),
-          lineBarsData: [
-            LineChartBarData(
-              spots: monotoneCs2ChartSpots([
-                for (final sample in series.samples)
-                  FlSpot(
-                    sample.at.millisecondsSinceEpoch.toDouble(),
-                    sample.priceCents.toDouble(),
+                      );
+                    },
                   ),
-              ]),
-              isStrokeCapRound: true,
-              isStrokeJoinRound: true,
-              color: luma.accent,
-              barWidth: 2.5,
-              dotData: const FlDotData(show: false),
-              belowBarData: BarAreaData(
-                show: true,
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    luma.accent.withValues(alpha: 0.22),
-                    luma.accent.withValues(alpha: 0.02),
+                ),
+                bottomTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 26,
+                    interval: math.max((maxX - minX) / 3, 1),
+                    getTitlesWidget: (value, meta) {
+                      if (value <= meta.min || value >= meta.max) {
+                        return const SizedBox.shrink();
+                      }
+                      final at = DateTime.fromMillisecondsSinceEpoch(
+                        value.toInt(),
+                      );
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Text(
+                          _axisLabel(series.range, at),
+                          style: TextStyle(color: luma.textMuted, fontSize: 10),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+              lineTouchData: LineTouchData(
+                getTouchedSpotIndicator: (bar, indexes) => [
+                  for (final _ in indexes)
+                    if (!bar.dotData.show)
+                      null
+                    else
+                      TouchedSpotIndicatorData(
+                        FlLine(color: luma.textMuted, strokeWidth: 1),
+                        FlDotData(
+                          getDotPainter: (spot, percent, bar, index) =>
+                              FlDotCirclePainter(
+                                radius: 5,
+                                color: luma.accent,
+                                strokeWidth: 2,
+                                strokeColor: luma.surface,
+                              ),
+                        ),
+                      ),
+                ],
+                touchTooltipData: LineTouchTooltipData(
+                  getTooltipColor: (_) => luma.rail,
+                  tooltipRoundedRadius: 8,
+                  fitInsideHorizontally: true,
+                  fitInsideVertically: true,
+                  getTooltipItems: (spots) => [
+                    for (final spot in spots)
+                      spot.barIndex == 0
+                          ? null
+                          : LineTooltipItem(
+                              '${formatSteamPrice(spot.y.round(), series.currency)}\n'
+                              '${DateFormat('d MMM, HH:mm').format(DateTime.fromMillisecondsSinceEpoch(spot.x.toInt()))}',
+                              TextStyle(
+                                color: luma.textPrimary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                fontFeatures: const [
+                                  FontFeature.tabularFigures(),
+                                ],
+                              ),
+                            ),
                   ],
                 ),
               ),
-            ),
-            LineChartBarData(
-              spots: [
-                for (final sample in series.observations)
-                  FlSpot(
-                    sample.at.millisecondsSinceEpoch.toDouble(),
-                    sample.priceCents.toDouble(),
-                  ),
-              ],
-              color: luma.accent.withValues(alpha: 0),
-              barWidth: 0,
-              dotData: FlDotData(
-                getDotPainter: (spot, percent, bar, index) =>
-                    FlDotCirclePainter(
-                      radius: 3,
-                      color: luma.accent,
-                      strokeWidth: 2,
-                      strokeColor: luma.surface,
+              lineBarsData: [
+                LineChartBarData(
+                  spots: lineSpots,
+                  isStrokeCapRound: true,
+                  isStrokeJoinRound: true,
+                  color: luma.accent,
+                  barWidth: 2.5,
+                  dotData: const FlDotData(show: false),
+                  belowBarData: BarAreaData(
+                    show: true,
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        luma.accent.withValues(alpha: 0.22),
+                        luma.accent.withValues(alpha: 0.02),
+                      ],
                     ),
-              ),
+                  ),
+                ),
+                LineChartBarData(
+                  spots: showDots ? readings : points,
+                  color: luma.accent.withValues(alpha: 0),
+                  barWidth: 0,
+                  dotData: FlDotData(
+                    checkToShowDot: (_, _) => showDots,
+                    getDotPainter: (spot, percent, bar, index) =>
+                        FlDotCirclePainter(
+                          radius: 3,
+                          color: luma.accent,
+                          strokeWidth: 2,
+                          strokeColor: luma.surface,
+                        ),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
@@ -431,187 +445,201 @@ class _GainLossChart extends StatelessWidget {
     final gain = (series.currentDeltaCents ?? 0) >= 0;
     final lineColor = gain ? luma.success : luma.danger;
 
-    return Semantics(
-      label: _gainLossSummary(series, t),
-      excludeSemantics: true,
-      child: LineChart(
-        duration: reduceMotion
-            ? Duration.zero
-            : const Duration(milliseconds: 220),
-        curve: Curves.easeOutCubic,
-        LineChartData(
-          minX: minX,
-          maxX: maxX == minX ? minX + 1 : maxX,
-          minY: minY,
-          maxY: maxY == minY ? minY + 1 : maxY,
-          clipData: const FlClipData(
-            top: true,
-            bottom: true,
-            left: false,
-            right: false,
-          ),
-          gridData: FlGridData(
-            show: true,
-            drawVerticalLine: false,
-            horizontalInterval: math.max((maxY - minY) / 3, 1),
-            getDrawingHorizontalLine: (_) => FlLine(
-              color: luma.border.withValues(alpha: 0.6),
-              strokeWidth: 1,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final plotWidth = math.max(0.0, constraints.maxWidth - 56);
+        final points = thinCs2ChartSpots([
+          for (final sample in series.samples)
+            FlSpot(
+              sample.at.millisecondsSinceEpoch.toDouble(),
+              sample.deltaCents.toDouble(),
             ),
-          ),
-          extraLinesData: ExtraLinesData(
-            horizontalLines: [
-              HorizontalLine(
-                y: 0,
-                color: luma.textMuted.withValues(alpha: 0.6),
-                strokeWidth: 1,
-                dashArray: const [5, 4],
+        ], plotWidth);
+        final lineSpots = monotoneCs2ChartSpots(points);
+        final readings = [
+          for (final sample in series.observations)
+            FlSpot(
+              sample.at.millisecondsSinceEpoch.toDouble(),
+              sample.deltaCents.toDouble(),
+            ),
+        ];
+        final showDots = cs2ChartDotsFit(readings, minX, maxX, plotWidth);
+        return Semantics(
+          label: _gainLossSummary(series, t),
+          excludeSemantics: true,
+          child: LineChart(
+            duration: reduceMotion
+                ? Duration.zero
+                : const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+            LineChartData(
+              minX: minX,
+              maxX: maxX == minX ? minX + 1 : maxX,
+              minY: minY,
+              maxY: maxY == minY ? minY + 1 : maxY,
+              clipData: const FlClipData(
+                top: true,
+                bottom: true,
+                left: false,
+                right: false,
               ),
-            ],
-          ),
-          borderData: FlBorderData(show: false),
-          titlesData: FlTitlesData(
-            topTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            rightTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            leftTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 56,
-                interval: math.max((maxY - minY) / 3, 1),
-                getTitlesWidget: (value, meta) {
-                  if (value <= meta.min || value >= meta.max) {
-                    return const SizedBox.shrink();
-                  }
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 6),
-                    child: Text(
-                      _formatDelta(value.round(), series.currency),
-                      style: TextStyle(
-                        color: luma.textMuted,
-                        fontSize: 10,
-                        fontFeatures: const [FontFeature.tabularFigures()],
-                      ),
-                      textAlign: TextAlign.right,
-                    ),
-                  );
-                },
+              gridData: FlGridData(
+                show: true,
+                drawVerticalLine: false,
+                horizontalInterval: math.max((maxY - minY) / 3, 1),
+                getDrawingHorizontalLine: (_) => FlLine(
+                  color: luma.border.withValues(alpha: 0.6),
+                  strokeWidth: 1,
+                ),
               ),
-            ),
-            bottomTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 26,
-                interval: math.max((maxX - minX) / 3, 1),
-                getTitlesWidget: (value, meta) {
-                  if (value <= meta.min || value >= meta.max) {
-                    return const SizedBox.shrink();
-                  }
-                  final at = DateTime.fromMillisecondsSinceEpoch(value.toInt());
-                  return Padding(
-                    padding: const EdgeInsets.only(top: 6),
-                    child: Text(
-                      _axisLabel(series.range, at),
-                      style: TextStyle(color: luma.textMuted, fontSize: 10),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ),
-          lineTouchData: LineTouchData(
-            getTouchedSpotIndicator: (bar, indexes) => [
-              for (final _ in indexes)
-                if (!bar.dotData.show)
-                  null
-                else
-                  TouchedSpotIndicatorData(
-                    FlLine(color: luma.textMuted, strokeWidth: 1),
-                    FlDotData(
-                      getDotPainter: (spot, percent, bar, index) =>
-                          FlDotCirclePainter(
-                            radius: 5,
-                            color: lineColor,
-                            strokeWidth: 2,
-                            strokeColor: luma.surface,
-                          ),
-                    ),
+              extraLinesData: ExtraLinesData(
+                horizontalLines: [
+                  HorizontalLine(
+                    y: 0,
+                    color: luma.textMuted.withValues(alpha: 0.6),
+                    strokeWidth: 1,
+                    dashArray: const [5, 4],
                   ),
-            ],
-            touchTooltipData: LineTouchTooltipData(
-              getTooltipColor: (_) => luma.rail,
-              tooltipRoundedRadius: 8,
-              fitInsideHorizontally: true,
-              fitInsideVertically: true,
-              getTooltipItems: (spots) => [
-                for (final spot in spots)
-                  spot.barIndex == 0
-                      ? null
-                      : LineTooltipItem(
-                          '${_formatDelta(spot.y.round(), series.currency)}\n'
-                          '${DateFormat('d MMM, HH:mm').format(DateTime.fromMillisecondsSinceEpoch(spot.x.toInt()))}',
-                          TextStyle(
-                            color: luma.textPrimary,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
+                ],
+              ),
+              borderData: FlBorderData(show: false),
+              titlesData: FlTitlesData(
+                topTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                leftTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 56,
+                    interval: math.max((maxY - minY) / 3, 1),
+                    getTitlesWidget: (value, meta) {
+                      if (value <= meta.min || value >= meta.max) {
+                        return const SizedBox.shrink();
+                      }
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 6),
+                        child: Text(
+                          _formatDelta(value.round(), series.currency),
+                          style: TextStyle(
+                            color: luma.textMuted,
+                            fontSize: 10,
                             fontFeatures: const [FontFeature.tabularFigures()],
                           ),
+                          textAlign: TextAlign.right,
                         ),
-              ],
-            ),
-          ),
-          lineBarsData: [
-            LineChartBarData(
-              spots: monotoneCs2ChartSpots([
-                for (final sample in series.samples)
-                  FlSpot(
-                    sample.at.millisecondsSinceEpoch.toDouble(),
-                    sample.deltaCents.toDouble(),
+                      );
+                    },
                   ),
-              ]),
-              isStrokeCapRound: true,
-              isStrokeJoinRound: true,
-              color: lineColor,
-              barWidth: 2.5,
-              dotData: const FlDotData(show: false),
-              belowBarData: BarAreaData(
-                show: true,
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    lineColor.withValues(alpha: 0.22),
-                    lineColor.withValues(alpha: 0.02),
+                ),
+                bottomTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 26,
+                    interval: math.max((maxX - minX) / 3, 1),
+                    getTitlesWidget: (value, meta) {
+                      if (value <= meta.min || value >= meta.max) {
+                        return const SizedBox.shrink();
+                      }
+                      final at = DateTime.fromMillisecondsSinceEpoch(
+                        value.toInt(),
+                      );
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Text(
+                          _axisLabel(series.range, at),
+                          style: TextStyle(color: luma.textMuted, fontSize: 10),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+              lineTouchData: LineTouchData(
+                getTouchedSpotIndicator: (bar, indexes) => [
+                  for (final _ in indexes)
+                    if (!bar.dotData.show)
+                      null
+                    else
+                      TouchedSpotIndicatorData(
+                        FlLine(color: luma.textMuted, strokeWidth: 1),
+                        FlDotData(
+                          getDotPainter: (spot, percent, bar, index) =>
+                              FlDotCirclePainter(
+                                radius: 5,
+                                color: lineColor,
+                                strokeWidth: 2,
+                                strokeColor: luma.surface,
+                              ),
+                        ),
+                      ),
+                ],
+                touchTooltipData: LineTouchTooltipData(
+                  getTooltipColor: (_) => luma.rail,
+                  tooltipRoundedRadius: 8,
+                  fitInsideHorizontally: true,
+                  fitInsideVertically: true,
+                  getTooltipItems: (spots) => [
+                    for (final spot in spots)
+                      spot.barIndex == 0
+                          ? null
+                          : LineTooltipItem(
+                              '${_formatDelta(spot.y.round(), series.currency)}\n'
+                              '${DateFormat('d MMM, HH:mm').format(DateTime.fromMillisecondsSinceEpoch(spot.x.toInt()))}',
+                              TextStyle(
+                                color: luma.textPrimary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                fontFeatures: const [
+                                  FontFeature.tabularFigures(),
+                                ],
+                              ),
+                            ),
                   ],
                 ),
               ),
-            ),
-            LineChartBarData(
-              spots: [
-                for (final sample in series.observations)
-                  FlSpot(
-                    sample.at.millisecondsSinceEpoch.toDouble(),
-                    sample.deltaCents.toDouble(),
-                  ),
-              ],
-              color: lineColor.withValues(alpha: 0),
-              barWidth: 0,
-              dotData: FlDotData(
-                getDotPainter: (spot, percent, bar, index) =>
-                    FlDotCirclePainter(
-                      radius: 3,
-                      color: lineColor,
-                      strokeWidth: 2,
-                      strokeColor: luma.surface,
+              lineBarsData: [
+                LineChartBarData(
+                  spots: lineSpots,
+                  isStrokeCapRound: true,
+                  isStrokeJoinRound: true,
+                  color: lineColor,
+                  barWidth: 2.5,
+                  dotData: const FlDotData(show: false),
+                  belowBarData: BarAreaData(
+                    show: true,
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        lineColor.withValues(alpha: 0.22),
+                        lineColor.withValues(alpha: 0.02),
+                      ],
                     ),
-              ),
+                  ),
+                ),
+                LineChartBarData(
+                  spots: showDots ? readings : points,
+                  color: lineColor.withValues(alpha: 0),
+                  barWidth: 0,
+                  dotData: FlDotData(
+                    checkToShowDot: (_, _) => showDots,
+                    getDotPainter: (spot, percent, bar, index) =>
+                        FlDotCirclePainter(
+                          radius: 3,
+                          color: lineColor,
+                          strokeWidth: 2,
+                          strokeColor: luma.surface,
+                        ),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 

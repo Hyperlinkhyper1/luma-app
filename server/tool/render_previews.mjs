@@ -41,11 +41,16 @@ const execFileAsync = promisify(execFile);
 // runs on the GPU when Chromium can reach one (d3d11 on Windows, EGL or
 // Vulkan over /dev/dri on Linux — the Docker service maps it in) and falls
 // back to SwiftShader on the CPU otherwise; --gpu off forces software.
+// --backend <key> tries that backend first (the isolated renderer passes the
+// one the last render settled on, so it is not re-probed every time).
+// --max-fps N (default 20, or $LUMA_PREVIEW_MAX_FPS; 0 for no cap) caps how
+// often a non-Pagoda scene may draw; Pagoda scenes are capped by
+// shot_control.
 //
 // Prints one `START <id>` and one `OK   <id>` / `FAIL <id>: <reason>` line
 // per scene, `STEP <id> <0–1> <what>` and `NOTE <id> <text>` lines while one
-// renders, and one `RENDERER <backend>` line; the server follows progress by
-// those lines.
+// renders, and one `RENDERER <backend>` and `BACKEND <key>` line; the server
+// follows progress by those lines.
 
 const W = 1120;
 const H = 700;
@@ -486,6 +491,43 @@ async function sceneClip(page) {
   return { x, y, width, height };
 }
 
+// Nobody watches these frames live, so a scene may draw at most maxFps times
+// a second: on SwiftShader every frame costs real CPU, and the long settle
+// waits below would otherwise spend a core each on frames that are thrown
+// away. Callbacks still run inside a real animation frame, so clock-driven
+// animation keeps its speed (in coarser steps) and a scene's own errors are
+// reported where they happen.
+function capFrameRate(maxFps) {
+  const realRAF = window.requestAnimationFrame.bind(window);
+  const realCancel = window.cancelAnimationFrame.bind(window);
+  const realNow = performance.now.bind(performance);
+  const gap = 1000 / maxFps;
+  let lastFrame = -Infinity;
+  let seq = 0;
+  const live = new Map();
+  const enter = (id, cb) => {
+    live.set(id, { raf: realRAF((t) => {
+      live.delete(id);
+      if (t > lastFrame) lastFrame = t;
+      cb(t);
+    }) });
+  };
+  window.requestAnimationFrame = (cb) => {
+    const id = ++seq;
+    const wait = lastFrame + gap - realNow();
+    if (wait <= 0) enter(id, cb);
+    else live.set(id, { timer: setTimeout(() => enter(id, cb), wait) });
+    return id;
+  };
+  window.cancelAnimationFrame = (id) => {
+    const entry = live.get(id);
+    if (!entry) return;
+    live.delete(id);
+    if (entry.timer) clearTimeout(entry.timer);
+    else realCancel(entry.raf);
+  };
+}
+
 // Takes away the one WebGL option that turns a slow-but-working context
 // (SwiftShader, or a GPU Chromium half-trusts) into "WebGL is unavailable".
 function relaxWebGl() {
@@ -646,18 +688,26 @@ async function shootPc(page) {
 // when a probe page actually gets a hardware WebGL context from it.
 function backends() {
   const gpu = (arg('gpu', 'auto') || 'auto').toLowerCase();
-  const software = { name: 'software', args: ['--enable-unsafe-swiftshader', '--use-angle=swiftshader'] };
+  const software = { name: 'software', key: 'swiftshader', args: ['--enable-unsafe-swiftshader', '--use-angle=swiftshader'] };
   if (gpu === 'off' || gpu === '0' || gpu === 'false') return [software];
   const hardware = ['--ignore-gpu-blocklist', '--enable-gpu-rasterization'];
+  let list;
   if (process.platform === 'win32') {
-    return [{ name: 'gpu', args: [...hardware, '--use-angle=d3d11'] }, software];
+    list = [{ name: 'gpu', key: 'd3d11', args: [...hardware, '--use-angle=d3d11'] }, software];
+  } else if (process.platform === 'linux' && !fs.existsSync('/dev/dri')) {
+    return [software];
+  } else {
+    list = [
+      { name: 'gpu', key: 'gl-egl', args: [...hardware, '--use-gl=angle', '--use-angle=gl-egl'] },
+      { name: 'gpu', key: 'vulkan', args: [...hardware, '--use-angle=vulkan', '--enable-features=Vulkan', '--disable-vulkan-surface'] },
+      software,
+    ];
   }
-  if (process.platform === 'linux' && !fs.existsSync('/dev/dri')) return [software];
-  return [
-    { name: 'gpu', args: [...hardware, '--use-gl=angle', '--use-angle=gl-egl'] },
-    { name: 'gpu', args: [...hardware, '--use-angle=vulkan', '--enable-features=Vulkan', '--disable-vulkan-surface'] },
-    software,
-  ];
+  // Each probe is a whole Chromium launch; the one that worked last time
+  // goes first, the rest stay behind it in case it no longer does.
+  const preferred = list.findIndex((b) => b.key === arg('backend'));
+  if (preferred > 0) list.unshift(...list.splice(preferred, 1));
+  return list;
 }
 
 // The WebGL renderer string a blank page gets, or null without WebGL.
@@ -838,6 +888,7 @@ async function main() {
         chosen = backend;
         browser = b;
         console.log(`RENDERER ${backend.name} · ${gl}`);
+        console.log(`BACKEND ${backend.key}`);
         break;
       }
       console.log(`  ${backend.name} backend ${backend.args.at(-1)} unusable: ${gl ? `software fallback (${gl})` : 'no WebGL'}`);
@@ -855,6 +906,7 @@ async function main() {
   const jobs = Math.max(1, Math.min(ids.length,
     Number.parseInt(arg('jobs', process.env.LUMA_PREVIEW_JOBS ?? '2'), 10) || 1));
   const browsers = [browser];
+  const maxFps = Number.parseFloat(arg('max-fps', process.env.LUMA_PREVIEW_MAX_FPS ?? '20'));
 
   const renderScene = async (id, worker) => {
     console.log(`START ${id}`);
@@ -918,6 +970,7 @@ async function main() {
       const framing = framingOf(id);
       // Engine and PC scenes keep their own clock; with a saved framing
       // they get just the camera hook.
+      if (kind !== 'pagoda' && maxFps > 0) await page.evaluateOnNewDocument(capFrameRate, maxFps);
       if (kind !== 'cathedral') await page.evaluateOnNewDocument(relaxWebGl);
       if (kind === 'pagoda') await page.evaluateOnNewDocument(installShotControl);
       else if (framing) await page.evaluateOnNewDocument(installShotControl, { clock: false });

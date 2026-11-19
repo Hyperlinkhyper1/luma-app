@@ -5,7 +5,7 @@
 /// already on the roster for that test, and the thinking on top of it is a
 /// multiple of the page that grows with the reasoning effort.
 ///
-/// Calibrated on real pagoda runs (prompt ≈ 1.35k tokens, median page ≈ 11k):
+/// Calibrated on earlier pagoda runs (prompt ≈ 1.35k tokens, median page ≈ 11k):
 /// Gemini Argon 4 used 25k output tokens at low and 40k at xhigh; MiMo V2.5,
 /// Solar 4 Pro and Muse Wonder used 48k, 46k and 33k at xhigh. Models that
 /// don't reason (Nova Micro, Mercury 2.5) wrote 1–6k. The steps between low
@@ -14,8 +14,8 @@
 /// page-writing task spends a larger share on the answer than their evals do.
 library;
 
-/// Prompt characters per input token. The pagoda prompt is 4,764
-/// characters and was billed as 1.3–1.4k tokens.
+/// Prompt characters per input token. An earlier 4,764-character pagoda
+/// prompt was billed as 1.3–1.4k tokens.
 const double kBenchmarkPromptCharsPerToken = 3.5;
 
 /// Page bytes per output token (HTML, CSS and JavaScript).

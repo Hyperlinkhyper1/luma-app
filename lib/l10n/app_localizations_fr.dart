@@ -1720,6 +1720,102 @@ class LFr extends L {
   }
 
   @override
+  String get assistantGreetingNight1 => 'On veille tard ?';
+
+  @override
+  String assistantGreetingNight1Name(String name) {
+    return 'On veille tard, $name ?';
+  }
+
+  @override
+  String get assistantGreetingNight2 => 'Salut, oiseau de nuit';
+
+  @override
+  String assistantGreetingNight2Name(String name) {
+    return 'Salut, oiseau de nuit $name';
+  }
+
+  @override
+  String get assistantGreetingNight3 => 'Encore debout ? Moi aussi';
+
+  @override
+  String assistantGreetingNight3Name(String name) {
+    return 'Encore debout, $name ? Moi aussi';
+  }
+
+  @override
+  String get assistantGreetingMorning1 => 'Debout là-dedans !';
+
+  @override
+  String assistantGreetingMorning1Name(String name) {
+    return 'Debout là-dedans, $name !';
+  }
+
+  @override
+  String get assistantGreetingMorning2 => 'Salut ! Un café d\'abord ?';
+
+  @override
+  String assistantGreetingMorning2Name(String name) {
+    return 'Salut, $name ! Un café d\'abord ?';
+  }
+
+  @override
+  String get assistantGreetingMorning3 => 'Nouveau jour, nouvelles idées';
+
+  @override
+  String assistantGreetingMorning3Name(String name) {
+    return 'Nouveau jour, nouvelles idées, $name';
+  }
+
+  @override
+  String get assistantGreetingAfternoon1 => 'Salut ! On prépare quoi ?';
+
+  @override
+  String assistantGreetingAfternoon1Name(String name) {
+    return 'Salut, $name ! On prépare quoi ?';
+  }
+
+  @override
+  String get assistantGreetingAfternoon2 => 'Un petit coup de mou ?';
+
+  @override
+  String assistantGreetingAfternoon2Name(String name) {
+    return 'Un petit coup de mou, $name ?';
+  }
+
+  @override
+  String get assistantGreetingAfternoon3 => 'Hé, prêt quand tu l\'es';
+
+  @override
+  String assistantGreetingAfternoon3Name(String name) {
+    return 'Hé $name, prêt quand tu l\'es';
+  }
+
+  @override
+  String get assistantGreetingEvening1 => 'Bonsoir ! On se détend ?';
+
+  @override
+  String assistantGreetingEvening1Name(String name) {
+    return 'Bonsoir, $name ! On se détend ?';
+  }
+
+  @override
+  String get assistantGreetingEvening2 => 'La lune est de sortie';
+
+  @override
+  String assistantGreetingEvening2Name(String name) {
+    return 'La lune est de sortie, $name';
+  }
+
+  @override
+  String get assistantGreetingEvening3 => 'Une dernière idée avant de dormir ?';
+
+  @override
+  String assistantGreetingEvening3Name(String name) {
+    return 'Une dernière idée avant de dormir, $name ?';
+  }
+
+  @override
   String get assistantHowCanIHelp =>
       'Comment puis-je vous aider aujourd\'hui ?';
 
