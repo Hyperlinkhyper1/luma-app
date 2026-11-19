@@ -81,6 +81,13 @@ if(TARGET hotkey_manager_linux_plugin)
   target_compile_options(hotkey_manager_linux_plugin PRIVATE -Wno-sometimes-uninitialized)
 endif()
 
+# Plugin libraries are installed into lib/ beside what they bundle, so the
+# app-wide $ORIGIN/lib above points one level too deep for them. Only the
+# ONNX Runtime plugin needs a library nothing else has loaded first.
+if(TARGET flutter_onnxruntime_plugin)
+  set_target_properties(flutter_onnxruntime_plugin PROPERTIES INSTALL_RPATH "$ORIGIN")
+endif()
+
 
 # === Installation ===
 # By default, "installing" just makes a relocatable bundle in the build
@@ -111,6 +118,13 @@ foreach(bundled_library ${PLUGIN_BUNDLED_LIBRARIES})
   install(FILES "${bundled_library}"
     DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
     COMPONENT Runtime)
+  # A plugin can bundle libfoo.so while the loader asks for its soname
+  # libfoo.so.1 (flutter_onnxruntime does). Ship that link next to it.
+  if(EXISTS "${bundled_library}.1")
+    install(FILES "${bundled_library}.1"
+      DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
+      COMPONENT Runtime)
+  endif()
 endforeach(bundled_library)
 
 # Copy the native assets provided by the build.dart from all packages.

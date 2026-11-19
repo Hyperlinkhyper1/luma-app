@@ -235,11 +235,25 @@ jobs:
           cp -r "$pkg/build/native/include/." "$out/include/"
           cp "$pkg/runtimes/linux-x64/native/"* "$out/lib/"
           rm -rf "$pkg" "$RUNNER_TEMP/onnxruntime.nupkg"
+          # The plugin links by soname, which the GitHub tarball shipped as a
+          # link and the NuGet package does not; linux/CMakeLists.txt bundles it.
+          ln -sf libonnxruntime.so "$out/lib/libonnxruntime.so.1"
           test -f "$out/include/onnxruntime_cxx_api.h"
           test -f "$out/lib/libonnxruntime.so"
+          objdump -p "$out/lib/libonnxruntime.so" | grep -q 'SONAME *libonnxruntime\.so\.1$'
 
       - name: Build Linux release
         run: flutter build linux --release --no-pub --no-tree-shake-icons --dart-define=APP_VERSION=${{ steps.ver.outputs.version }}
+
+      # A bundled library the loader can't find only shows up when someone
+      # starts the app; catch it here instead. ldd on the executable walks
+      # every plugin's dependencies the way the loader will at startup.
+      - name: Check Linux bundle libraries resolve
+        run: |
+          set -euo pipefail
+          deps=$(ldd build/linux/x64/release/bundle/luma)
+          echo "$deps"
+          if grep -q 'not found' <<<"$deps"; then echo "::error::luma has unresolved libraries"; exit 1; fi
 
       - name: Set up Minecraft version engine Java
         uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
