@@ -8,6 +8,7 @@ import 'package:luma_sync_server/ai_price_guard.dart';
 import 'package:luma_sync_server/ai_usage_store.dart';
 import 'package:luma_sync_server/api.dart';
 import 'package:luma_sync_server/benchmark_generate.dart';
+import 'package:luma_sync_server/benchmark_prompts.dart';
 import 'package:luma_sync_server/benchmark_repair.dart';
 import 'package:luma_sync_server/chat_store.dart';
 import 'package:luma_sync_server/family_store.dart';
@@ -1089,6 +1090,45 @@ const s = "y";
       expect(calls, 1);
       expect(renderer.failureFor('pagoda_demo'), isNotNull);
     });
+    test('adding a pagoda with an API key sends the expanded default prompt',
+        () async {
+      final upstream = _BenchmarkPromptRequest();
+      await HttpOverrides.runZoned(() async {
+        final state = await request('GET', '/admin/benchmarks/generate');
+        final pagoda = (state['tests'] as List)
+            .cast<Map>()
+            .singleWhere((test) => test['kind'] == 'pagoda');
+        final run = await request('POST', '/admin/benchmarks/generate', body: {
+          'upstream': 'openrouter',
+          'model': 'mistralai/mistral-nemo',
+          'kind': 'pagoda',
+          'name': 'Nemo',
+          'vendor': 'mistralai',
+          'prompt': '',
+        });
+        expect(run['httpStatus'], 200, reason: '$run');
+
+        final body =
+            await upstream.body.future.timeout(const Duration(seconds: 5));
+        final message = (body['messages'] as List).single as Map;
+        expect(message['content'], benchmarkPromptFor('pagoda'));
+        expect(message['content'], pagoda['prompt']);
+        expect(message['content'], contains('144×128 cells'));
+        expect(message['content'], contains('bamboo forest'));
+        expect(message['content'], contains('three separate pools'));
+        expect(message['content'], contains('raked Zen garden'));
+
+        Map result = {};
+        final deadline = DateTime.now().add(const Duration(seconds: 5));
+        do {
+          result = await request(
+              'GET', '/admin/benchmarks/generate/${run['id']}/result');
+          if (result['httpStatus'] == 200) break;
+          await Future<void>.delayed(const Duration(milliseconds: 20));
+        } while (DateTime.now().isBefore(deadline));
+        expect(result['httpStatus'], 200, reason: '$result');
+      }, createHttpClient: (_) => _BenchmarkPromptClient(upstream));
+    });
     test('regenerating checks the test exists, matches and is not busy',
         () async {
       await save();
@@ -1647,4 +1687,57 @@ class _OfflineHttp extends HttpOverrides {
       super.createHttpClient(context)
         ..connectionFactory = (uri, proxyHost, proxyPort) =>
             Future.error(const SocketException('offline in tests'));
+}
+
+class _BenchmarkPromptClient implements HttpClient {
+  _BenchmarkPromptClient(this.request);
+
+  final _BenchmarkPromptRequest request;
+
+  @override
+  Future<HttpClientRequest> postUrl(Uri url) async => request;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
+}
+
+class _BenchmarkPromptRequest implements HttpClientRequest {
+  final body = Completer<Map<String, dynamic>>();
+
+  @override
+  final HttpHeaders headers = _BenchmarkPromptHeaders();
+
+  @override
+  void add(List<int> bytes) {
+    body.complete(jsonDecode(utf8.decode(bytes)) as Map<String, dynamic>);
+  }
+
+  @override
+  Future<HttpClientResponse> close() async => _BenchmarkPromptResponse();
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
+}
+
+class _BenchmarkPromptHeaders implements HttpHeaders {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
+}
+
+class _BenchmarkPromptResponse extends Stream<List<int>>
+    implements HttpClientResponse {
+  @override
+  int get statusCode => HttpStatus.badRequest;
+
+  @override
+  final HttpHeaders headers = _BenchmarkPromptHeaders();
+
+  @override
+  StreamSubscription<List<int>> listen(void Function(List<int>)? onData,
+          {Function? onError, void Function()? onDone, bool? cancelOnError}) =>
+      const Stream<List<int>>.empty().listen(onData,
+          onError: onError, onDone: onDone, cancelOnError: cancelOnError);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
 }

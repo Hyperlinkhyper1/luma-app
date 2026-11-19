@@ -209,6 +209,74 @@ void main() {
       expect(service().failureFor('pagoda_lacks'), isNull);
     });
 
+    test('remembers when, how often and with what notes a scene failed',
+        () async {
+      final s = service();
+      await s.start(PreviewRenderMode.missing);
+      process.line('START pagoda_lacks');
+      process.line('NOTE pagoda_lacks framed from above');
+      process.line('FAIL pagoda_lacks: TimeoutError: no canvas');
+      await process.exit(0);
+      await settle();
+      final first = (await s.failureRecords())['pagoda_lacks']!;
+      expect(first.error, 'TimeoutError: no canvas');
+      expect(first.notes, 'framed from above');
+      expect(first.count, 1);
+      expect(first.sceneFault, isTrue);
+      expect(first.mode, 'missing');
+      expect(first.atMs, greaterThan(0));
+
+      await s.start(PreviewRenderMode.selected, only: ['pagoda_lacks']);
+      process.line('START pagoda_lacks');
+      process.line('FAIL pagoda_lacks: ReferenceError: THREE is not defined');
+      await process.exit(0);
+      await settle();
+      final again = (await service().failureRecords())['pagoda_lacks']!;
+      expect(again.error, 'ReferenceError: THREE is not defined');
+      expect(again.count, 2);
+      expect(again.firstAtMs, first.firstAtMs);
+    });
+
+    test('a renderer crash is shown per scene but never sent to repair',
+        () async {
+      final s = service();
+      await s.start(PreviewRenderMode.missing);
+      process.line('START pagoda_lacks');
+      await process.exit(1);
+      await settle();
+      final records = await s.failureRecords();
+      expect(records.keys, containsAll(['pagoda_lacks', 'engine_lacks']));
+      expect(records['pagoda_lacks']!.sceneFault, isFalse);
+      expect(records['pagoda_lacks']!.error,
+          startsWith('renderer exited while rendering this scene'));
+      expect(records['engine_lacks']!.error,
+          startsWith('renderer exited before this scene'));
+      expect(await s.recordedFailures(), isEmpty);
+    });
+
+    test('a renderer crash keeps the scene error already on record', () async {
+      final s = service();
+      s.recordFailure('pagoda_lacks', 'SyntaxError: Unexpected token');
+      await s.start(PreviewRenderMode.selected, only: ['pagoda_lacks']);
+      await process.exit(1);
+      await settle();
+      final record = (await s.failureRecords())['pagoda_lacks']!;
+      expect(record.error, 'SyntaxError: Unexpected token');
+      expect(record.sceneFault, isTrue);
+      expect(record.count, 2);
+      expect(await s.recordedFailures(),
+          {'pagoda_lacks': 'SyntaxError: Unexpected token'});
+    });
+
+    test('reads failure files written before times were kept', () async {
+      await File('${dir.path}/preview_render_failures.json')
+          .writeAsString(jsonEncode({'pagoda_lacks': 'old error'}));
+      final record = (await service().failureRecords())['pagoda_lacks']!;
+      expect(record.error, 'old error');
+      expect(record.atMs, 0);
+      expect(record.sceneFault, isTrue);
+    });
+
     test('keeps notes with their scene when two render side by side', () async {
       final s = service();
       await s.start(PreviewRenderMode.missing);
@@ -225,6 +293,7 @@ void main() {
       expect(engine.detail, isEmpty);
       expect(engine.stage, 'letting it draw');
       await process.exit(0);
+      await settle();
     });
 
     test('follows the renderer scene by scene', () async {
@@ -485,6 +554,9 @@ void main() {
       expect(started['httpStatus'], 202);
       expect(idsOf(launches.single), ['pagoda_lacks', 'engine_lacks']);
       await process.exit(0);
+      // The scenes it never reached are recorded as failed on exit; let
+      // that write land before the temp directory goes.
+      await Future<void>.delayed(const Duration(milliseconds: 50));
     });
 
     test('a missing render tool is a 503 with the reason', () async {

@@ -5940,7 +5940,31 @@ class Api {
       },
       'sceneCount': coverage.scenes,
       'missingCount': coverage.missing,
+      'failures': await _bannerFailureList(),
     });
+  }
+
+  /// Every scene whose last banner render failed, newest first, with the
+  /// model it belongs to: the dashboard's "Render problems" list. Survives
+  /// the job that hit it and server restarts.
+  Future<List<Map<String, dynamic>>> _bannerFailureList() async {
+    final records = await previewRenders.failureRecords();
+    if (records.isEmpty) return const [];
+    final entries = {
+      for (final e in await aiBenchmarks.editableEntries()) e['id']: e,
+    };
+    final list = [
+      for (final r in records.entries)
+        {
+          'id': r.key,
+          'model': entries[r.key]?['model'] ?? r.key,
+          'kind': entries[r.key]?['kind'] ?? '',
+          'repairable': r.value.sceneFault && !r.key.startsWith('cathedral_'),
+          ...r.value.toJson(),
+        },
+    ];
+    list.sort((a, b) => (b['atMs'] as int).compareTo(a['atMs'] as int));
+    return list;
   }
 
   /// A scene's current banner, so the dashboard can show what a render
@@ -5962,8 +5986,19 @@ class Api {
   }
 
   /// Every scene for the dashboard's banner catalog.
-  Future<Response> _adminBannersCatalog(Request request) async =>
-      jsonResponse(200, {'scenes': await aiBenchmarks.bannerCatalog()});
+  Future<Response> _adminBannersCatalog(Request request) async {
+    final failures = await previewRenders.failureRecords();
+    return jsonResponse(200, {
+      'scenes': [
+        for (final scene in await aiBenchmarks.bannerCatalog())
+          {
+            ...scene,
+            if (failures[scene['id']] case final failure?)
+              'renderError': failure.toJson(),
+          },
+      ],
+    });
+  }
 
   /// A scene for the framing editor, with the shot control's interactive
   /// half inlined ahead of the scene's own scripts.
@@ -12484,6 +12519,14 @@ syncToolbar();
         '<th>Detail</th></tr></thead>'
         '<tbody id="bannersRows"></tbody></table>'
         '</div>'
+        '<div id="bannersProblems" class="bn-problems" hidden>'
+        '<div class="bn-problems-head"><h3 class="bn-dlg-sec">Render problems</h3>'
+        '<span id="bannersProblemsCount" class="muted"></span></div>'
+        '<p class="muted bn-problems-help">Every benchmark whose last banner '
+        'render failed, kept until it renders again (across jobs and '
+        'restarts). Open one to see exactly what went wrong.</p>'
+        '<div id="bannersProblemList"></div>'
+        '</div>'
         '$_bnDialogsHtml'
         '$_bnRepairDialogHtml'
         '</div>'
@@ -15182,6 +15225,8 @@ window.lumaAskReason = function (form, message) {
       'Missing only</label>'
       '<label class="bn-check"><input id="bnFramedOnly" type="checkbox"> '
       'Hand-framed</label>'
+      '<label class="bn-check"><input id="bnFailedOnly" type="checkbox"> '
+      'Failed only</label>'
       '<span class="bn-spacer"></span>'
       '<button id="bnSelectShown" type="button" class="btn btn-ghost btn-sm">'
       'Select shown</button>'
@@ -15291,6 +15336,30 @@ window.lumaAskReason = function (form, message) {
 .bn-tile-tags .badge{background:#1f1a33;color:#b4addc}
 .bn-tile-tags .badge.accent{background:rgba(138,126,224,.16);color:#b9b0f5}
 .bn-tile-tags .badge.warn{background:rgba(224,200,126,.12);color:#e0c87e}
+.bn-tile-tags .badge.err{background:rgba(224,126,126,.14);color:#f0a0a0}
+.bn-tile-err{margin-top:7px;font-size:11.5px;line-height:1.4;color:#f0a0a0;font-family:ui-monospace,Consolas,monospace;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word}
+.bn-problems{margin-top:16px}
+.bn-problems[hidden]{display:none}
+.bn-problems-head{display:flex;align-items:baseline;gap:10px}
+.bn-problems-head .muted{font-size:12.5px}
+.bn-problems-help{margin:4px 0 10px;font-size:12.5px;line-height:1.5}
+.bn-problem{border:1px solid #2d2645;border-left:3px solid #e07e7e;border-radius:10px;background:#12101e;margin-bottom:8px}
+.bn-problem.is-env{border-left-color:#e0c87e}
+.bn-problem>summary{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 12px;cursor:pointer;list-style:none;min-height:24px}
+.bn-problem>summary::-webkit-details-marker{display:none}
+.bn-problem>summary::before{content:"\25B8";color:#8d86a8;transition:transform .15s}
+.bn-problem[open]>summary::before{transform:rotate(90deg)}
+.bn-problem-name{font-weight:600;font-size:13.5px}
+.bn-problem-id{font-size:11.5px;color:#8d86a8;font-family:ui-monospace,Consolas,monospace}
+.bn-problem-when{margin-left:auto;font-size:12px;color:#9b94b3;font-variant-numeric:tabular-nums}
+.bn-problem-short{flex-basis:100%;font-size:12px;color:#f0a0a0;font-family:ui-monospace,Consolas,monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-left:18px}
+.bn-problem[open] .bn-problem-short{display:none}
+.bn-problem-body{padding:0 12px 12px 30px;display:grid;gap:8px;font-size:12.5px;color:#cdc7e2}
+.bn-problem-body pre{margin:0;padding:10px 12px;background:#0b0915;border:1px solid #241e36;border-radius:8px;white-space:pre-wrap;word-break:break-word;font-size:12px;line-height:1.5;color:#f3d0d0;max-height:320px;overflow:auto}
+.bn-problem-body pre.notes{color:#cdc7e2}
+.bn-problem-label{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#9b94b3}
+.bn-problem-actions{display:flex;gap:8px;flex-wrap:wrap}
+@media (prefers-reduced-motion:reduce){.bn-problem>summary::before{transition:none}}
 .bn-tile-actions{padding:8px 12px 12px;margin-top:auto}
 .bn-tile-actions .btn{width:100%;min-height:36px}
 .bn-dlg-foot{display:flex;align-items:center;gap:10px;padding:14px 22px;border-top:1px solid #241e36;flex-wrap:wrap}
@@ -15664,6 +15733,98 @@ window.lumaAskReason = function (form, message) {
     load();
   });
 
+  // ---- Render problems -----------------------------------------------------
+
+  // Every scene whose last render failed, from the server's record rather
+  // than the current job, so it outlives the job and a restart. Rows keep
+  // their open/closed state across polls.
+  const problemsBox = $('bannersProblems');
+  const problemList = $('bannersProblemList');
+  const problemsCount = $('bannersProblemsCount');
+  const openProblems = new Set();
+
+  function when(ms) {
+    if (!ms) return 'before this was tracked';
+    const ago = Date.now() - ms;
+    return (ago < 60000 ? 'just now' : duration(ago) + ' ago')
+      + ' (' + new Date(ms).toLocaleString() + ')';
+  }
+
+  function drawProblems(data) {
+    if (!problemsBox) return;
+    const list = data.failures || [];
+    problemsBox.hidden = list.length === 0;
+    if (!list.length) { problemList.innerHTML = ''; problemList.dataset.sig = ''; return; }
+    const busy = !!data.running || repairActive(data);
+    // Polls come every 2s during a job; redrawing unchanged rows would drop
+    // a text selection in the error the owner is copying.
+    const sig = JSON.stringify([busy, list]);
+    if (sig === problemList.dataset.sig) return;
+    problemList.dataset.sig = sig;
+    problemsCount.textContent = list.length + (list.length === 1 ? ' benchmark' : ' benchmarks');
+    problemList.innerHTML = list.map((f) => {
+      const firstLine = String(f.error).split('\n')[0];
+      const streak = f.count > 1 ? 'failed ' + f.count + '× in a row' : 'failed once';
+      const env = f.sceneFault === false;
+      return '<details class="bn-problem' + (env ? ' is-env' : '') + '" data-problem="' + esc(f.id) + '"'
+        + (openProblems.has(f.id) ? ' open' : '') + '>'
+        + '<summary><span class="bn-problem-name">' + esc(f.model) + '</span>'
+        + '<span class="bn-problem-id">' + esc(f.id) + '</span>'
+        + (f.kind ? '<span class="badge">' + esc(f.kind) + '</span>' : '')
+        + '<span class="badge ' + (env ? 'warn' : 'err') + '">' + (env ? 'renderer problem' : 'scene error') + '</span>'
+        + '<span class="bn-problem-when">' + esc(streak) + ' · last ' + esc(f.atMs ? duration(Date.now() - f.atMs) + ' ago' : 'earlier') + '</span>'
+        + '<span class="bn-problem-short">' + esc(firstLine) + '</span></summary>'
+        + '<div class="bn-problem-body">'
+        + '<div class="bn-problem-label">What went wrong</div><pre>' + esc(f.error) + '</pre>'
+        + (f.notes ? '<div class="bn-problem-label">Renderer notes before it failed</div><pre class="notes">' + esc(f.notes) + '</pre>' : '')
+        + (env ? '<div class="muted">The renderer itself stopped (crash, timeout or unreachable service), so this may not be the scene\'s fault. Re-render it first; it is not offered to the repair model.</div>' : '')
+        + '<div class="muted">Last failed ' + esc(when(f.atMs))
+        + (f.count > 1 && f.firstAtMs ? ' · first failed ' + esc(when(f.firstAtMs)) : '')
+        + (f.mode ? ' · during a “' + esc(f.mode) + '” render' : '') + '</div>'
+        + '<div class="bn-problem-actions">'
+        + '<button type="button" class="btn btn-ghost btn-sm" data-problem-render="' + esc(f.id) + '"' + (busy ? ' disabled' : '') + '>Re-render</button>'
+        + (f.repairable ? '<button type="button" class="btn btn-ghost btn-sm" data-problem-repair="' + esc(f.id) + '"' + (busy ? ' disabled' : '') + '>Repair</button>' : '')
+        + '<button type="button" class="btn btn-ghost btn-sm" data-problem-copy="' + esc(f.id) + '">Copy error</button>'
+        + '</div></div></details>';
+    }).join('');
+  }
+
+  if (problemList) {
+    problemList.addEventListener('toggle', (e) => {
+      const d = e.target;
+      if (!d || !d.dataset || !d.dataset.problem) return;
+      if (d.open) openProblems.add(d.dataset.problem); else openProblems.delete(d.dataset.problem);
+    }, true);
+    problemList.addEventListener('click', async (e) => {
+      const renderBtn = e.target.closest('[data-problem-render]');
+      const repairBtn = e.target.closest('[data-problem-repair]');
+      const copyBtn = e.target.closest('[data-problem-copy]');
+      if (renderBtn) {
+        renderBtn.disabled = true;
+        const r = await start('selected', [renderBtn.dataset.problemRender]);
+        if (!r.ok) renderBtn.disabled = false;
+      } else if (repairBtn) {
+        repairBtn.disabled = true;
+        summary.textContent = 'Starting one repair…';
+        try {
+          const result = await json('/admin/benchmark-banners/repair/' + encodeURIComponent(repairBtn.dataset.problemRepair), { method: 'POST' });
+          if (!result.ok) throw new Error(result.body.message || 'Could not start repair.');
+          watchUntil = Date.now() + 15000;
+          load();
+        } catch (err) { summary.textContent = err.message; repairBtn.disabled = false; }
+      } else if (copyBtn) {
+        const f = ((last && last.failures) || []).find((x) => x.id === copyBtn.dataset.problemCopy);
+        if (!f) return;
+        const text = f.id + ' (' + f.model + ')\n' + f.error + (f.notes ? '\n\nNotes:\n' + f.notes : '');
+        try {
+          await navigator.clipboard.writeText(text);
+          copyBtn.textContent = 'Copied';
+        } catch (_) { copyBtn.textContent = 'Copy failed'; }
+        setTimeout(() => { copyBtn.textContent = 'Copy error'; }, 1500);
+      }
+    });
+  }
+
   // ---- Job status ----------------------------------------------------------
 
   function render(data) {
@@ -15740,6 +15901,7 @@ window.lumaAskReason = function (form, message) {
     }).join('');
     catalog.onStatus(data);
     drawRepairs(data);
+    drawProblems(data);
     return running || repairing || (data.queued || []).length > 0;
   }
 
@@ -15851,6 +16013,7 @@ window.lumaAskReason = function (form, message) {
     const kindsBox = $('bnKinds');
     const missingOnly = $('bnMissingOnly');
     const framedOnly = $('bnFramedOnly');
+    const failedOnly = $('bnFailedOnly');
     const selCount = $('bnSelCount');
     const renderSel = $('bnRenderSelected');
     const countLine = $('bnCatalogCount');
@@ -15867,6 +16030,7 @@ window.lumaAskReason = function (form, message) {
       return scenes.filter((s) => (kind === 'all' || s.kind === kind)
         && (!missingOnly.checked || !s.hasPreview)
         && (!framedOnly.checked || s.hasFraming)
+        && (!failedOnly.checked || s.renderError)
         && (!q || s.id.includes(q) || String(s.model).toLowerCase().includes(q)));
     }
 
@@ -15888,7 +16052,12 @@ window.lumaAskReason = function (form, message) {
       const on = selected.has(s.id);
       const tags = '<span class="badge">' + esc(KIND_LABEL[s.kind] || s.kind) + '</span>'
         + (s.hasFraming ? '<span class="badge accent">hand-framed</span>' : '')
-        + (s.hasPreview ? '' : '<span class="badge warn">missing</span>');
+        + (s.hasPreview ? '' : '<span class="badge warn">missing</span>')
+        + (s.renderError ? '<span class="badge err">render failed'
+          + (s.renderError.count > 1 ? ' ×' + s.renderError.count : '') + '</span>' : '');
+      const err = s.renderError
+        ? '<div class="bn-tile-err" title="' + esc(s.renderError.error) + '">'
+          + esc(s.renderError.error) + '</div>' : '';
       const frame = s.framable
         ? '<button type="button" class="btn btn-ghost btn-sm" data-frame="' + esc(s.id) + '">'
           + '<svg class="bn-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3"/><circle cx="12" cy="12" r="3"/></svg>'
@@ -15901,7 +16070,7 @@ window.lumaAskReason = function (form, message) {
         + thumb(s) + '<span class="bn-tile-job">' + jobBadge(s.id) + '</span></label>'
         + '<div class="bn-tile-meta"><div class="bn-tile-name" title="' + esc(s.model) + '">'
         + esc(s.model) + '</div><div class="bn-tile-id">' + esc(s.id) + '</div>'
-        + '<div class="bn-tile-tags">' + tags + '</div></div>'
+        + '<div class="bn-tile-tags">' + tags + '</div>' + err + '</div>'
         + '<div class="bn-tile-actions">' + frame + '</div></div>';
     }
 
@@ -15921,8 +16090,9 @@ window.lumaAskReason = function (form, message) {
       renderSel.textContent = n ? 'Re-render ' + n + ' selected' : 'Re-render selected';
       const missing = scenes.filter((s) => !s.hasPreview).length;
       const framed = scenes.filter((s) => s.hasFraming).length;
+      const broken = scenes.filter((s) => s.renderError).length;
       countLine.textContent = scenes.length + ' scenes · ' + missing + ' without a banner · '
-        + framed + ' hand-framed';
+        + framed + ' hand-framed' + (broken ? ' · ' + broken + ' failed to render' : '');
     }
 
     function drawKinds() {
@@ -15992,6 +16162,7 @@ window.lumaAskReason = function (form, message) {
     });
     missingOnly.addEventListener('change', drawGrid);
     framedOnly.addEventListener('change', drawGrid);
+    failedOnly.addEventListener('change', drawGrid);
     $('bnSelectShown').addEventListener('click', () => {
       shown().forEach((s) => selected.add(s.id));
       note = '';
@@ -16039,12 +16210,18 @@ window.lumaAskReason = function (form, message) {
           .filter((id) => next[id] !== jobState[id]));
         jobState = next;
         if (!dlg.open || !changed.size) return;
+        const recorded = {};
+        for (const f of data.failures || []) recorded[f.id] = f;
         for (const i of data.items || []) {
-          if (!changed.has(i.id) || i.state !== 'ok') continue;
+          if (!changed.has(i.id)) continue;
           const s = scenes.find((x) => x.id === i.id);
-          if (s) {
+          if (!s) continue;
+          if (i.state === 'ok') {
             s.hasPreview = true;
             s.previewAtMs = i.finishedAtMs || Date.now();
+            delete s.renderError;
+          } else if (i.state === 'failed' && recorded[i.id]) {
+            s.renderError = recorded[i.id];
           }
         }
         changed.forEach(patchTile);

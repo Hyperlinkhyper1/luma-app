@@ -2191,9 +2191,15 @@ class _ContributionHeatmap extends StatelessWidget {
   /// i.e. roughly one label per month, placed on whichever column that
   /// month actually begins in.
   static String? _monthLabelFor(DateTime gridStart, int week, String localeName) {
-    final date = gridStart.add(Duration(days: week * 7));
+    final date = _addDays(gridStart, week * 7);
     return date.day <= 7 ? DateFormat('MMM', localeName).format(date) : null;
   }
+
+  /// Calendar-day arithmetic on a local midnight. `add(Duration(days: n))`
+  /// adds n×24h, which lands on 01:00 or 23:00 once the span crosses a DST
+  /// change — and then no longer matches the midnight-keyed day buckets.
+  static DateTime _addDays(DateTime day, int days) =>
+      DateTime(day.year, day.month, day.day + days);
 
   static int _levelFor(int tokens, int maxTokens) {
     if (tokens <= 0 || maxTokens <= 0) return 0;
@@ -2226,13 +2232,18 @@ class _ContributionHeatmap extends StatelessWidget {
     final byDay = {for (final d in dayBuckets) d.day: d};
     final today = DateTime.now();
     final endDate = DateTime(today.year, today.month, today.day);
-    final roughStart = endDate.subtract(const Duration(days: 364));
-    final gridStart = roughStart.subtract(Duration(days: roughStart.weekday % 7));
-    final weekCount = ((endDate.difference(gridStart).inDays + 1) / 7).ceil();
-    final maxTokens = dayBuckets.fold<int>(0, (a, d) => d.totalTokens > a ? d.totalTokens : a);
+    final roughStart = _addDays(endDate, -364);
+    final gridStart = _addDays(roughStart, -(roughStart.weekday % 7));
+    final spanDays = DateTime.utc(endDate.year, endDate.month, endDate.day)
+        .difference(DateTime.utc(gridStart.year, gridStart.month, gridStart.day))
+        .inDays;
+    final weekCount = ((spanDays + 1) / 7).ceil();
+    final maxTokens = dayBuckets
+        .where((d) => !d.day.isBefore(gridStart))
+        .fold<int>(0, (a, d) => d.totalTokens > a ? d.totalTokens : a);
 
     Widget cellFor(int week, int weekday) {
-      final date = gridStart.add(Duration(days: week * 7 + weekday));
+      final date = _addDays(gridStart, week * 7 + weekday);
       if (date.isAfter(endDate)) {
         return const SizedBox(width: _cellSize, height: _cellSize);
       }
