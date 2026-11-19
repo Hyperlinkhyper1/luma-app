@@ -168,7 +168,7 @@ const gridCommon=`
 #define AH ${AH}.0
 vec2 atlasUV(int x,int y,int z){
   int tx=z%8; int ty=z/8;
-  return vec2((float(tx*GX+x)+.5)/AW,(float(ty*GY+y)+.5)/AH);
+  return vec2(((float(tx)*GX+float(x))+.5)/AW,((float(ty)*GY+float(y))+.5)/AH);
 }
 vec4 cellFetch(sampler2D tex,int x,int y,int z){
   x=clamp(x,0,int(GX)-1);y=clamp(y,0,int(GY)-1);z=clamp(z,0,int(GZ)-1);
@@ -326,7 +326,7 @@ function initializeParticles(){
       x=-1.12+(ix+.5)/16*.32;y=.025+(iy+.5)/16*.98;z=-.66+(iz+.5)/8*1.32;
     }else if(scenario==='double'){
       const side=i%2,ix=Math.floor(i/2)%16,iy=Math.floor(i/32)%16,iz=Math.floor(i/512);
-      x=(side? .12:. -1.12)+(ix+.5)/16*.96;y=.025+(iy+.5)/16*.98;z=-.66+(iz+.5)/8*1.32;
+      x=(side? .12: -1.12)+(ix+.5)/16*.96;y=.025+(iy+.5)/16*.98;z=-.66+(iz+.5)/8*1.32;
     }else if(scenario==='drop'){
       const a=i*2.399963,rad=.28*Math.sqrt((i%1024)/1024);
       x=Math.cos(a)*rad;y=.025+((i%16)/16)*.1;z=Math.sin(a)*rad;
@@ -466,8 +466,8 @@ function animate(now){
    tank.updateMatrixWorld(true);
    const inv=tank.getWorldQuaternion(new THREE.Quaternion()).invert();
    const g=new THREE.Vector3(0,-$('grav').value,0).applyQuaternion(inv);uniforms.uGravity.value.copy(g);
-   if(scenario==='wave')wallX=W/2-.06+Math.sin(time*3.1)*.30;else wallX=W/2;
-   uniforms.uWallX.value=wallX-.035;paddle.position.x=wallX-.02;paddle.visible=scenario==='wave'||scenario==='dam';
+   const paddleX=scenario==='wave'?wallX-.06+Math.sin(time*3.1)*.30:wallX;
+   uniforms.uWallX.value=paddleX-.035;paddle.position.x=paddleX-.02;paddle.visible=scenario==='wave'||scenario==='dam';
    if(GPU_OK)gpuStep(dt);else stepCPU(dt);
    updateObject(dt);time+=dt;stepOnce=false;
  }

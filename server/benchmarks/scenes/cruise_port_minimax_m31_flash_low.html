@@ -61,7 +61,7 @@ function hillMesh(){let g=new THREE.SphereGeometry(250,32,16,0,Math.PI*2,0,Math.
 const pastel=[0xe8d7bd,0xdba08c,0xbfd2ca,0xe5bd66,0xd7c5aa,0xb9ced4,0xc78172,0xf0e6d1],azulejo=mat(0x4d91a6,.42);
 const houseGeo=new THREE.BoxGeometry(1,1,1),roofGeo=new THREE.CylinderGeometry(0, .82,1,4);
 let houseInst=new THREE.InstancedMesh(houseGeo,mat(0xffffff),210),roofInst=new THREE.InstancedMesh(roofGeo,M.roof,210);let d=new THREE.Object3D();
-for(let i=0;i<210;i++){let row=Math.floor(i/14),col=i%14;let x=-150+col*18+(row%2)*7+Math.sin(col*1.7)*3,z=-95-row*15-Math.abs(Math.sin(col))*8,y=8+row*5.1;let w=10+Math.random()*4,dpth=8+Math.random()*4,h=9+Math.random()*9;d.position.set(x,y+h/2,z);d.scale.set(w,h,dpth);d.rotation.y=(Math.random()-.5)*.12;d.updateMatrix();houseInst.setMatrixAt(i,d.matrix);houseInst.setColorAt(i,new THREE.Color(pastent=i%pastel.length));d.position.set(x,y+h+2.1,z);d.scale.set(w*.82,4.2,dpth*.82);d.rotation.y+=Math.PI/4;d.updateMatrix();roofInst.setMatrixAt(i,d.matrix);if(i%8===0){box(w*.82,h*.45,.18,azulejo,x,y+h*.52,z+dpth*.51);} }
+for(let i=0;i<210;i++){let row=Math.floor(i/14),col=i%14;let x=-150+col*18+(row%2)*7+Math.sin(col*1.7)*3,z=-95-row*15-Math.abs(Math.sin(col))*8,y=8+row*5.1;let w=10+Math.random()*4,dpth=8+Math.random()*4,h=9+Math.random()*9;d.position.set(x,y+h/2,z);d.scale.set(w,h,dpth);d.rotation.y=(Math.random()-.5)*.12;d.updateMatrix();houseInst.setMatrixAt(i,d.matrix);houseInst.setColorAt(i,new THREE.Color(pastel[i%pastel.length]));d.position.set(x,y+h+2.1,z);d.scale.set(w*.82,4.2,dpth*.82);d.rotation.y+=Math.PI/4;d.updateMatrix();roofInst.setMatrixAt(i,d.matrix);if(i%8===0){box(w*.82,h*.45,.18,azulejo,x,y+h*.52,z+dpth*.51);} }
 scene.add(houseInst,roofInst);
 // castle
 const castle=new THREE.Group();castle.position.set(35,89,-230);scene.add(castle);box(100,16,18,M.stone,0,8,0,castle);for(let x=-48;x<=48;x+=12)box(7,12,19,M.stone,x,18,0,castle);for(let x=-42;x<=42;x+=12)box(6,3,19,M.stone,x,22.5,0,castle);for(let x of [-48,0,48]){cyl(7,8,20,M.stone,x,28,0,castle);for(let a=0;a<Math.PI*2;a+=Math.PI/4)box(2,4,2,M.stone,x+Math.cos(a)*6,40,Math.sin(a)*6,castle)};label('CASTELO DE SÃO JORGE',35,103,-218,65,7,'#6d4731','#fff4d7');
@@ -149,7 +149,7 @@ if(departing){departProgress=Math.min(1,departProgress+dt*.075);let e=departProg
 rainActive=document.getElementById('weather').value==='rain';rainMat.opacity=THREE.MathUtils.lerp(rainMat.opacity,rainActive?.55:0,dt*2);if(rainActive){for(let i=0;i<rainCount;i++){rainPos[i*3+1]-=dt*45;if(rainPos[i*3+1]<0)rainPos[i*3+1]=170}rainGeo.attributes.position.needsUpdate=true}
 updateWalk(dt);if(walkMode)camera.position.y=5;else controls.update();renderer.render(scene,camera)}
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,2))});
-setTimeout(()=>document.getElementById('loading').classList.add('off'),500);animate();
+animate();document.getElementById('loading').remove();
 </script>
 </body>
 </html>

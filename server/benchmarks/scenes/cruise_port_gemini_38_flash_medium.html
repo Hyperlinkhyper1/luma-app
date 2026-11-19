@@ -4,11 +4,21 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Lisbon Cruise Port Benchmark — Cruise Ship Docked in Lisbon</title>
-  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
   <script type="importmap">
 {"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
 </script>
   <style>
+    .hidden { display: none !important; }
+    #ui-layer { position: absolute; inset: 0; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: 16px; color: #e2e8f0; }
+    #ui-layer button, #ui-layer input, #ui-layer select { pointer-events: auto; }
+    #ui-layer header { display: flex; align-items: flex-start; justify-content: space-between; }
+    #ui-layer svg { width: 20px; height: 20px; }
+    #ui-layer .hud-glass { padding: 10px; border-radius: 12px; }
+    #loader, #no-webgl { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #030712; color: white; z-index: 40; }
+    #walk-hud { position: absolute; left: 50%; top: 16px; transform: translateX(-50%); }
+    #btn-show-hud { position: absolute; top: 16px; right: 16px; }
+    .opacity-0 { opacity: 0; }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body {
       width: 100%;

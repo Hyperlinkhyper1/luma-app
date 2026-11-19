@@ -136,11 +136,12 @@ controls.enableDamping=true; controls.minDistance=8; controls.maxDistance=260;
 /* ============ TRACK NETWORK ============ */
 const SEGS=[]; const SWITCHES={}; const BLOCKS={}; const SIGNALS=[]; const LAMPS={};
 function addSeg(id,pts,block,next,opts={}){
-  const vs=pts.map(p=>new THREE.Vector3(p[0],p[1],p[2]));
+  const vs=pts.map(p=>new THREE.Vector3(p[0],p[2],p[1]));
   const curve=new THREE.CatmullRomCurve3(vs,false,'catmullrom',.5);
   const spaced=curve.getSpacedPoints(60);
   let len=0; for(let i=1;i<spaced.length;i++) len+=spaced[i].distanceTo(spaced[i-1]);
-  const s={id,curve,pts:vs,spaced,length:block?(BLOCKS[block]||(BLOCKS[block]={segments:[],len:0})).len=0,len,block,next:next||[],opts,start:vs[0],end:vs[vs.length-1]};
+  if(block && !BLOCKS[block]) BLOCKS[block]={segments:[],len:0};
+  const s={id,curve,pts:vs,spaced,length:len,block,next:next||[],opts,start:vs[0],end:vs[vs.length-1]};
   SEGS.push(s);
   if(block){BLOCKS[block].segments.push(s); BLOCKS[block].len+=len;}
   return s;
@@ -158,8 +159,8 @@ addSeg('i',[[ 20,96,0],[-10,72,0],[-46,42,0],[-62,0,0]],'bI',['a']);
 for(const b of Object.values(BLOCKS)) b.occ=null; // train id or null
 
 // switches: name, node (x,z), normal seg id, diverge seg id
-SWITCHES.sw1={id:'sw1',pos:new THREE.Vector3(-34,-20,0),normal:'b',diverge:'c',thrown:false,locked:false,mesh:null,angle:0};
-SWITCHES.sw2={id:'sw2',pos:new THREE.Vector3(34,-20,0),normal:'b',diverge:'c',thrown:false,locked:false,mesh:null,angle:0};
+SWITCHES.sw1={id:'sw1',pos:new THREE.Vector3(-34,0,-20),normal:'b',diverge:'c',thrown:false,locked:false,mesh:null,angle:0};
+SWITCHES.sw2={id:'sw2',pos:new THREE.Vector3(34,0,-20),normal:'b',diverge:'c',thrown:false,locked:false,mesh:null,angle:0};
 SWITCHES.sw3={id:'sw3',pos:new THREE.Vector3(74,10,0),normal:'e',diverge:null,thrown:false,locked:false,mesh:null,angle:0};
 SWITCHES.sw4={id:'sw4',pos:new THREE.Vector3(130,80,0),normal:'f',diverge:null,thrown:false,locked:false,mesh:null,angle:0};
 
@@ -278,7 +279,7 @@ function tree(x,z,s=1){
   const fo=new THREE.Mesh(new THREE.ConeGeometry(1.4*s,3*s,8),new THREE.MeshStandardMaterial({color:0x2d5a27})); fo.position.y=2.9*s; fo.castShadow=true; g.add(fo);
   g.position.set(x,0,z); treeGroup.add(g); return g;
 }
-for(let i=0;i<40;i++) tree(rndRange(-150,170),rndRange(-120,170),rnd(.7,1.3));
+for(let i=0;i<40;i++) tree(rndRange(-150,170),rndRange(-120,170),rndRange(.7,1.3));
 // village near A
 const houseGroup=new THREE.Group(); world.add(houseGroup);
 function house(x,z,rot,color=0xe8c98a){
@@ -288,7 +289,7 @@ function house(x,z,rot,color=0xe8c98a){
   const ch=new THREE.Mesh(new THREE.BoxGeometry(.8,.8,1.2),MAT.wood); ch.position.set(2.5,6.2,2.5); g.add(ch);
   const win=new THREE.Mesh(new THREE.PlaneGeometry(1.2,1.2),MAT.glass); win.position.set(3.5,2.5,4.01); g.add(win);
   const win2=win.clone(); win2.position.set(-3.5,2.5,4.01); g.add(win2);
-  const light=new THREE.Mesh(new SphereBufferGeometry? new THREE.SphereGeometry(.25,8,8):new THREE.SphereGeometry(.25,8,8), new THREE.MeshBasicMaterial({color:0xffdd44})); light.position.set(3.8,2.5,4.02); g.add(light);
+  const light=new THREE.Mesh(new THREE.SphereGeometry(.25,8,8), new THREE.MeshBasicMaterial({color:0xffdd44})); light.position.set(3.8,2.5,4.02); g.add(light);
   g.position.set(x,0,z); g.rotation.y=rot; houseGroup.add(g); return g;
 }
 house(-95,12,.3); house(-75,-22,-.4); house(-110,-10,.6);
@@ -316,7 +317,7 @@ const lightL=new THREE.Mesh(new THREE.CylinderGeometry(.15,.15,2.5),MAT.glowRed)
 const lightR=lightL.clone(); lightR.position.set(66,.3,-14); xing.add(lightR);
 const barrierL=new THREE.Mesh(new THREE.BoxGeometry(3,.15,.18),MAT.lampOff); barrierL.position.set(40,.35,-13); xing.add(barrierL);
 const barrierR=new THREE.Mesh(new THREE.BoxGeometry(3,.15,.18),MAT.lampOff); barrierR.position.set(68,.35,-11); xing.add(barrierR);
-XING={lights:[lightL,lightR],barriers:[barrierL,barrierR],state:'up',timer:0,down:false};
+const XING={lights:[lightL,lightR],barriers:[barrierL,barrierR],state:'up',timer:0,down:false};
 
 // moving cars on road
 const cars=[];
@@ -344,7 +345,7 @@ function createTrain(id,type,startSeg,startDist,route,livery){
   });
   // build visuals by type
   function buildSteam(){
-    const boiler=new THREE.Mesh(new CylinderGeometry? new THREE.CylinderGeometry(1.6,1.6,7,16):new THREE.CylinderGeometry(1.6,1.6,7,16),new THREE.MeshStandardMaterial({color:0x111111})); boiler.position.set(0,2,0); boiler.castShadow=true; loco.add(boiler);
+    const boiler=new THREE.Mesh(new THREE.CylinderGeometry(1.6,1.6,7,16),new THREE.MeshStandardMaterial({color:0x111111})); boiler.position.set(0,2,0); boiler.castShadow=true; loco.add(boiler);
     const cab=new THREE.Mesh(new THREE.BoxGeometry(2.2,2.4,3),new THREE.MeshStandardMaterial({color:0x1a1a1a})); cab.position.set(-2,3.4,0); cab.castShadow=true; loco.add(cab);
     const tender=new THREE.Mesh(new THREE.BoxGeometry(2.6,2.6,5),new THREE.MeshStandardMaterial({color:0x222222})); tender.position.set(-5,1.8,-4); tender.castShadow=true; loco.add(tender);
     const stack=new THREE.Mesh(new THREE.CylinderGeometry(.4,.4,1.2,12),MAT.lampOff); stack.position.set(.8,3.4,-1); loco.add(stack);
@@ -402,7 +403,7 @@ function setSignalAspect(sig,aspect){
   if(sig.aspect===aspect) return; sig.aspect=aspect;
   sig.lamps.forEach((l,i)=>{
     const names=['red','yel','grn']; const mat=names[i]==aspect?(names[i]=='red'?MAT.glowRed:names[i]=='yel'?MAT.glowYel:MAT.glowGrn):MAT.lampOff;
-    l.material=mat; l.material.emissive=names[i]==aspect?(names[i]=='red'?0xff0000:names[i]=='yel'?0xffcc00:0x00ff00):0x000000;
+    l.material=mat;
   });
 }
 
@@ -484,7 +485,7 @@ function tangentOnSeg(seg,t){ return seg.curve.getTangent(t); }
 
 function moveTrain(tr,dtScale){
   if(tr.dwell>0){ tr.dwell--; if(tr.dwell<=0){ tr.state='running'; if(tr.type==='electric'){ tr.wagons.forEach(w=>{ w.mesh.children.forEach(c=>{ if(c.isDoor) c.position.x = c.targetX; }); }); } } return; }
-  const seg=SEGS[tr.segIdx];
+  let seg=SEGS[tr.segIdx];
   // target speed based on signal
   const sig=SIGNALS.find(s=>s.segIdx===tr.segIdx);
   let target=tr.maxSpeed;
@@ -516,6 +517,7 @@ function moveTrain(tr,dtScale){
       const nseg=SEGS.find(s=>s.id===nextId);
       if(!requestRoute(tr,nextId)){ tr.dist=rem; tr.speed=0; tr.blocked=true; move=0; tr.state='waitingRoute'; break; }
       tr.segIdx=SEGS.findIndex(s=>s.id===nextId);
+      seg=SEGS[tr.segIdx];
     }
   }
   if(tr.speed>0) tr.state='running';
@@ -574,7 +576,7 @@ function updateXing(dtScale){
     const target=down?-Math.PI/4:0;
     b.rotation.z += (target-b.rotation.z)*0.1;
   });
-  XING.lights.forEach(l=>{ l.material.emissive = down?0xff0000:0x000000; l.material = down?MAT.glowRed:MAT.lampOff; });
+  XING.lights.forEach(l=>{ l.material = down?MAT.glowRed:MAT.lampOff; });
   // cars stop
   if(down){ cars.forEach(c=>{ if(Math.abs(c.mesh.position.x-54)<18) c.speed=0; }); }
   else { cars.forEach(c=>{ c.speed=Math.min(c.speed+.002,.09); }); }
@@ -634,7 +636,7 @@ function initUI(){
     if(best&&bd<18){ best.manual=!best.manual; manualHold[best.id]=best.manual; drawSchematic(); return; }
     trains.forEach(tr=>{ const p=tr.group.position; const d=Math.hypot(p.x-wx,p.z-wz); if(d<bd){bd=d;best=tr;} });
     if(best&&best.id&&best.group){ followTrain=best; controls.enabled=false; $('camFollow').click?null:null; }
-  });
+  };
 }
 initUI();
 

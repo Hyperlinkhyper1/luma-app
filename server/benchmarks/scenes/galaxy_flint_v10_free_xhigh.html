@@ -250,10 +250,10 @@ function generateGalaxy() {
   geometry.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   geometry.setAttribute('color', new THREE.BufferAttribute(col, 3));
   geometry.setAttribute('size', new THREE.BufferAttribute(size, 1));
+  geometry.setDrawRange(0, idx);
   const material = new THREE.ShaderMaterial({
     uniforms: { uPixelRatio: { value: 1.0 }, uTime: { value: 0 }, uWarp: { value: 0 } },
     vertexShader: `
-      attribute vec3 position;
       attribute vec3 color;
       attribute float size;
       uniform float uPixelRatio;
@@ -268,8 +268,8 @@ function generateGalaxy() {
         vWarp = uWarp;
         vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
         gl_Position = projectionMatrix * mvPosition;
-        float perspective = 300.0 / -mvPosition.z;
-        gl_PointSize = vSize * uPixelRatio * perspective * (1.0 + uWarp);
+        float perspective = 100.0 / max(1.0, -mvPosition.z);
+        gl_PointSize = clamp(vSize * uPixelRatio * perspective * (1.0 + uWarp), 1.0, 12.0);
       }
     `,
     fragmentShader: `
@@ -279,7 +279,7 @@ function generateGalaxy() {
       void main() {
         vec2 uv = gl_PointCoord - 0.5;
         float dist = length(uv);
-        float alpha = smoothstep(0.5, 0.0, dist) * step(0.05, vSize);
+        float alpha = (1.0 - smoothstep(0.0, 0.5, dist)) * step(0.05, vSize);
         vec3 col = vColor * (1.0 + vWarp * 2.0);
         gl_FragColor = vec4(col, alpha);
       }
@@ -340,8 +340,8 @@ function generateNebula() {
     g.addColorStop(0, `rgba(${col[0]},${col[1]},${col[2]},0.8)`);
     g.addColorStop(0.4, `rgba(${col[0]},${col[1]},${col[2]},0.3)`);
     g.addColorStop(1, `rgba(${col[0]},${col[1]},${col[2]},0)`);
-    g.fillStyle = g;
-    g.fillRect(0, 0, 128, 128);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 128, 128);
     const tex = new THREE.CanvasTexture(canvas);
     const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.8 }));
     sprite.position.copy(nebulaPos);
@@ -419,7 +419,7 @@ function updateCinematic(dt) {
   if (state.journeyTime > state.journeyDuration) state.journeyTime = 0;
   const t = state.journeyTime;
   const waypoints = [
-    { t: 0, pos: [10, 2, 0], target: [10, 0, 0], fov: 70, phase: 'departure' },
+    { t: 0, pos: [35, 25, 75], target: [0, 0, 0], fov: 70, phase: 'departure' },
     { t: 20, pos: [30, 5, -5], target: [30, 0, 0], fov: 75, phase: 'cruise' },
     { t: 40, pos: [60, 10, -10], target: [60, 0, 0], fov: 85, phase: 'warp' },
     { t: 60, pos: [150, 20, -30], target: [150, 0, 0], fov: 100, phase: 'deep' },
@@ -433,7 +433,7 @@ function updateCinematic(dt) {
   const localT = Math.min(1, (t - wp.t) / Math.max(0.0001, next.t - wp.t));
   const eased = localT * localT * (3 - 2 * localT);
   camera.position.lerpVectors(new THREE.Vector3(...wp.pos), new THREE.Vector3(...next.pos), eased);
-  camera.lookAt(new THREE.Vector3(...next.target));
+  camera.lookAt(new THREE.Vector3(...wp.target).lerp(new THREE.Vector3(...next.target), eased));
   camera.fov = THREE.MathUtils.lerp(wp.fov, next.fov, eased);
   camera.updateProjectionMatrix();
   state.phase = wp.phase;
@@ -468,7 +468,6 @@ function update(dt) {
 }
 
 function animate() {
-  requestAnimationFrame(animate);
   const dt = Math.min(clock.getDelta(), 0.05);
   update(dt);
   if (state.mode === 'galaxy' && state.controls) {
@@ -563,6 +562,7 @@ function start() {
 function initAll() {
   init();
   start();
+  requestAnimationFrame(animate);
 }
 
 if (!window.WebGLRenderingContext) {
@@ -572,7 +572,6 @@ if (!window.WebGLRenderingContext) {
 }
 
 window.addEventListener('resize', onResize);
-setTimeout(() => { if (renderer) animate(); }, 100);
 </script>
 </body>
 </html>
