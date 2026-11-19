@@ -146,6 +146,13 @@ class BenchmarkGenJob {
   /// a dropped stream) and the run started over, and the last such failure.
   int upstreamRetries = 0;
   String? retryReason;
+
+  /// Every upstream failure that made the run start over, oldest first, so
+  /// a run that finally gives up still says what went wrong before.
+  List<String> retryReasons = [];
+
+  /// The last error response's `Retry-After`, for the next restart's wait.
+  String? retryAfter;
   String? error;
   Map<String, Object> publish = const {};
   bool hasOutput = false;
@@ -189,6 +196,7 @@ class BenchmarkGenJob {
         'upstreamRetries': upstreamRetries,
         'upstreamRetryLimit': kBenchmarkRetryBackoff.length,
         'retryReason': retryReason,
+        'retryReasons': retryReasons,
         'error': error,
         'hasOutput': hasOutput,
         'batch': batch,
@@ -811,17 +819,22 @@ extension BenchmarkGenerateApi on Api {
       } else {
         await _runBenchmarkStream(job, acc);
       }
-    } on TimeoutException {
+    } on TimeoutException catch (e) {
       await _saveBenchmarkGenOutput(job, acc.content);
       job.status = job.stopRequested ? 'stopped' : 'failed';
-      job.error ??= job.stopRequested
-          ? null
-          : job.batch
-              ? 'The batch still wasn\'t done after '
-                  '${_batchTimeout.inHours} hours.'
-              : 'The upstream went quiet for ${_idleTimeout.inMinutes} '
-                  'minutes, or the run passed ${_totalTimeout.inMinutes} '
-                  'minutes.';
+      if (!job.stopRequested && job.batch) {
+        job.error ??= 'The batch still wasn\'t done after '
+            '${_batchTimeout.inHours} hours.';
+      } else if (!job.stopRequested && job.error == null) {
+        final timeout = benchmarkTimeoutResult(
+          total: e.message == kBenchmarkTotalTimeout,
+          idle: _idleTimeout,
+          limit: _totalTimeout,
+          failures: job.retryReasons,
+        );
+        job.error = timeout.reason;
+        job.resultStatus = timeout.status;
+      }
     } catch (e) {
       await _saveBenchmarkGenOutput(job, acc.content);
       job.status = job.stopRequested ? 'stopped' : 'failed';
@@ -905,6 +918,14 @@ extension BenchmarkGenerateApi on Api {
             benchmarkFailureIsTransient(
                 httpStatus: result.$1,
                 error: providerErrorMessage(result.$2) ?? result.$2),
+        waitFor: (attempt, planned) => benchmarkRetryWait(
+          attempt: attempt,
+          planned: planned,
+          rateLimited: job.httpStatus == HttpStatus.tooManyRequests ||
+              acc.errorCode == HttpStatus.tooManyRequests ||
+              acc.providerStatus == HttpStatus.tooManyRequests,
+          retryAfter: job.retryAfter,
+        ),
         onRetry: (retry, wait) {
           job.client?.close(force: true);
           job.client = null;
@@ -913,6 +934,7 @@ extension BenchmarkGenerateApi on Api {
               (job.httpStatus != null && job.httpStatus != HttpStatus.ok
                   ? 'HTTP ${job.httpStatus}'
                   : 'The stream stopped before the reply finished');
+          job.retryReasons = [...job.retryReasons, job.retryReason!];
           job.phase = 'retrying';
           stderr.writeln('[luma] benchmark ${job.sceneId}: upstream failed '
               '(${job.retryReason}); retry $retry in ${wait.inSeconds}s');
@@ -1244,9 +1266,11 @@ extension BenchmarkGenerateApi on Api {
     }
     req.headers.contentType = ContentType.json;
     req.add(utf8.encode(jsonEncode(body)));
+    job.retryAfter = null;
     final res = await req.close().timeout(_idleTimeout);
     job.httpStatus = res.statusCode;
     if (res.statusCode != HttpStatus.ok) {
+      job.retryAfter = res.headers.value(HttpHeaders.retryAfterHeader);
       final text = await res
           .transform(utf8.decoder)
           .join()
@@ -2438,6 +2462,7 @@ const _bgScript = r'''
         + '<div class="bg-run-line">' + esc(bits.join(' · ') + pub) + '</div>'
         + (j.resultReason ? '<div class="bg-run-line">Reason: ' + esc(j.resultReason) + '</div>' : '')
         + (running && j.retryReason ? '<div class="bg-run-line">Last upstream failure: ' + esc(j.retryReason) + '</div>' : '')
+        + (!running && j.status !== 'done' && j.retryReasons && j.retryReasons.length ? '<div class="bg-run-line">Before restarting: ' + esc(j.retryReasons.join(' · ')) + '</div>' : '')
         + (j.validation ? '<div class="bg-run-line">Validation: ' + esc(j.validation) + '</div>' : '')
         + (!running ? '<div class="bg-run-line">Finish reason: ' + esc(j.finishReason || 'Unknown')
           + (j.nativeFinishReason ? ' · Provider finish reason: ' + esc(j.nativeFinishReason) : '') + '</div>' : '')

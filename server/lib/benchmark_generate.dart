@@ -36,6 +36,74 @@ Future<T> retryBenchmarkCompacted<T>(
 /// failed on its own end; its length is the number of restarts.
 const kBenchmarkRetryBackoff = [Duration(seconds: 20), Duration(seconds: 60)];
 
+/// The waits used instead when the upstream answered 429 without saying how
+/// long to wait: free endpoints rate-limit for minutes, not seconds, so the
+/// regular backoff only spends the restart on another 429.
+const kBenchmarkRateLimitBackoff = [Duration(minutes: 2), Duration(minutes: 5)];
+
+/// The longest a restart waits, whatever `Retry-After` asks for.
+const kBenchmarkMaxRetryWait = Duration(minutes: 10);
+
+/// How long to wait before restart [attempt] (0-based) of a run whose last
+/// request failed. A rate-limited request honours the upstream's
+/// `Retry-After` (seconds or an HTTP date), else [kBenchmarkRateLimitBackoff];
+/// anything else keeps [planned].
+Duration benchmarkRetryWait({
+  required int attempt,
+  required Duration planned,
+  required bool rateLimited,
+  String? retryAfter,
+  DateTime? now,
+}) {
+  if (!rateLimited) return planned;
+  Duration? asked;
+  final value = retryAfter?.trim();
+  if (value != null && value.isNotEmpty) {
+    final seconds = int.tryParse(value);
+    if (seconds != null) {
+      asked = Duration(seconds: seconds);
+    } else {
+      try {
+        asked = HttpDate.parse(value).difference(now ?? DateTime.now());
+      } on Object {
+        asked = null;
+      }
+    }
+  }
+  final fallback = kBenchmarkRateLimitBackoff[
+      attempt.clamp(0, kBenchmarkRateLimitBackoff.length - 1)];
+  var wait = asked ?? fallback;
+  if (wait < planned) wait = planned;
+  return wait > kBenchmarkMaxRetryWait ? kBenchmarkMaxRetryWait : wait;
+}
+
+/// The result of a streamed run that ended in a timeout. [total] is the
+/// run's overall deadline, otherwise the upstream sent nothing for [idle].
+/// Neither is the model's fault, so neither is a MODEL_ERROR; [failures]
+/// are the upstream failures that made the run start over first.
+({String status, String reason}) benchmarkTimeoutResult({
+  required bool total,
+  required Duration idle,
+  required Duration limit,
+  List<String> failures = const [],
+}) {
+  final history = failures.isEmpty
+      ? ''
+      : ' after ${failures.length} restart${failures.length == 1 ? '' : 's'} '
+          '(${failures.join('; ')})';
+  return total
+      ? (
+          status: 'TIMED_OUT',
+          reason: 'The run passed its ${limit.inMinutes}-minute limit before '
+              'the page was finished$history.'
+        )
+      : (
+          status: 'PROVIDER_ERROR',
+          reason: 'The upstream sent nothing for ${idle.inMinutes} '
+              'minutes$history.'
+        );
+}
+
 /// The message of the [TimeoutException] a run throws once it passes its
 /// overall deadline. Unlike an idle timeout, it is never retried.
 const kBenchmarkTotalTimeout = 'total';
@@ -83,7 +151,8 @@ bool benchmarkStreamFailedTransiently(ChatStreamAccumulator acc) =>
 /// Restarts a request whose upstream failed on its own end: a dropped
 /// connection, an idle timeout, or a 5xx/timeout error (in the response or
 /// mid-stream). Each restart starts over, never joining two generated pages,
-/// and waits out [backoff] first. Request errors and completed model
+/// and waits out [backoff] first ([waitFor] may lengthen a wait, for a rate
+/// limit say). Request errors and completed model
 /// responses are never retried. [failedTransiently] says whether a returned
 /// result (an HTTP error status, say) is such a failure.
 Future<T> retryBenchmarkStream<T>(
@@ -93,6 +162,7 @@ Future<T> retryBenchmarkStream<T>(
   required Future<void> Function() beforeRetry,
   bool Function(T result)? failedTransiently,
   void Function(int retry, Duration wait)? onRetry,
+  Duration Function(int attempt, Duration planned)? waitFor,
   List<Duration> backoff = kBenchmarkRetryBackoff,
 }) async {
   bool interrupted() =>
@@ -128,8 +198,9 @@ Future<T> retryBenchmarkStream<T>(
     }
 
     if (attempt >= backoff.length || !canRetry()) return giveUp();
-    onRetry?.call(attempt + 1, backoff[attempt]);
-    final until = DateTime.now().add(backoff[attempt]);
+    final wait = waitFor?.call(attempt, backoff[attempt]) ?? backoff[attempt];
+    onRetry?.call(attempt + 1, wait);
+    final until = DateTime.now().add(wait);
     while (canRetry() && DateTime.now().isBefore(until)) {
       final left = until.difference(DateTime.now());
       await Future<void>.delayed(left < const Duration(seconds: 1)

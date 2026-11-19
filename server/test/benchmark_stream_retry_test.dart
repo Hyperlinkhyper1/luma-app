@@ -300,4 +300,67 @@ void main() {
     expect(before, 0);
     expect(acc.error, 'Server error');
   });
+  test('a rate limit waits minutes, honouring Retry-After within a cap', () {
+    const planned = Duration(seconds: 20);
+    expect(benchmarkRetryWait(attempt: 0, planned: planned, rateLimited: false),
+        planned);
+    expect(benchmarkRetryWait(attempt: 0, planned: planned, rateLimited: true),
+        kBenchmarkRateLimitBackoff[0]);
+    expect(benchmarkRetryWait(attempt: 1, planned: planned, rateLimited: true),
+        kBenchmarkRateLimitBackoff[1]);
+    expect(
+        benchmarkRetryWait(
+            attempt: 0, planned: planned, rateLimited: true, retryAfter: '90'),
+        const Duration(seconds: 90));
+    expect(
+        benchmarkRetryWait(
+            attempt: 0, planned: planned, rateLimited: true, retryAfter: '1'),
+        planned);
+    expect(
+        benchmarkRetryWait(
+            attempt: 0,
+            planned: planned,
+            rateLimited: true,
+            retryAfter: '86400'),
+        kBenchmarkMaxRetryWait);
+    final now = DateTime.utc(2026, 11, 19, 12);
+    expect(
+        benchmarkRetryWait(
+            attempt: 0,
+            planned: planned,
+            rateLimited: true,
+            retryAfter: HttpDate.format(now.add(const Duration(minutes: 3))),
+            now: now),
+        const Duration(minutes: 3));
+  });
+
+  test('the wait a retry uses is what onRetry reports', () async {
+    final waits = <Duration>[];
+    final acc = ChatStreamAccumulator();
+    await retryBenchmarkStream<int>(acc, () async => 429,
+        canRetry: () => true,
+        beforeRetry: () async {},
+        failedTransiently: (status) => status == 429,
+        waitFor: (attempt, planned) => Duration.zero,
+        onRetry: (_, wait) => waits.add(wait),
+        backoff: const [Duration(hours: 1)]);
+    expect(waits, [Duration.zero]);
+  });
+
+  test('a timed-out run is never blamed on the model', () {
+    const idle = Duration(minutes: 8), limit = Duration(minutes: 90);
+    final total = benchmarkTimeoutResult(
+        total: true,
+        idle: idle,
+        limit: limit,
+        failures: ['Upstream idle timeout exceeded', 'HTTP 503']);
+    expect(total.status, 'TIMED_OUT');
+    expect(total.reason, contains('90-minute limit'));
+    expect(total.reason, contains('after 2 restarts'));
+    expect(total.reason, contains('HTTP 503'));
+    final quiet =
+        benchmarkTimeoutResult(total: false, idle: idle, limit: limit);
+    expect(quiet.status, 'PROVIDER_ERROR');
+    expect(quiet.reason, 'The upstream sent nothing for 8 minutes.');
+  });
 }
