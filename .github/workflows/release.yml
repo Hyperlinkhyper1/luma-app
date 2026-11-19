@@ -59,20 +59,29 @@ jobs:
       # with an unchecked file(DOWNLOAD): when that fetch fails it extracts
       # nothing and dies with "extraction directory doesn't exist". It skips
       # the fetch when the header is already in its download dir, so seed
-      # that dir here with retries.
+      # that dir here with retries. github.com/microsoft/onnxruntime now
+      # answers 404, so the same release comes from its NuGet package and is
+      # laid out the way the plugin's GitHub zip would have been.
       - name: Pre-fetch ONNX Runtime
         shell: pwsh
         run: |
           $ver = '1.22.0'
           $dir = 'build/windows/x64/plugins/flutter_onnxruntime/onnxruntime'
           $name = "onnxruntime-win-x64-$ver"
-          New-Item -ItemType Directory -Force $dir | Out-Null
-          $zip = Join-Path $dir 'onnxruntime.zip'
-          curl.exe -fsSL --retry 5 --retry-delay 10 --retry-all-errors -o $zip "https://github.com/microsoft/onnxruntime/releases/download/v$ver/$name.zip"
+          $out = Join-Path $dir $name
+          $pkg = Join-Path $env:RUNNER_TEMP 'onnxruntime-nupkg'
+          $zip = Join-Path $env:RUNNER_TEMP 'onnxruntime.zip'
+          curl.exe -fsSL --retry 5 --retry-delay 10 --retry-all-errors -o $zip "https://api.nuget.org/v3-flatcontainer/microsoft.ml.onnxruntime/$ver/microsoft.ml.onnxruntime.$ver.nupkg"
           if ($LASTEXITCODE -ne 0) { throw "ONNX Runtime download failed" }
-          Expand-Archive -Force $zip $dir
+          Expand-Archive -Force $zip $pkg
           Remove-Item $zip
-          if (-not (Test-Path "$dir/$name/include/onnxruntime_cxx_api.h")) { throw "ONNX Runtime archive missing headers" }
+          New-Item -ItemType Directory -Force "$out/include", "$out/lib" | Out-Null
+          Copy-Item "$pkg/build/native/include/*" "$out/include" -Recurse -Force
+          Copy-Item "$pkg/runtimes/win-x64/native/*" "$out/lib" -Force
+          Remove-Item $pkg -Recurse -Force
+          foreach ($f in 'include/onnxruntime_cxx_api.h', 'lib/onnxruntime.lib', 'lib/onnxruntime.dll') {
+            if (-not (Test-Path "$out/$f")) { throw "ONNX Runtime package missing $f" }
+          }
 
       - name: Build Windows release
         run: flutter build windows --release --no-pub --no-tree-shake-icons --dart-define=APP_VERSION=${{ steps.ver.outputs.version }}
@@ -209,18 +218,25 @@ jobs:
             libgtk-3-dev libglib2.0-dev libkeybinder-3.0-dev libsecret-1-dev libjsoncpp-dev \
             libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
 
-      # Same unchecked ONNX Runtime fetch as the Windows job; seed it here.
+      # Same unchecked ONNX Runtime fetch as the Windows job, from the same
+      # NuGet package; seed it here.
       - name: Pre-fetch ONNX Runtime
         run: |
           set -euo pipefail
           ver=1.22.0
           dir=build/linux/x64/release/plugins/flutter_onnxruntime/onnxruntime
           name=onnxruntime-linux-x64-$ver
-          mkdir -p "$dir"
-          curl -fsSL --retry 5 --retry-delay 10 --retry-all-errors \
-            "https://github.com/microsoft/onnxruntime/releases/download/v$ver/$name.tgz" \
-            | tar xz -C "$dir"
-          test -f "$dir/$name/include/onnxruntime_cxx_api.h"
+          out="$dir/$name"
+          pkg="$RUNNER_TEMP/onnxruntime-nupkg"
+          curl -fsSL --retry 5 --retry-delay 10 --retry-all-errors -o "$RUNNER_TEMP/onnxruntime.nupkg" \
+            "https://api.nuget.org/v3-flatcontainer/microsoft.ml.onnxruntime/$ver/microsoft.ml.onnxruntime.$ver.nupkg"
+          unzip -q -o "$RUNNER_TEMP/onnxruntime.nupkg" 'build/native/include/*' 'runtimes/linux-x64/native/*' -d "$pkg"
+          mkdir -p "$out/include" "$out/lib"
+          cp -r "$pkg/build/native/include/." "$out/include/"
+          cp "$pkg/runtimes/linux-x64/native/"* "$out/lib/"
+          rm -rf "$pkg" "$RUNNER_TEMP/onnxruntime.nupkg"
+          test -f "$out/include/onnxruntime_cxx_api.h"
+          test -f "$out/lib/libonnxruntime.so"
 
       - name: Build Linux release
         run: flutter build linux --release --no-pub --no-tree-shake-icons --dart-define=APP_VERSION=${{ steps.ver.outputs.version }}
