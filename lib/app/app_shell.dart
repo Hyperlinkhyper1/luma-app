@@ -45,6 +45,7 @@ import '../features/plugins/installed/price_tracker/price_tracker_page.dart';
 import '../features/plugins/installed/qr_code_generator/qr_code_generator_page.dart';
 import '../features/plugins/installed/machine_learning/machine_learning_page.dart';
 import '../features/plugins/installed/mind_map/mind_map_page.dart';
+import '../features/plugins/installed/model_viewer/model_viewer_page.dart';
 import '../features/plugins/installed/whiteboard/whiteboard_page.dart';
 import '../features/plugins/installed/wiki/wiki_page.dart';
 import '../features/plugins/installed/free_sketch/free_sketch_page.dart';
@@ -952,6 +953,7 @@ class _AppShellState extends State<AppShell> {
     'command-dashboard' => const CommandDashboardPage(),
     'account-overview' => const AccountOverviewPage(),
     'wiki' => const WikiPage(),
+    'model-viewer' => const ModelViewerPage(),
     _ => LumaEmptyState(
       icon: Icons.extension_off_rounded,
       title: t.shellPluginUnavailable,

@@ -1193,6 +1193,38 @@
           "description": "离线版 luma Wiki：所有指南、开发日志和 Fishing Waters 鱼类页面，包括搜索和 3D 鱼类模型，直接来自应用内的副本。"
         }
       }
+    },
+    {
+      "id": "model-viewer",
+      "name": "Model Viewer",
+      "version": "1.0.0",
+      "category": "Utility",
+      "icon": "view_in_ar",
+      "free": true,
+      "tags": [
+        "Utility",
+        "Design",
+        "Creative"
+      ],
+      "description": "Browse 3D models in a GitHub repository and open each one in an interactive viewer.",
+      "i18n": {
+        "nl": {
+          "name": "Modelviewer",
+          "description": "Blader door 3D-modellen in een GitHub-repository en open elk model in een interactieve viewer."
+        },
+        "fr": {
+          "name": "Visionneuse 3D",
+          "description": "Parcourez les modèles 3D d’un dépôt GitHub et ouvrez chacun dans une visionneuse interactive."
+        },
+        "es": {
+          "name": "Visor 3D",
+          "description": "Explora los modelos 3D de un repositorio de GitHub y abre cada uno en un visor interactivo."
+        },
+        "zh": {
+          "name": "模型查看器",
+          "description": "浏览 GitHub 仓库中的 3D 模型，并在交互式查看器中逐个打开。"
+        }
+      }
     }
   ]
 }

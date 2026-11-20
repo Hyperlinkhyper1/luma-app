@@ -25302,5 +25302,62 @@
   "wikiNotBundledSubtitle": "This version of luma was built without the wiki copy. Update luma to get it.",
   "wikiLinuxTitle": "Open the offline wiki",
   "wikiLinuxSubtitle": "luma has no built-in web view on Linux yet, so the offline copy opens in your browser. It keeps working while this page stays open.",
-  "wikiLinuxOpen": "Open in browser"
+  "wikiLinuxOpen": "Open in browser",
+  "pluginNameModelViewer": "Model Viewer",
+  "modelViewerConnectGithub": "Connect GitHub",
+  "modelViewerChangeGithub": "Change GitHub connection",
+  "modelViewerSignOut": "Disconnect GitHub",
+  "modelViewerGithubRepository": "GitHub repository",
+  "modelViewerRef": "Branch, tag or commit",
+  "modelViewerDefaultBranch": "Default branch",
+  "modelViewerLoadRepository": "Load models",
+  "modelViewerEmptyTitle": "Open a GitHub repository",
+  "modelViewerEmptyDescription": "Paste a repository URL to browse its GLB, glTF, FBX, OBJ, STL and PLY files. Connect GitHub for private repositories.",
+  "modelViewerModelCount": "{count, plural, one{1 model} other{{count} models}}",
+  "modelViewerNoModels": "No supported models on this ref",
+  "modelViewerNoMatches": "No models match your search",
+  "modelViewerSearch": "Search by filename or folder",
+  "modelViewerPrevious": "Previous model",
+  "modelViewerNext": "Next model",
+  "modelViewerInvalidRepo": "Enter a GitHub repository URL or owner/repository.",
+  "modelViewerScanFailed": "Couldn’t load the repository",
+  "modelViewerSignInFailed": "Couldn’t connect to GitHub. Try again.",
+  "modelViewerSignOutFailed": "Couldn’t remove the saved GitHub connection.",
+  "modelViewerRepoSignInRequired": "Check the repository URL and ref. Connect GitHub if the repository is private.",
+  "modelViewerRepoUnavailable": "Check the repository URL, ref and your GitHub read access.",
+  "modelViewerTreeTooLarge": "GitHub could only return part of the repository tree.",
+  "modelViewerMissingFile": "A file required by this model is missing from the repository.",
+  "modelViewerInvalidBlob": "GitHub returned an incomplete or unexpected file.",
+  "modelViewerAssetTooLarge": "This model or its resources exceed the preview size limit.",
+  "modelViewerLfsPointer": "This file is stored in Git LFS. GitHub returned a pointer instead of the model data.",
+  "modelViewerSignInBrowser": "Sign in on GitHub",
+  "modelViewerEnterCode": "Enter this one-time code on GitHub to authorize this device.",
+  "modelViewerCodeExpired": "The code expired. Start a new sign-in.",
+  "modelViewerOpenGithub": "Open GitHub",
+  "modelViewerTokenInstructions": "Use a fine-grained GitHub token with read-only Contents access to the repositories you want to open. Luma stores it securely on this device.",
+  "modelViewerCreateToken": "Create a GitHub token",
+  "modelViewerUseToken": "Connect with token",
+  "modelViewerOpenBrowser": "Open 3D preview in browser",
+  "modelViewerOpenBrowserFailed": "Couldn’t open the browser.",
+  "modelViewerLoadingModel": "Loading model…",
+  "modelViewerPreviewFailed": "Couldn’t preview this model.",
+  "modelViewerMissingResources": "Some model resources couldn’t be loaded.",
+  "modelViewerResetCamera": "Reset view",
+  "modelViewerPlayAnimation": "Play animation",
+  "modelViewerPauseAnimation": "Pause animation",
+  "modelViewerGithubError": "GitHub returned an error ({status}).",
+  "@modelViewerModelCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@modelViewerGithubError": {
+    "placeholders": {
+      "status": {
+        "type": "int"
+      }
+    }
+  }
 }

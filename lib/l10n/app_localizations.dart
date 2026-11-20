@@ -67816,6 +67816,264 @@ abstract class L {
   /// In en, this message translates to:
   /// **'Open in browser'**
   String get wikiLinuxOpen;
+
+  /// No description provided for @pluginNameModelViewer.
+  ///
+  /// In en, this message translates to:
+  /// **'Model Viewer'**
+  String get pluginNameModelViewer;
+
+  /// No description provided for @modelViewerConnectGithub.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect GitHub'**
+  String get modelViewerConnectGithub;
+
+  /// No description provided for @modelViewerChangeGithub.
+  ///
+  /// In en, this message translates to:
+  /// **'Change GitHub connection'**
+  String get modelViewerChangeGithub;
+
+  /// No description provided for @modelViewerSignOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Disconnect GitHub'**
+  String get modelViewerSignOut;
+
+  /// No description provided for @modelViewerGithubRepository.
+  ///
+  /// In en, this message translates to:
+  /// **'GitHub repository'**
+  String get modelViewerGithubRepository;
+
+  /// No description provided for @modelViewerRef.
+  ///
+  /// In en, this message translates to:
+  /// **'Branch, tag or commit'**
+  String get modelViewerRef;
+
+  /// No description provided for @modelViewerDefaultBranch.
+  ///
+  /// In en, this message translates to:
+  /// **'Default branch'**
+  String get modelViewerDefaultBranch;
+
+  /// No description provided for @modelViewerLoadRepository.
+  ///
+  /// In en, this message translates to:
+  /// **'Load models'**
+  String get modelViewerLoadRepository;
+
+  /// No description provided for @modelViewerEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Open a GitHub repository'**
+  String get modelViewerEmptyTitle;
+
+  /// No description provided for @modelViewerEmptyDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste a repository URL to browse its GLB, glTF, FBX, OBJ, STL and PLY files. Connect GitHub for private repositories.'**
+  String get modelViewerEmptyDescription;
+
+  /// No description provided for @modelViewerModelCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{1 model} other{{count} models}}'**
+  String modelViewerModelCount(int count);
+
+  /// No description provided for @modelViewerNoModels.
+  ///
+  /// In en, this message translates to:
+  /// **'No supported models on this ref'**
+  String get modelViewerNoModels;
+
+  /// No description provided for @modelViewerNoMatches.
+  ///
+  /// In en, this message translates to:
+  /// **'No models match your search'**
+  String get modelViewerNoMatches;
+
+  /// No description provided for @modelViewerSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Search by filename or folder'**
+  String get modelViewerSearch;
+
+  /// No description provided for @modelViewerPrevious.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous model'**
+  String get modelViewerPrevious;
+
+  /// No description provided for @modelViewerNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Next model'**
+  String get modelViewerNext;
+
+  /// No description provided for @modelViewerInvalidRepo.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a GitHub repository URL or owner/repository.'**
+  String get modelViewerInvalidRepo;
+
+  /// No description provided for @modelViewerScanFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t load the repository'**
+  String get modelViewerScanFailed;
+
+  /// No description provided for @modelViewerSignInFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t connect to GitHub. Try again.'**
+  String get modelViewerSignInFailed;
+
+  /// No description provided for @modelViewerSignOutFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t remove the saved GitHub connection.'**
+  String get modelViewerSignOutFailed;
+
+  /// No description provided for @modelViewerRepoSignInRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Check the repository URL and ref. Connect GitHub if the repository is private.'**
+  String get modelViewerRepoSignInRequired;
+
+  /// No description provided for @modelViewerRepoUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Check the repository URL, ref and your GitHub read access.'**
+  String get modelViewerRepoUnavailable;
+
+  /// No description provided for @modelViewerTreeTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'GitHub could only return part of the repository tree.'**
+  String get modelViewerTreeTooLarge;
+
+  /// No description provided for @modelViewerMissingFile.
+  ///
+  /// In en, this message translates to:
+  /// **'A file required by this model is missing from the repository.'**
+  String get modelViewerMissingFile;
+
+  /// No description provided for @modelViewerInvalidBlob.
+  ///
+  /// In en, this message translates to:
+  /// **'GitHub returned an incomplete or unexpected file.'**
+  String get modelViewerInvalidBlob;
+
+  /// No description provided for @modelViewerAssetTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'This model or its resources exceed the preview size limit.'**
+  String get modelViewerAssetTooLarge;
+
+  /// No description provided for @modelViewerLfsPointer.
+  ///
+  /// In en, this message translates to:
+  /// **'This file is stored in Git LFS. GitHub returned a pointer instead of the model data.'**
+  String get modelViewerLfsPointer;
+
+  /// No description provided for @modelViewerSignInBrowser.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in on GitHub'**
+  String get modelViewerSignInBrowser;
+
+  /// No description provided for @modelViewerEnterCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter this one-time code on GitHub to authorize this device.'**
+  String get modelViewerEnterCode;
+
+  /// No description provided for @modelViewerCodeExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'The code expired. Start a new sign-in.'**
+  String get modelViewerCodeExpired;
+
+  /// No description provided for @modelViewerOpenGithub.
+  ///
+  /// In en, this message translates to:
+  /// **'Open GitHub'**
+  String get modelViewerOpenGithub;
+
+  /// No description provided for @modelViewerTokenInstructions.
+  ///
+  /// In en, this message translates to:
+  /// **'Use a fine-grained GitHub token with read-only Contents access to the repositories you want to open. Luma stores it securely on this device.'**
+  String get modelViewerTokenInstructions;
+
+  /// No description provided for @modelViewerCreateToken.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a GitHub token'**
+  String get modelViewerCreateToken;
+
+  /// No description provided for @modelViewerUseToken.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect with token'**
+  String get modelViewerUseToken;
+
+  /// No description provided for @modelViewerOpenBrowser.
+  ///
+  /// In en, this message translates to:
+  /// **'Open 3D preview in browser'**
+  String get modelViewerOpenBrowser;
+
+  /// No description provided for @modelViewerOpenBrowserFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t open the browser.'**
+  String get modelViewerOpenBrowserFailed;
+
+  /// No description provided for @modelViewerLoadingModel.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading model…'**
+  String get modelViewerLoadingModel;
+
+  /// No description provided for @modelViewerPreviewFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t preview this model.'**
+  String get modelViewerPreviewFailed;
+
+  /// No description provided for @modelViewerMissingResources.
+  ///
+  /// In en, this message translates to:
+  /// **'Some model resources couldn’t be loaded.'**
+  String get modelViewerMissingResources;
+
+  /// No description provided for @modelViewerResetCamera.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset view'**
+  String get modelViewerResetCamera;
+
+  /// No description provided for @modelViewerPlayAnimation.
+  ///
+  /// In en, this message translates to:
+  /// **'Play animation'**
+  String get modelViewerPlayAnimation;
+
+  /// No description provided for @modelViewerPauseAnimation.
+  ///
+  /// In en, this message translates to:
+  /// **'Pause animation'**
+  String get modelViewerPauseAnimation;
+
+  /// No description provided for @modelViewerGithubError.
+  ///
+  /// In en, this message translates to:
+  /// **'GitHub returned an error ({status}).'**
+  String modelViewerGithubError(int status);
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

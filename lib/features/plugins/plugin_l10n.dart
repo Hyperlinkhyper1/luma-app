@@ -30,6 +30,7 @@ String pluginDisplayName(L t, String id, String fallback) => switch (id) {
   'machine-learning' => t.pluginNameMachineLearning,
   'mind-map' => t.pluginNameMindMap,
   'minecraft-launcher' => t.pluginNameMinecraftLauncher,
+  'model-viewer' => t.pluginNameModelViewer,
   'mood-journal' => t.pluginNameMoodJournal,
   'nfc-tag-editor' => t.pluginNameNfcTagEditor,
   'price-tracker' => t.pluginNamePriceTracker,

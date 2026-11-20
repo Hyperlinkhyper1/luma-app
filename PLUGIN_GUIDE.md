@@ -107,3 +107,13 @@ static Widget _pluginPageFor(String pluginId) => switch (pluginId) {
 4. Click **Download** (this simulates an install by recording it in the local SQLite database).
 5. Once "installed", your plugin icon will appear in the left navigation rail.
 6. Click the icon to open your plugin page.
+
+## Model Viewer GitHub sign-in
+
+For browser sign-in, register a GitHub App with Device Flow enabled and
+read-only Contents access. Install the GitHub App on the repositories users
+should be able to open. Set the public client ID in the
+`MODEL_VIEWER_GITHUB_CLIENT_ID` Actions variable, or pass
+`--dart-define=MODEL_VIEWER_GITHUB_CLIENT_ID=<client-id>` to a local Flutter
+build. The plugin also accepts fine-grained personal access tokens with
+read-only Contents access.

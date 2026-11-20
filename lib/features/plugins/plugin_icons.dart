@@ -93,6 +93,8 @@ IconData pluginIconFor(String? name) {
       return Icons.auto_stories_rounded;
     case 'menu_book':
       return Icons.menu_book_rounded;
+    case 'view_in_ar':
+      return Icons.view_in_ar_rounded;
     default:
       return Icons.extension_rounded;
   }

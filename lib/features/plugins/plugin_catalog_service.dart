@@ -154,6 +154,7 @@ class PluginCatalogService {
   static const _smallGamesManifestAsset = 'plugins/small-games/manifest.json';
   static const _monitorSimulationManifestAsset =
       'plugins/monitor-simulation/manifest.json';
+  static const _modelViewerManifestAsset = 'plugins/model-viewer/manifest.json';
   static const _pluginI18nAsset = 'assets/plugin_i18n.json';
 
   Future<Map<String, dynamic>>? _i18nCatalog;
@@ -173,10 +174,12 @@ class PluginCatalogService {
     final monitorSimulation = PluginCatalogEntry.fromJson(
       await _bundledMonitorSimulation(),
     );
+    final modelViewer = PluginCatalogEntry.fromJson(await _bundledModelViewer());
     return [
       _withCatalogI18n(smartHome, pluginI18n),
       _withCatalogI18n(smallGames, pluginI18n),
       _withCatalogI18n(monitorSimulation, pluginI18n),
+      _withCatalogI18n(modelViewer, pluginI18n),
       ...list
           .map(PluginCatalogEntry.fromJson)
           .map((entry) => _withCatalogI18n(entry, pluginI18n))
@@ -184,7 +187,8 @@ class PluginCatalogService {
             (entry) =>
                 entry.id != smartHome.id &&
                 entry.id != smallGames.id &&
-                entry.id != monitorSimulation.id,
+                entry.id != monitorSimulation.id &&
+                entry.id != modelViewer.id,
           ),
     ];
   }
@@ -194,6 +198,7 @@ class PluginCatalogService {
       'smart-home' => await _bundledSmartHome(),
       'small-games' => await _bundledSmallGames(),
       'monitor-simulation' => await _bundledMonitorSimulation(),
+      'model-viewer' => await _bundledModelViewer(),
       _ => await _getJson('$_rawBase/$pluginId/manifest.json'),
     };
     final manifest = PluginManifest.fromJson(body);
@@ -252,6 +257,10 @@ class PluginCatalogService {
       (jsonDecode(await rootBundle.loadString(_monitorSimulationManifestAsset))
               as Map)
           .cast<String, dynamic>();
+
+  Future<Map<String, dynamic>> _bundledModelViewer() async =>
+      jsonDecode(await rootBundle.loadString(_modelViewerManifestAsset))
+          as Map<String, dynamic>;
 
   /// Resolves a screenshot filename (as listed in a manifest) to the raw
   /// GitHub URL it's served from.

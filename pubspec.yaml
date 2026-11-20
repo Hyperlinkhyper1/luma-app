@@ -140,6 +140,17 @@ flutter:
     - plugins/smart-home/manifest.json
     - plugins/small-games/manifest.json
     - plugins/monitor-simulation/manifest.json
+    - plugins/model-viewer/manifest.json
+    - assets/model_viewer/
+    - assets/model_viewer/vendor/
+    - assets/model_viewer/vendor/build/
+    - assets/model_viewer/vendor/examples/jsm/controls/
+    - assets/model_viewer/vendor/examples/jsm/curves/
+    - assets/model_viewer/vendor/examples/jsm/libs/
+    - assets/model_viewer/vendor/examples/jsm/libs/draco/
+    - assets/model_viewer/vendor/examples/jsm/libs/draco/gltf/
+    - assets/model_viewer/vendor/examples/jsm/loaders/
+    - assets/model_viewer/vendor/examples/jsm/utils/
     - assets/images/
     - assets/pagoda_gpt6_luna_low.html
     - assets/tests/pagoda_step5.html

@@ -1,0 +1,59 @@
+:root {
+  color-scheme: dark;
+  font: 14px system-ui, sans-serif;
+  color: #dfe9f5;
+  background: #101722;
+}
+
+body {
+  margin: 0;
+  overflow: hidden;
+}
+
+#stage {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 45%, #263546, #101722 78%);
+}
+
+canvas {
+  display: block;
+  touch-action: none;
+}
+
+#status {
+  position: absolute;
+  left: 50%;
+  bottom: 60px;
+  transform: translateX(-50%);
+  max-width: min(460px, 85vw);
+  margin: 0;
+  text-align: center;
+  pointer-events: none;
+}
+
+#controls {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  display: flex;
+  gap: 8px;
+}
+
+button {
+  color: inherit;
+  background: #1b2532;
+  border: 1px solid #49596d;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font: inherit;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #2a3849;
+}
+
+[hidden] {
+  display: none !important;
+}

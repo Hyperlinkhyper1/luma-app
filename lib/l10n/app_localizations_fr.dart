@@ -41886,4 +41886,161 @@ class LFr extends L {
 
   @override
   String get wikiLinuxOpen => 'Ouvrir dans le navigateur';
+
+  @override
+  String get pluginNameModelViewer => 'Visionneuse 3D';
+
+  @override
+  String get modelViewerConnectGithub => 'Connecter GitHub';
+
+  @override
+  String get modelViewerChangeGithub => 'Modifier la connexion GitHub';
+
+  @override
+  String get modelViewerSignOut => 'Déconnecter GitHub';
+
+  @override
+  String get modelViewerGithubRepository => 'Dépôt GitHub';
+
+  @override
+  String get modelViewerRef => 'Branche, tag ou commit';
+
+  @override
+  String get modelViewerDefaultBranch => 'Branche par défaut';
+
+  @override
+  String get modelViewerLoadRepository => 'Charger les modèles';
+
+  @override
+  String get modelViewerEmptyTitle => 'Ouvrez un dépôt GitHub';
+
+  @override
+  String get modelViewerEmptyDescription =>
+      'Collez l’URL d’un dépôt pour parcourir ses fichiers GLB, glTF, FBX, OBJ, STL et PLY. Connectez GitHub pour les dépôts privés.';
+
+  @override
+  String modelViewerModelCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count modèles',
+      one: '1 modèle',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get modelViewerNoModels =>
+      'Aucun modèle pris en charge dans cette référence';
+
+  @override
+  String get modelViewerNoMatches =>
+      'Aucun modèle ne correspond à la recherche';
+
+  @override
+  String get modelViewerSearch => 'Rechercher par nom de fichier ou dossier';
+
+  @override
+  String get modelViewerPrevious => 'Modèle précédent';
+
+  @override
+  String get modelViewerNext => 'Modèle suivant';
+
+  @override
+  String get modelViewerInvalidRepo =>
+      'Saisissez l’URL d’un dépôt GitHub ou propriétaire/dépôt.';
+
+  @override
+  String get modelViewerScanFailed => 'Impossible de charger le dépôt';
+
+  @override
+  String get modelViewerSignInFailed =>
+      'Impossible de se connecter à GitHub. Réessayez.';
+
+  @override
+  String get modelViewerSignOutFailed =>
+      'Impossible de supprimer la connexion GitHub enregistrée.';
+
+  @override
+  String get modelViewerRepoSignInRequired =>
+      'Vérifiez l’URL et la référence du dépôt. Connectez GitHub si le dépôt est privé.';
+
+  @override
+  String get modelViewerRepoUnavailable =>
+      'Vérifiez l’URL, la référence et vos droits de lecture sur GitHub.';
+
+  @override
+  String get modelViewerTreeTooLarge =>
+      'GitHub n’a renvoyé qu’une partie de l’arborescence du dépôt.';
+
+  @override
+  String get modelViewerMissingFile =>
+      'Un fichier requis par ce modèle est introuvable dans le dépôt.';
+
+  @override
+  String get modelViewerInvalidBlob =>
+      'GitHub a renvoyé un fichier incomplet ou inattendu.';
+
+  @override
+  String get modelViewerAssetTooLarge =>
+      'Ce modèle ou ses ressources dépassent la limite de taille de l’aperçu.';
+
+  @override
+  String get modelViewerLfsPointer =>
+      'Ce fichier est stocké dans Git LFS. GitHub a renvoyé un pointeur à la place du modèle.';
+
+  @override
+  String get modelViewerSignInBrowser => 'Se connecter sur GitHub';
+
+  @override
+  String get modelViewerEnterCode =>
+      'Saisissez ce code à usage unique sur GitHub pour autoriser cet appareil.';
+
+  @override
+  String get modelViewerCodeExpired =>
+      'Le code a expiré. Relancez la connexion.';
+
+  @override
+  String get modelViewerOpenGithub => 'Ouvrir GitHub';
+
+  @override
+  String get modelViewerTokenInstructions =>
+      'Utilisez un jeton GitHub à permissions fines avec un accès en lecture au contenu des dépôts à ouvrir. Luma le conserve de façon sécurisée sur cet appareil.';
+
+  @override
+  String get modelViewerCreateToken => 'Créer un jeton GitHub';
+
+  @override
+  String get modelViewerUseToken => 'Connecter avec un jeton';
+
+  @override
+  String get modelViewerOpenBrowser => 'Ouvrir l’aperçu 3D dans le navigateur';
+
+  @override
+  String get modelViewerOpenBrowserFailed =>
+      'Impossible d’ouvrir le navigateur.';
+
+  @override
+  String get modelViewerLoadingModel => 'Chargement du modèle…';
+
+  @override
+  String get modelViewerPreviewFailed => 'Impossible d’afficher ce modèle.';
+
+  @override
+  String get modelViewerMissingResources =>
+      'Certaines ressources du modèle n’ont pas pu être chargées.';
+
+  @override
+  String get modelViewerResetCamera => 'Réinitialiser la vue';
+
+  @override
+  String get modelViewerPlayAnimation => 'Lire l’animation';
+
+  @override
+  String get modelViewerPauseAnimation => 'Mettre en pause';
+
+  @override
+  String modelViewerGithubError(int status) {
+    return 'GitHub a renvoyé une erreur ($status).';
+  }
 }

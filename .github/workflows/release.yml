@@ -25,6 +25,9 @@ concurrency:
   group: release
   cancel-in-progress: false
 
+env:
+  MODEL_VIEWER_GITHUB_CLIENT_ID: ${{ vars.MODEL_VIEWER_GITHUB_CLIENT_ID }}
+
 jobs:
   security:
     permissions:
@@ -84,7 +87,7 @@ jobs:
           }
 
       - name: Build Windows release
-        run: flutter build windows --release --no-pub --no-tree-shake-icons --dart-define=APP_VERSION=${{ steps.ver.outputs.version }}
+        run: flutter build windows --release --no-pub --no-tree-shake-icons --dart-define=APP_VERSION=${{ steps.ver.outputs.version }} "--dart-define=MODEL_VIEWER_GITHUB_CLIENT_ID=$env:MODEL_VIEWER_GITHUB_CLIENT_ID"
 
       - name: Set up Minecraft version engine Java
         uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
@@ -243,7 +246,7 @@ jobs:
           objdump -p "$out/lib/libonnxruntime.so" | grep -q 'SONAME *libonnxruntime\.so\.1$'
 
       - name: Build Linux release
-        run: flutter build linux --release --no-pub --no-tree-shake-icons --dart-define=APP_VERSION=${{ steps.ver.outputs.version }}
+        run: flutter build linux --release --no-pub --no-tree-shake-icons --dart-define=APP_VERSION=${{ steps.ver.outputs.version }} "--dart-define=MODEL_VIEWER_GITHUB_CLIENT_ID=$MODEL_VIEWER_GITHUB_CLIENT_ID"
 
       # A bundled library the loader can't find only shows up when someone
       # starts the app; catch it here instead. ldd on the executable walks
@@ -392,7 +395,7 @@ jobs:
             return 1
           }
 
-          retry flutter build apk --release --no-pub --split-per-abi --no-tree-shake-icons --dart-define=APP_VERSION=${{ steps.ver.outputs.version }}
+          retry flutter build apk --release --no-pub --split-per-abi --no-tree-shake-icons --dart-define=APP_VERSION=${{ steps.ver.outputs.version }} "--dart-define=MODEL_VIEWER_GITHUB_CLIENT_ID=$MODEL_VIEWER_GITHUB_CLIENT_ID"
 
       # Fail loudly if the APKs somehow got a debug signature anyway — a
       # debug-signed release is worse than no release, because phones with
@@ -507,7 +510,7 @@ jobs:
             return 1
           }
 
-          retry flutter build ios --release --no-pub --no-codesign --no-tree-shake-icons --dart-define=APP_VERSION=${{ steps.ver.outputs.version }}
+          retry flutter build ios --release --no-pub --no-codesign --no-tree-shake-icons --dart-define=APP_VERSION=${{ steps.ver.outputs.version }} "--dart-define=MODEL_VIEWER_GITHUB_CLIENT_ID=$MODEL_VIEWER_GITHUB_CLIENT_ID"
 
       # An .ipa is just a zip of Payload/<App>.app, so this doesn't require
       # Xcode's archive/export step (which needs a signing identity).

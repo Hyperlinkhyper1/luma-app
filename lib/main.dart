@@ -53,6 +53,8 @@ import 'features/plugins/installed/command_dashboard/command_dashboard_scope.dar
 import 'features/plugins/installed/account_overview/account_connections_sync.dart';
 import 'features/plugins/installed/account_overview/account_overview_repository.dart';
 import 'features/plugins/installed/account_overview/account_overview_scope.dart';
+import 'features/plugins/installed/model_viewer/model_viewer_repository.dart';
+import 'features/plugins/installed/model_viewer/model_viewer_scope.dart';
 import 'features/plugins/installed/account_overview/mc_content_repository.dart';
 import 'features/plugins/installed/account_overview/mc_content_scope.dart';
 import 'features/plugins/installed/account_overview/youtube_repository.dart';
@@ -366,6 +368,8 @@ class _LumaAppState extends State<LumaApp> {
   // of a remote account, written to one JSON file by the repository itself.
   late final AccountOverviewRepository _accountOverviewRepository =
       AccountOverviewRepository();
+  late final ModelViewerRepository _modelViewerRepository =
+      ModelViewerRepository();
 
   // MC Content is its own repository: CurseForge, Modrinth and Planet
   // Minecraft refresh and fail independently of the GitHub side.
@@ -991,6 +995,7 @@ class _LumaAppState extends State<LumaApp> {
     _commandDashboardRepository.dispose();
     _accountConnections.dispose();
     _accountOverviewRepository.dispose();
+    _modelViewerRepository.dispose();
     _mcContentRepository.dispose();
     _youtubeRepository.dispose();
     _spotifyRepository.dispose();
@@ -1025,6 +1030,11 @@ class _LumaAppState extends State<LumaApp> {
 
   @override
   Widget build(BuildContext context) {
+    final app = _buildApp();
+    return ModelViewerScope(repository: _modelViewerRepository, child: app);
+  }
+
+  Widget _buildApp() {
     return TeamClipboardScope(
       controller: _teamClipboardController,
       child: AssistantMemoryScope(

@@ -41364,4 +41364,157 @@ class LEn extends L {
 
   @override
   String get wikiLinuxOpen => 'Open in browser';
+
+  @override
+  String get pluginNameModelViewer => 'Model Viewer';
+
+  @override
+  String get modelViewerConnectGithub => 'Connect GitHub';
+
+  @override
+  String get modelViewerChangeGithub => 'Change GitHub connection';
+
+  @override
+  String get modelViewerSignOut => 'Disconnect GitHub';
+
+  @override
+  String get modelViewerGithubRepository => 'GitHub repository';
+
+  @override
+  String get modelViewerRef => 'Branch, tag or commit';
+
+  @override
+  String get modelViewerDefaultBranch => 'Default branch';
+
+  @override
+  String get modelViewerLoadRepository => 'Load models';
+
+  @override
+  String get modelViewerEmptyTitle => 'Open a GitHub repository';
+
+  @override
+  String get modelViewerEmptyDescription =>
+      'Paste a repository URL to browse its GLB, glTF, FBX, OBJ, STL and PLY files. Connect GitHub for private repositories.';
+
+  @override
+  String modelViewerModelCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count models',
+      one: '1 model',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get modelViewerNoModels => 'No supported models on this ref';
+
+  @override
+  String get modelViewerNoMatches => 'No models match your search';
+
+  @override
+  String get modelViewerSearch => 'Search by filename or folder';
+
+  @override
+  String get modelViewerPrevious => 'Previous model';
+
+  @override
+  String get modelViewerNext => 'Next model';
+
+  @override
+  String get modelViewerInvalidRepo =>
+      'Enter a GitHub repository URL or owner/repository.';
+
+  @override
+  String get modelViewerScanFailed => 'Couldn’t load the repository';
+
+  @override
+  String get modelViewerSignInFailed =>
+      'Couldn’t connect to GitHub. Try again.';
+
+  @override
+  String get modelViewerSignOutFailed =>
+      'Couldn’t remove the saved GitHub connection.';
+
+  @override
+  String get modelViewerRepoSignInRequired =>
+      'Check the repository URL and ref. Connect GitHub if the repository is private.';
+
+  @override
+  String get modelViewerRepoUnavailable =>
+      'Check the repository URL, ref and your GitHub read access.';
+
+  @override
+  String get modelViewerTreeTooLarge =>
+      'GitHub could only return part of the repository tree.';
+
+  @override
+  String get modelViewerMissingFile =>
+      'A file required by this model is missing from the repository.';
+
+  @override
+  String get modelViewerInvalidBlob =>
+      'GitHub returned an incomplete or unexpected file.';
+
+  @override
+  String get modelViewerAssetTooLarge =>
+      'This model or its resources exceed the preview size limit.';
+
+  @override
+  String get modelViewerLfsPointer =>
+      'This file is stored in Git LFS. GitHub returned a pointer instead of the model data.';
+
+  @override
+  String get modelViewerSignInBrowser => 'Sign in on GitHub';
+
+  @override
+  String get modelViewerEnterCode =>
+      'Enter this one-time code on GitHub to authorize this device.';
+
+  @override
+  String get modelViewerCodeExpired => 'The code expired. Start a new sign-in.';
+
+  @override
+  String get modelViewerOpenGithub => 'Open GitHub';
+
+  @override
+  String get modelViewerTokenInstructions =>
+      'Use a fine-grained GitHub token with read-only Contents access to the repositories you want to open. Luma stores it securely on this device.';
+
+  @override
+  String get modelViewerCreateToken => 'Create a GitHub token';
+
+  @override
+  String get modelViewerUseToken => 'Connect with token';
+
+  @override
+  String get modelViewerOpenBrowser => 'Open 3D preview in browser';
+
+  @override
+  String get modelViewerOpenBrowserFailed => 'Couldn’t open the browser.';
+
+  @override
+  String get modelViewerLoadingModel => 'Loading model…';
+
+  @override
+  String get modelViewerPreviewFailed => 'Couldn’t preview this model.';
+
+  @override
+  String get modelViewerMissingResources =>
+      'Some model resources couldn’t be loaded.';
+
+  @override
+  String get modelViewerResetCamera => 'Reset view';
+
+  @override
+  String get modelViewerPlayAnimation => 'Play animation';
+
+  @override
+  String get modelViewerPauseAnimation => 'Pause animation';
+
+  @override
+  String modelViewerGithubError(int status) {
+    return 'GitHub returned an error ($status).';
+  }
 }

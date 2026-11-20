@@ -73,6 +73,7 @@ void main() {
         'smart-home',
         'small-games',
         'monitor-simulation',
+        'model-viewer',
         'calculator',
       ]);
     },
@@ -97,6 +98,12 @@ void main() {
                 'icon': 'extension',
                 'category': 'Utility',
               },
+              {
+                'id': 'model-viewer',
+                'name': 'Older Model Viewer',
+                'icon': 'extension',
+                'category': 'Utility',
+              },
             ],
           }),
           200,
@@ -108,9 +115,10 @@ void main() {
         'smart-home',
         'small-games',
         'monitor-simulation',
+        'model-viewer',
       ]);
       expect(entries.first.name, 'Smart Home');
-      expect(entries.last.name, 'Monitor Simulation');
+      expect(entries.last.name, 'Model Viewer');
     },
   );
 
@@ -127,6 +135,8 @@ void main() {
       expect(games.name, 'Small Games');
       final monitor = await service.fetchManifest('monitor-simulation');
       expect(monitor.name, 'Monitor Simulation');
+      final viewer = await service.fetchManifest('model-viewer');
+      expect(viewer.name, 'Model Viewer');
     },
   );
 }

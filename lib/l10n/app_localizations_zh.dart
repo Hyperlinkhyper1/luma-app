@@ -39475,4 +39475,139 @@ class LZh extends L {
 
   @override
   String get wikiLinuxOpen => '在浏览器中打开';
+
+  @override
+  String get pluginNameModelViewer => '模型查看器';
+
+  @override
+  String get modelViewerConnectGithub => '连接 GitHub';
+
+  @override
+  String get modelViewerChangeGithub => '更改 GitHub 连接';
+
+  @override
+  String get modelViewerSignOut => '断开 GitHub 连接';
+
+  @override
+  String get modelViewerGithubRepository => 'GitHub 仓库';
+
+  @override
+  String get modelViewerRef => '分支、标签或提交';
+
+  @override
+  String get modelViewerDefaultBranch => '默认分支';
+
+  @override
+  String get modelViewerLoadRepository => '加载模型';
+
+  @override
+  String get modelViewerEmptyTitle => '打开 GitHub 仓库';
+
+  @override
+  String get modelViewerEmptyDescription =>
+      '粘贴仓库网址即可浏览其中的 GLB、glTF、FBX、OBJ、STL 和 PLY 文件。连接 GitHub 可访问私有仓库。';
+
+  @override
+  String modelViewerModelCount(int count) {
+    return '$count 个模型';
+  }
+
+  @override
+  String get modelViewerNoModels => '此引用中没有受支持的模型';
+
+  @override
+  String get modelViewerNoMatches => '没有符合搜索条件的模型';
+
+  @override
+  String get modelViewerSearch => '按文件名或文件夹搜索';
+
+  @override
+  String get modelViewerPrevious => '上一个模型';
+
+  @override
+  String get modelViewerNext => '下一个模型';
+
+  @override
+  String get modelViewerInvalidRepo => '请输入 GitHub 仓库网址或“所有者/仓库”。';
+
+  @override
+  String get modelViewerScanFailed => '无法加载仓库';
+
+  @override
+  String get modelViewerSignInFailed => '无法连接到 GitHub，请重试。';
+
+  @override
+  String get modelViewerSignOutFailed => '无法删除已保存的 GitHub 连接。';
+
+  @override
+  String get modelViewerRepoSignInRequired => '请检查仓库网址和引用。如果仓库是私有的，请连接 GitHub。';
+
+  @override
+  String get modelViewerRepoUnavailable => '请检查仓库网址、引用和 GitHub 读取权限。';
+
+  @override
+  String get modelViewerTreeTooLarge => 'GitHub 只能返回部分仓库文件树。';
+
+  @override
+  String get modelViewerMissingFile => '仓库中缺少此模型所需的文件。';
+
+  @override
+  String get modelViewerInvalidBlob => 'GitHub 返回的文件不完整或与预期不符。';
+
+  @override
+  String get modelViewerAssetTooLarge => '模型或其资源超出预览大小上限。';
+
+  @override
+  String get modelViewerLfsPointer => '此文件存储在 Git LFS 中。GitHub 返回的是指针，而非模型数据。';
+
+  @override
+  String get modelViewerSignInBrowser => '在 GitHub 上登录';
+
+  @override
+  String get modelViewerEnterCode => '在 GitHub 上输入此一次性验证码以授权该设备。';
+
+  @override
+  String get modelViewerCodeExpired => '验证码已过期，请重新登录。';
+
+  @override
+  String get modelViewerOpenGithub => '打开 GitHub';
+
+  @override
+  String get modelViewerTokenInstructions =>
+      '请使用细粒度 GitHub 令牌，并为要打开的仓库授予 Contents 只读权限。Luma 会将令牌安全地保存在此设备上。';
+
+  @override
+  String get modelViewerCreateToken => '创建 GitHub 令牌';
+
+  @override
+  String get modelViewerUseToken => '使用令牌连接';
+
+  @override
+  String get modelViewerOpenBrowser => '在浏览器中打开 3D 预览';
+
+  @override
+  String get modelViewerOpenBrowserFailed => '无法打开浏览器。';
+
+  @override
+  String get modelViewerLoadingModel => '正在加载模型…';
+
+  @override
+  String get modelViewerPreviewFailed => '无法预览此模型。';
+
+  @override
+  String get modelViewerMissingResources => '无法加载部分模型资源。';
+
+  @override
+  String get modelViewerResetCamera => '重置视角';
+
+  @override
+  String get modelViewerPlayAnimation => '播放动画';
+
+  @override
+  String get modelViewerPauseAnimation => '暂停动画';
+
+  @override
+  String modelViewerGithubError(int status) {
+    return 'GitHub 返回错误（$status）。';
+  }
 }
