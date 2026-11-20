@@ -8844,6 +8844,15 @@ class LNl extends L {
   String get notesCreateToStart => 'Maak een nieuwe notitie om te beginnen.';
 
   @override
+  String get notesTakeANote => 'Maak een notitie…';
+
+  @override
+  String get notesNewListTooltip => 'Nieuwe lijst';
+
+  @override
+  String get notesEmptyHint => 'Notities die je toevoegt, verschijnen hier';
+
+  @override
   String get passwordsUnreadableCredential => 'Onleesbare inlog';
 
   @override

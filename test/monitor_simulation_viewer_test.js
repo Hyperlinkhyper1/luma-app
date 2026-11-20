@@ -75,15 +75,26 @@ function createViewer(mediaDevices) {
   const webview = new Element();
   const window = new Element();
   window.chrome = { webview };
-  const document = {
+  const posted = [];
+  webview.postMessage = data => posted.push(data);
+  const document = Object.assign(new Element(), {
     getElementById: id => elements[id],
     createElement: () => new Element(),
     querySelector: () => screen,
     fullscreenElement: null,
-    exitFullscreen: () => Promise.resolve(),
+    exitFullscreen: () => {
+      document.fullscreenElement = null;
+      document.dispatch('fullscreenchange');
+      return Promise.resolve();
+    },
+  });
+  screen.requestFullscreen = () => {
+    document.fullscreenElement = screen;
+    document.dispatch('fullscreenchange');
+    return Promise.resolve();
   };
   vm.runInNewContext(source, { document, window, navigator: { mediaDevices } });
-  return { elements, window, webview };
+  return { elements, window, webview, document, screen, posted };
 }
 
 test('discovery lists only video inputs and releases the temporary camera', async () => {
@@ -239,4 +250,27 @@ test('permission and busy-device failures are actionable and restore controls', 
   assert.match(viewer.elements.status.textContent, /busy/i);
   assert.equal(viewer.elements.start.disabled, false);
   assert.equal(viewer.elements.stop.disabled, true);
+});
+
+test('full screen toggles from the button, double-click and F11, and tells the app', async () => {
+  const capture = makeStream();
+  const viewer = createViewer({
+    getUserMedia: async () => capture,
+    enumerateDevices: async () => [{ kind: 'videoinput', label: 'Capture', deviceId: 'capture' }],
+  });
+  viewer.screen.dispatch('dblclick');
+  assert.equal(viewer.document.fullscreenElement, null);
+  await viewer.elements.discover.dispatch('click');
+  await viewer.elements.start.dispatch('click');
+  viewer.elements.expand.dispatch('click');
+  assert.equal(viewer.document.fullscreenElement, viewer.screen);
+  viewer.screen.dispatch('dblclick');
+  assert.equal(viewer.document.fullscreenElement, null);
+  let prevented = false;
+  viewer.document.dispatch('keydown', { key: 'F11', preventDefault: () => { prevented = true; } });
+  assert.equal(prevented, true);
+  assert.equal(viewer.document.fullscreenElement, viewer.screen);
+  viewer.elements.stop.dispatch('click');
+  assert.equal(viewer.document.fullscreenElement, null);
+  assert.deepEqual(viewer.posted, ['fullscreen-on', 'fullscreen-off', 'fullscreen-on', 'fullscreen-off']);
 });

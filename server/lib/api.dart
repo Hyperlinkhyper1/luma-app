@@ -12477,11 +12477,14 @@ syncToolbar();
         'Upload test…</button>'
         '<button id="bmEditBtn" type="button" class="btn btn-ghost">'
         'Edit test…</button>'
+        '<button id="bmCoverageBtn" type="button" class="btn btn-ghost">'
+        '$_bnGridIcon Coverage…</button>'
         '</div>'
         '<div id="bmUploadSummary" class="maint-status"></div>'
         '<div id="bgRuns" class="bg-runs" aria-live="polite"></div>'
         '<div id="bgRepairs" class="bg-runs" aria-live="polite"></div>'
         '$_bmUploadDialogHtml'
+        '$_bmCoverageDialogHtml'
         '${_bgDialogHtml(deciderView: _adminDeciderView(), ttsView: _adminTtsView(), wikiView: _wikiView())}'
         '</div>'
         '<div class="card">'
@@ -12545,6 +12548,7 @@ syncToolbar();
         '<script>$_adminAssistantScript</script>'
         '<script>$_adminBannersScript</script>'
         '<script>$_adminBenchmarkUploadScript</script>'
+        '<script>$_adminBenchmarkCoverageScript</script>'
         '<script>$_bgScript</script>'
         '<script>$_adminSchoolTestsScript</script>'
         '<script>$_adminTtsScript</script>'
@@ -14945,12 +14949,34 @@ window.lumaAskReason = function (form, message) {
 
   static const _bmEfforts = <String, String>{
     '': 'None',
+    'minimal': 'Minimal',
     'low': 'Low',
     'medium': 'Medium',
     'high': 'High',
     'xhigh': 'Xhigh',
     'max': 'Max',
     'ultra': 'Ultra',
+    'ultracode': 'Ultracode',
+  };
+
+  /// Short test names for the coverage grid's columns, in the order it
+  /// shows them. Handed to the page as JSON on the dialog's `data-kinds`.
+  static const _bmKindShort = <String, String>{
+    'pagoda': 'Pagoda',
+    'engine': 'Engine',
+    'pc': 'PC',
+    'keyboard': 'Keyboard',
+    'server_rack': 'Server Rack',
+    'cruise_ship': 'Cruise Ship',
+    'sports_car': 'Sports Car',
+    'train_world': 'Train World',
+    'world_timeline': 'World Timeline',
+    'fluid_sim': 'Fluid Sim',
+    'galaxy': 'Galaxy',
+    'cruise_port': 'Cruise Port',
+    'website_landing_page': 'Website',
+    'butterfly_knife': 'Butterfly Knife',
+    'cathedral': 'Cathedral',
   };
 
   static String _bmOptions(Map<String, String> options) => [
@@ -15008,6 +15034,251 @@ window.lumaAskReason = function (form, message) {
       '</button></div>'
       '</form></dialog>';
 
+  /// The coverage grid: one row per model and reasoning effort, one column
+  /// per test, so a glance says which runs are in and which are missing.
+  static final _bmCoverageDialogHtml =
+      '<dialog id="bmCoverage" class="bn-dialog" '
+      'aria-labelledby="bmCoverageTitle" '
+      'data-kinds="${_htmlEscape(jsonEncode(_bmKindShort))}">'
+      '<div class="bn-dlg-head"><div><h2 id="bmCoverageTitle">Benchmark '
+      'coverage</h2>'
+      '<div id="bmCovCount" class="bn-dlg-sub">Loading tests…</div></div>'
+      '<button type="button" class="bn-icon-btn" data-close aria-label="Close">'
+      '$_bnCloseIcon</button></div>'
+      '<div class="bn-toolbar">'
+      '<input id="bmCovSearch" class="bn-input" type="search" '
+      'placeholder="Search model, e.g. sonnet 5.5 high" '
+      'aria-label="Search models" autocomplete="off">'
+      '<label class="bn-check"><input id="bmCovIncomplete" type="checkbox"> '
+      'Hide complete</label>'
+      '<span class="bn-spacer"></span>'
+      '<span class="bm-cov-legend"><span><i class="bm-cov-dot is-done"></i>'
+      'added</span><span><i class="bm-cov-dot"></i>missing: click to paste '
+      'it in</span></span></div>'
+      '<div class="bm-cov-wrap"><table class="bm-cov">'
+      '<thead><tr id="bmCovHead"></tr></thead>'
+      '<tbody id="bmCovRows"></tbody></table>'
+      '<div id="bmCovEmpty" class="bn-empty" hidden>No model matches.</div>'
+      '</div>'
+      '</dialog>';
+
+  /// The coverage grid. Every run in /admin/benchmarks/entries is grouped
+  /// by model and reasoning effort: the effort is the display name's
+  /// trailing "(High)", or for a scene the roster doesn't name, the id's
+  /// last part; the model is the rest, compared on letters and digits
+  /// only, so "flint-v1.0:free" and "Flint V1.0 (free)" are one row. An
+  /// empty cell opens the upload dialog filled in with that test, the
+  /// model's name as the roster already spells it, the effort, the company
+  /// and the id the model's other runs use; a filled one opens it in edit.
+  static const _adminBenchmarkCoverageScript = r'''
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const btn = $('bmCoverageBtn');
+  const dlg = $('bmCoverage');
+  if (!btn || !dlg || typeof dlg.showModal !== 'function') return;
+  const head = $('bmCovHead'), rowsEl = $('bmCovRows'), count = $('bmCovCount');
+  const search = $('bmCovSearch'), incomplete = $('bmCovIncomplete');
+  const empty = $('bmCovEmpty');
+  let KINDS = {};
+  try { KINDS = JSON.parse(dlg.dataset.kinds || '{}'); } catch (_) {}
+  const kindIds = Object.keys(KINDS);
+  const EFFORTS = ['', 'none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max', 'ultra', 'ultracode'];
+  const EFFORT_LABEL = { '': 'no effort', none: 'None', minimal: 'Minimal', low: 'Low', medium: 'Medium', high: 'High', xhigh: 'Xhigh', max: 'Max', ultra: 'Ultra', ultracode: 'Ultracode' };
+  const CHECK = '<svg class="bn-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+  let rows = [];
+
+  function effortKey(s) {
+    const k = String(s || '').toLowerCase().replace(/[^a-z]/g, '');
+    if (k === 'extrahigh') return 'xhigh';
+    return EFFORTS.indexOf(k) > 0 ? k : null;
+  }
+  // "(free)" / ":free" is the same model on a free route, so one row.
+  function isFree(s) { return /(^|[^a-z])free([^a-z]|$)/i.test(s); }
+  function modelKey(s) {
+    return s.toLowerCase().replace(/(^|[^a-z])free(?=[^a-z]|$)/g, '$1')
+      .replace(/[^a-z0-9]/g, '');
+  }
+
+  // One run -> { key, name, effort, slug }. slug is the id between the
+  // test and the effort, which new runs of the model reuse.
+  function parse(e) {
+    const prefix = e.kind + '_';
+    const toks = (e.id.indexOf(prefix) === 0 ? e.id.slice(prefix.length) : e.id).split('_');
+    if (toks.length > 1 && /^\d+$/.test(toks[toks.length - 1]) &&
+        effortKey(toks[toks.length - 2])) toks.pop();
+    let name = String(e.model || '').trim(), effort = '';
+    const m = name.match(/^(.*\S)\s*\(\s*([A-Za-z -]+?)\s*\)$/);
+    const bare = name.match(/^(.*\S)\s+([A-Za-z]+)$/);
+    if (m && effortKey(m[2])) {
+      name = m[1];
+      effort = effortKey(m[2]);
+    } else if (bare && effortKey(bare[2]) && effortKey(bare[2]) === effortKey(toks[toks.length - 1])) {
+      name = bare[1];
+      effort = effortKey(bare[2]);
+    } else if (!e.named && toks.length > 1 && effortKey(toks[toks.length - 1])) {
+      effort = effortKey(toks[toks.length - 1]);
+      name = toks.slice(0, -1).map(function (t) { return t.charAt(0).toUpperCase() + t.slice(1); }).join(' ');
+    }
+    if (effort && toks.length > 1 && effortKey(toks[toks.length - 1]) === effort) toks.pop();
+    if (effort === 'none') effort = '';
+    return { key: modelKey(name) || modelKey(e.id), name: name, effort: effort, slug: toks.join('_') };
+  }
+  function mostCommon(list) {
+    const n = {};
+    let best = '', bestN = 0;
+    list.forEach(function (v) {
+      if (!v) return;
+      n[v] = (n[v] || 0) + 1;
+      if (n[v] > bestN) { best = v; bestN = n[v]; }
+    });
+    return best;
+  }
+
+  function build(entries) {
+    const models = {};
+    entries.forEach(function (e) {
+      const p = parse(e);
+      const g = models[p.key] || (models[p.key] = { names: [], named: [], vendors: [], slugs: [], efforts: {} });
+      g.names.push(p.name);
+      if (e.named) g.named.push(p.name);
+      g.vendors.push(e.vendor || '');
+      g.slugs.push(p.slug);
+      const r = g.efforts[p.effort] || (g.efforts[p.effort] = { runs: {} });
+      (r.runs[e.kind] || (r.runs[e.kind] = [])).push(e.id);
+    });
+    const out = [];
+    Object.keys(models).forEach(function (k) {
+      const g = models[k];
+      const plain = function (n) { return !isFree(n); };
+      const name = mostCommon(g.named.filter(plain)) || mostCommon(g.named) ||
+        mostCommon(g.names.filter(plain)) || mostCommon(g.names);
+      const vendor = mostCommon(g.vendors);
+      const slug = mostCommon(g.slugs);
+      const hay = (name + ' ' + g.names.join(' ')).toLowerCase();
+      Object.keys(g.efforts).forEach(function (eff) {
+        const runs = g.efforts[eff].runs;
+        const done = kindIds.filter(function (kd) { return runs[kd]; }).length;
+        out.push({ key: k, name: name, vendor: vendor, slug: slug, effort: eff, runs: runs, done: done,
+          hay: hay + ' ' + (EFFORT_LABEL[eff] || eff).toLowerCase() });
+      });
+    });
+    out.sort(function (a, b) {
+      return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }) ||
+        a.key.localeCompare(b.key) ||
+        EFFORTS.indexOf(a.effort) - EFFORTS.indexOf(b.effort);
+    });
+    return out;
+  }
+
+  function el(tag, cls, text) {
+    const n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  }
+  function who(r) { return r.name + (r.effort ? ' (' + EFFORT_LABEL[r.effort] + ')' : ''); }
+
+  function renderHead() {
+    head.innerHTML = '';
+    const cols = [['bm-cov-model', 'Model']].concat(kindIds.map(function (k) {
+      return ['bm-cov-col', KINDS[k]];
+    }), [['bm-cov-total', 'Done']]);
+    cols.forEach(function (c) {
+      const th = el('th', c[0], c[1]);
+      th.scope = 'col';
+      head.appendChild(th);
+    });
+  }
+
+  function render() {
+    const words = search.value.toLowerCase().split(/\s+/).filter(Boolean);
+    const hideFull = incomplete.checked;
+    const shown = rows.filter(function (r) {
+      if (hideFull && r.done >= kindIds.length) return false;
+      return words.every(function (w) { return r.hay.indexOf(w) >= 0; });
+    });
+    rowsEl.innerHTML = '';
+    let lastKey = null;
+    const frag = document.createDocumentFragment();
+    shown.forEach(function (r) {
+      const first = r.key !== lastKey;
+      lastKey = r.key;
+      const tr = el('tr', first ? 'bm-cov-first' : '');
+      const th = el('th');
+      th.scope = 'row';
+      th.title = who(r);
+      th.appendChild(el('span', 'bm-cov-name', r.name));
+      th.appendChild(el('span', 'bm-cov-eff' + (r.effort ? '' : ' is-none'), EFFORT_LABEL[r.effort] || r.effort));
+      if (r.vendor && first) th.appendChild(el('span', 'bm-cov-vendor', r.vendor));
+      tr.appendChild(th);
+      kindIds.forEach(function (k) {
+        const td = el('td');
+        const b = el('button', 'bm-cov-cell');
+        b.type = 'button';
+        const ids = r.runs[k];
+        if (ids) {
+          b.classList.add('is-done');
+          b.innerHTML = CHECK;
+          if (ids.length > 1) { b.classList.add('is-many'); b.dataset.n = ids.length; }
+          b.title = KINDS[k] + ' · ' + who(r) + ': ' + ids.join(', ') + '. Click to edit.';
+          b.setAttribute('aria-label', KINDS[k] + ' for ' + who(r) + ' is added. Edit it');
+          b.dataset.edit = ids[0];
+        } else {
+          b.textContent = '+';
+          b.title = 'Add ' + KINDS[k] + ' for ' + who(r);
+          b.setAttribute('aria-label', b.title);
+          b.dataset.kind = k;
+        }
+        b._row = r;
+        td.appendChild(b);
+        tr.appendChild(td);
+      });
+      tr.appendChild(el('td', 'bm-cov-total' + (r.done >= kindIds.length ? ' is-full' : ''),
+        r.done + '/' + kindIds.length));
+      frag.appendChild(tr);
+    });
+    rowsEl.appendChild(frag);
+    empty.hidden = shown.length > 0;
+    const models = {};
+    rows.forEach(function (r) { models[r.key] = 1; });
+    const runs = rows.reduce(function (n, r) { return n + r.done; }, 0);
+    count.textContent = Object.keys(models).length + ' models · ' + rows.length +
+      ' model + effort rows · ' + runs + ' runs' +
+      (shown.length !== rows.length ? ' · showing ' + shown.length : '');
+  }
+
+  function load() {
+    return fetch('/admin/benchmarks/entries', { credentials: 'same-origin' })
+      .then(function (r) { return r.json(); })
+      .then(function (j) { rows = build(j.entries || []); render(); })
+      .catch(function () { count.textContent = 'Could not load the tests.'; });
+  }
+
+  rowsEl.addEventListener('click', function (e) {
+    const b = e.target.closest('.bm-cov-cell');
+    if (!b || !window.lumaBmUpload) return;
+    if (b.dataset.edit) { window.lumaBmUpload.edit(b.dataset.edit); return; }
+    const r = b._row, k = b.dataset.kind;
+    window.lumaBmUpload.add({
+      kind: k, model: r.name, effort: r.effort, vendor: r.vendor,
+      id: r.slug ? [k, r.slug, r.effort].filter(Boolean).join('_') : '',
+    });
+  });
+  search.addEventListener('input', render);
+  incomplete.addEventListener('change', render);
+  dlg.addEventListener('click', function (e) {
+    if (e.target.closest('[data-close]') || e.target === dlg) dlg.close();
+  });
+  document.addEventListener('bm-uploaded', function () { if (dlg.open) load(); });
+  btn.addEventListener('click', function () {
+    renderHead();
+    dlg.showModal();
+    search.focus();
+    load();
+  });
+})();
+''';
+
   static const _bmCss = r'''
 .bm-dialog{width:min(640px,calc(100vw - 32px))}
 .bm-dialog form{display:flex;flex-direction:column;min-height:0}
@@ -15019,6 +15290,36 @@ window.lumaAskReason = function (form, message) {
 .bm-field[hidden]{display:none}
 .bm-preview{background:#12101e;border:1px solid #241e36;border-radius:9px;padding:10px 12px;color:#ece8f7;font-size:13.5px}
 @media (max-width:700px){.bm-grid{grid-template-columns:1fr;padding-left:14px;padding-right:14px}}
+.bm-cov-legend{display:inline-flex;align-items:center;gap:14px;font-size:12px;color:#9b94b3}
+.bm-cov-legend>span{display:inline-flex;align-items:center;gap:6px}
+.bm-cov-dot{display:inline-block;width:11px;height:11px;border-radius:3px;border:1px dashed #4d4670}
+.bm-cov-dot.is-done{background:#7ee08a;border:0}
+.bm-cov-wrap{overflow:auto;min-height:200px;flex:1 1 auto;padding:0 0 12px}
+.bm-cov{border-collapse:separate;border-spacing:0;font-size:12.5px;width:max-content;min-width:100%}
+.bm-cov th,.bm-cov td{padding:0;border-bottom:1px solid #1e1930}
+.bm-cov thead th{position:sticky;top:0;z-index:2;background:#151122;color:#9b94b3;font-weight:600;font-size:11.5px;padding:10px 4px 8px;vertical-align:bottom;white-space:nowrap}
+.bm-cov thead th.bm-cov-col{width:62px;max-width:62px;white-space:normal;line-height:1.2;text-align:center;text-transform:none;letter-spacing:normal}
+.bm-cov thead th.bm-cov-model{left:0;z-index:3;text-align:left;padding-left:22px}
+.bm-cov tbody th{position:sticky;left:0;z-index:1;background:#151122;text-align:left;font-weight:500;text-transform:none;letter-spacing:normal;font-size:13px;padding:5px 14px 5px 22px;white-space:nowrap;max-width:320px;overflow:hidden;text-overflow:ellipsis}
+.bm-cov tbody tr:hover th,.bm-cov tbody tr:hover td{background:#1a1530}
+.bm-cov tr.bm-cov-first th,.bm-cov tr.bm-cov-first td{border-top:1px solid #2d2645}
+.bm-cov-name{color:#ece8f7}
+.bm-cov tr:not(.bm-cov-first) .bm-cov-name{color:transparent}
+.bm-cov-eff{display:inline-block;margin-left:8px;padding:1px 7px;border-radius:99px;background:#1f1a33;color:#b4addc;font-size:11px;font-weight:600}
+.bm-cov-eff.is-none{background:transparent;color:#6f6890;font-weight:500}
+.bm-cov-vendor{color:#6f6890;font-size:11.5px;margin-left:8px}
+.bm-cov td{text-align:center}
+.bm-cov-cell{display:inline-flex;align-items:center;justify-content:center;width:30px;height:26px;margin:2px;border-radius:7px;border:1px dashed #2d2645;background:transparent;color:#4d4670;cursor:pointer;font:inherit;padding:0}
+.bm-cov-cell:hover{border-color:#8a7ee0;color:#b9b0f5;background:rgba(138,126,224,.1)}
+.bm-cov-cell:focus-visible{outline:2px solid #8a7ee0;outline-offset:1px}
+.bm-cov-cell.is-done{border:0;background:rgba(126,224,138,.16);color:#7ee08a}
+.bm-cov-cell.is-done:hover{background:rgba(126,224,138,.28)}
+.bm-cov-cell.is-many::after{content:attr(data-n);font-size:9.5px;align-self:flex-start;margin-top:2px}
+.bm-cov-cell .bn-ico{width:14px;height:14px;margin:0}
+.bm-cov td.bm-cov-total{color:#9b94b3;font-variant-numeric:tabular-nums;padding:0 22px 0 10px;text-align:right;white-space:nowrap}
+.bm-cov td.bm-cov-total.is-full{color:#7ee08a}
+.bm-cov thead th.bm-cov-total{text-align:right;padding-right:22px}
+@media (max-width:700px){.bm-cov tbody th,.bm-cov thead th.bm-cov-model{padding-left:14px;max-width:170px}.bm-cov-vendor,.bm-cov-legend{display:none}}
 ''';
 
   /// The scenes card: "Upload test…" opens a form for the roster fields,
@@ -15120,13 +15421,31 @@ window.lumaAskReason = function (form, message) {
     if (e.target.closest('[data-close]') || e.target === dlg) dlg.close();
   });
 
-  function open(edit) {
+  // [prefill] comes from the coverage grid's empty cells: the test, the
+  // model's name as the roster already spells it, the effort, the company
+  // and the id its other runs use. [editId] from its filled ones.
+  function open(edit, prefill, editId) {
     status.textContent = '';
     submit.disabled = false;
     entryPick.value = '';
     applyEntry();
+    if (prefill) {
+      kind.value = prefill.kind || kind.value;
+      model.value = prefill.model || '';
+      effort.value = prefill.effort || '';
+      if (effort.value !== (prefill.effort || '')) effort.value = '';
+      vendor.value = prefill.vendor || '';
+      if (vendor.value !== (prefill.vendor || '')) vendor.value = '';
+      idEdited = false;
+      refresh();
+      if (prefill.id) { idBox.value = prefill.id; idEdited = true; }
+    }
     dlg.showModal();
-    loadEntries().then(function () { if (edit) entryPick.focus(); });
+    if (prefill) $('bmPaste').focus();
+    loadEntries().then(function () {
+      if (editId) { entryPick.value = editId; applyEntry(); }
+      else if (edit) entryPick.focus();
+    });
     fetch('/admin/benchmarks/upload/status').then(function (r) { return r.json(); })
       .then(function (j) {
         if (j.maxBytes) maxBytes = j.maxBytes;
@@ -15138,6 +15457,10 @@ window.lumaAskReason = function (form, message) {
   }
   btn.addEventListener('click', function () { open(false); });
   if (editBtn) editBtn.addEventListener('click', function () { open(true); });
+  window.lumaBmUpload = {
+    add: function (prefill) { open(false, prefill); },
+    edit: function (id) { open(true, null, id); },
+  };
 
   form.addEventListener('submit', function (e) {
     e.preventDefault();
@@ -15195,6 +15518,7 @@ window.lumaAskReason = function (form, message) {
         a.textContent = ' View commit';
         summary.appendChild(a);
       }
+      document.dispatchEvent(new CustomEvent('bm-uploaded', { detail: { id: j.id } }));
       if (j.github === 'failed') { status.textContent = line; return; }
       entryPick.value = '';
       applyEntry();

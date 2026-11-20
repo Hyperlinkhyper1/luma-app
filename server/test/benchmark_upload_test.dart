@@ -36,6 +36,19 @@ void main() {
       await seed.delete(recursive: true);
     });
 
+    test('editable entries say whether the roster names the scene', () async {
+      await File('${seed.path}/scenes/pagoda_dropped_in_high.html')
+          .writeAsString('<html>dropped</html>');
+      final store = await AiBenchmarkStore.open(dir.path, seedDir: seed.path);
+      final byId = {
+        for (final e in await store.editableEntries()) e['id']: e,
+      };
+      expect(byId['pagoda_demo']!['named'], isTrue);
+      expect(byId['pagoda_demo']!['model'], 'Demo 1.0');
+      expect(byId['pagoda_dropped_in_high']!['named'], isFalse);
+      expect(byId['pagoda_dropped_in_high']!['model'], 'Dropped In High');
+    });
+
     test(
       'landing pages without a canvas are listed, editable and served as HTML',
       () async {

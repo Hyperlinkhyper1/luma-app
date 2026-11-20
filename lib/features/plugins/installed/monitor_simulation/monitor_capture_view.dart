@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../../../../app/window_controls.dart';
 import '../_shared/native_webview.dart';
 import '../_shared/windows_webview.dart' show windowsAssetPath;
 
@@ -17,6 +18,26 @@ class MonitorCaptureView extends StatefulWidget {
 
 class _MonitorCaptureViewState extends State<MonitorCaptureView> {
   String? _error;
+  bool _fullScreen = false;
+
+  /// The page goes full screen inside WebView2, which the runner stretches
+  /// over the whole window; this takes the window itself full screen too.
+  void _onMessage(String message) {
+    final fullScreen = switch (message) {
+      'fullscreen-on' => true,
+      'fullscreen-off' => false,
+      _ => null,
+    };
+    if (fullScreen == null || fullScreen == _fullScreen) return;
+    _fullScreen = fullScreen;
+    windowSetFullScreen(fullScreen);
+  }
+
+  @override
+  void dispose() {
+    if (_fullScreen) windowSetFullScreen(false);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +53,7 @@ class _MonitorCaptureViewState extends State<MonitorCaptureView> {
       fileUrl: 'https://monitor-simulation.luma.example/index.html',
       monitorCaptureFolder: windowsAssetPath('assets/monitor_simulation'),
       background: const Color(0xFF111821),
-      onMessage: (_) {},
+      onMessage: _onMessage,
       onError: (error) {
         if (mounted) setState(() => _error = error);
       },

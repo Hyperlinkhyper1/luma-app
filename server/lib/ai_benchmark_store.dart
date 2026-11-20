@@ -148,7 +148,8 @@ class AiBenchmarkStore {
   File get _uploadsRoster => File('$_dir/uploads.json');
 
   /// Every roster entry with a servable scene, with the fields the
-  /// dashboard's edit form shows.
+  /// dashboard's edit form shows. `named` is false for a scene the roster
+  /// doesn't name, whose `model` is only derived from its id.
   Future<List<Map<String, dynamic>>> editableEntries() async {
     final roster = await _readRoster();
     final byId = {for (final item in roster.benchmarks) item.id: item};
@@ -160,6 +161,7 @@ class AiBenchmarkStore {
           'model': byId[c.id]?.model ?? _prettyId(c.id),
           'vendor': byId[c.id]?.vendor ?? '',
           'description': byId[c.id]?.description ?? '',
+          'named': byId.containsKey(c.id),
         },
     ];
   }

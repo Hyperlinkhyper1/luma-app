@@ -325,9 +325,15 @@ export function installShotControl(options = {}) {
     const ys = [];
     const zs = [];
     const push = (e, x, y, z) => {
-      xs.push(e[0] * x + e[4] * y + e[8] * z + e[12]);
-      ys.push(e[1] * x + e[5] * y + e[9] * z + e[13]);
-      zs.push(e[2] * x + e[6] * y + e[10] * z + e[14]);
+      const px = e[0] * x + e[4] * y + e[8] * z + e[12];
+      const py = e[1] * x + e[5] * y + e[9] * z + e[13];
+      const pz = e[2] * x + e[6] * y + e[10] * z + e[14];
+      // One NaN vertex (an unset buffer slot, a 0/0 scale) would poison
+      // every min/max below and aim the camera at NaN: a blank banner.
+      if (!Number.isFinite(px) || !Number.isFinite(py) || !Number.isFinite(pz)) return;
+      xs.push(px);
+      ys.push(py);
+      zs.push(pz);
     };
     for (const o of meshes) {
       const e = o.matrixWorld.elements;

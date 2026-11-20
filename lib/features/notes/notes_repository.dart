@@ -86,11 +86,11 @@ class NotesRepository extends ChangeNotifier {
     } catch (_) {}
   }
 
-  Future<Note> create() async {
+  Future<Note> create({String title = '', String content = ''}) async {
     final note = Note(
       id: DateTime.now().microsecondsSinceEpoch.toString(),
-      title: '',
-      content: '',
+      title: title,
+      content: content,
       updatedAt: DateTime.now(),
     );
     _notes.insert(0, note);

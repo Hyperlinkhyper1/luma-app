@@ -8870,6 +8870,15 @@ class LFr extends L {
   String get notesCreateToStart => 'Créez une nouvelle note pour commencer.';
 
   @override
+  String get notesTakeANote => 'Créer une note…';
+
+  @override
+  String get notesNewListTooltip => 'Nouvelle liste';
+
+  @override
+  String get notesEmptyHint => 'Les notes que vous ajoutez apparaissent ici';
+
+  @override
   String get passwordsUnreadableCredential => 'Identifiant illisible';
 
   @override

@@ -130,10 +130,28 @@ stop.addEventListener('click', () => {
   release();
   status.textContent = 'Viewing stopped.';
 });
-expand.addEventListener('click', () => {
-  document.querySelector('.screen').requestFullscreen().catch(() => {
-    status.textContent = 'The viewer could not be expanded.';
+const screen = document.querySelector('.screen');
+function toggleFullscreen() {
+  if (document.fullscreenElement) {
+    document.exitFullscreen().catch(() => {});
+    return;
+  }
+  if (!stream) return;
+  screen.requestFullscreen().catch(() => {
+    status.textContent = 'The viewer could not go full screen.';
   });
+}
+expand.addEventListener('click', toggleFullscreen);
+screen.addEventListener('dblclick', toggleFullscreen);
+document.addEventListener('keydown', event => {
+  if (event.key === 'F11') {
+    event.preventDefault();
+    toggleFullscreen();
+  }
+});
+document.addEventListener('fullscreenchange', () => {
+  const on = document.fullscreenElement === screen;
+  window.chrome.webview.postMessage(on ? 'fullscreen-on' : 'fullscreen-off');
 });
 window.chrome.webview.addEventListener('message', event => {
   if (event.data === 'stop-capture') {

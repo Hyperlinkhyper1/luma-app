@@ -1,0 +1,1912 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>TACTILE — MX-84 Mechanical Keyboard</title>
+<style>
+:root{
+  --bg:#0b0d12;
+  --ink:#e7ebf3;
+  --dim:#8d95a8;
+  --accent:#7df9c2;
+  --amber:#ffb545;
+  --violet:#b07dff;
+  --panel:rgba(18,22,31,.72);
+  --hair:rgba(255,255,255,.10);
+}
+*{box-sizing:border-box;}
+html,body{height:100%;margin:0;padding:0;overflow:hidden;background:var(--bg);}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
+  color:var(--ink);
+  -webkit-font-smoothing:antialiased;
+  touch-action:none;
+  user-select:none;
+  -webkit-user-select:none;
+  -webkit-tap-highlight-color:transparent;
+}
+#scene{position:fixed;inset:0;z-index:0;}
+#scene canvas{display:block;width:100%;height:100%;}
+
+/* ---------- vignette + grain ---------- */
+.vignette{
+  position:fixed;inset:0;z-index:1;pointer-events:none;
+  background:
+    radial-gradient(120% 90% at 50% 42%, rgba(0,0,0,0) 34%, rgba(0,0,0,.55) 100%),
+    linear-gradient(180deg, rgba(6,8,12,.75) 0%, rgba(6,8,12,0) 26%, rgba(6,8,12,0) 68%, rgba(6,8,12,.85) 100%);
+}
+
+/* ---------- HUD ---------- */
+#hud{position:fixed;inset:0;z-index:5;pointer-events:none;}
+#hud .top{
+  position:absolute;top:22px;left:28px;right:28px;
+  display:flex;align-items:flex-start;justify-content:space-between;gap:18px;
+}
+.brand{display:flex;gap:14px;align-items:center;}
+.brand .mark{
+  width:34px;height:34px;border-radius:9px;
+  border:1px solid rgba(255,255,255,.16);
+  background:linear-gradient(155deg,rgba(125,249,194,.22),rgba(125,249,194,.03));
+  display:grid;place-items:center;
+  box-shadow:0 0 22px rgba(125,249,194,.18) inset, 0 8px 24px rgba(0,0,0,.35);
+}
+.brand .mark svg{display:block;}
+.brand h1{
+  margin:0;font-size:14px;letter-spacing:.34em;font-weight:650;
+  text-transform:uppercase;
+}
+.brand p{
+  margin:5px 0 0;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);
+}
+.top-right{display:flex;gap:10px;align-items:center;pointer-events:auto;}
+
+.btn{
+  appearance:none;border:1px solid rgba(255,255,255,.13);
+  background:rgba(18,22,31,.66);color:var(--ink);
+  border-radius:11px;height:38px;padding:0 14px;
+  font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+  display:inline-flex;align-items:center;gap:8px;
+  cursor:pointer;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  transition:border-color .2s, background .2s, transform .12s, color .2s;
+  box-shadow:0 6px 20px rgba(0,0,0,.28);
+}
+.btn:hover{border-color:rgba(125,249,194,.45);background:rgba(26,33,45,.8);}
+.btn:active{transform:translateY(1px) scale(.985);}
+.btn svg{width:14px;height:14px;display:block;}
+.btn.on{border-color:rgba(125,249,194,.5);color:var(--accent);}
+.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+
+/* ---------- side panel ---------- */
+#panel{
+  position:absolute;right:28px;top:50%;transform:translateY(-50%);
+  width:216px;pointer-events:auto;
+  border:1px solid var(--hair);border-radius:16px;
+  background:var(--panel);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  padding:16px 16px 14px;
+  box-shadow:0 24px 60px rgba(0,0,0,.45);
+  transition:opacity .3s, transform .3s;
+}
+#panel .ph{
+  font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--dim);
+  margin:0 0 12px;display:flex;justify-content:space-between;align-items:center;
+}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:10px 0;}
+.row label{font-size:11.5px;color:#b9c1d1;letter-spacing:.05em;}
+.switch{
+  width:42px;height:24px;border-radius:99px;border:1px solid rgba(255,255,255,.15);
+  background:rgba(255,255,255,.07);position:relative;cursor:pointer;transition:.22s;
+}
+.switch i{
+  position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;
+  background:#7f889c;transition:.22s cubic-bezier(.3,.7,.3,1);
+}
+.switch[data-on="1"]{background:rgba(125,249,194,.25);border-color:rgba(125,249,194,.5);}
+.switch[data-on="1"] i{transform:translateX(18px);background:var(--accent);box-shadow:0 0 12px rgba(125,249,194,.7);}
+.hue{display:flex;gap:8px;}
+.hue b{
+  width:20px;height:20px;border-radius:7px;cursor:pointer;display:block;
+  border:1px solid rgba(255,255,255,.16);transition:.2s;
+}
+.hue b:hover{transform:translateY(-1px);}
+.hue b[data-c="#7df9c2"]{background:#7df9c2;}
+.hue b[data-c="#ffb545"]{background:#ffb545;}
+.hue b[data-c="#b07dff"]{background:#b07dff;}
+.hue b[data-c="#5ac8ff"]{background:#5ac8ff;}
+.hue b.sel{box-shadow:0 0 0 2px #0b0d12, 0 0 0 3.5px currentColor;}
+.hue b[data-c="#7df9c2"].sel{color:#7df9c2;}
+.hue b[data-c="#ffb545"].sel{color:#ffb545;}
+.hue b[data-c="#b07dff"].sel{color:#b07dff;}
+.hue b[data-c="#5ac8ff"].sel{color:#5ac8ff;}
+.divider{height:1px;background:var(--hair);margin:14px 0 12px;}
+.stat{display:flex;justify-content:space-between;font-size:11px;color:var(--dim);margin:7px 0;}
+.stat b{color:var(--ink);font-variant-numeric:tabular-nums;font-weight:600;}
+.keycaps-line{
+  font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-top:12px;
+}
+
+/* ---------- bottom bar ---------- */
+#bottom{
+  position:absolute;left:28px;bottom:22px;right:28px;
+  display:flex;align-items:flex-end;justify-content:space-between;gap:16px;
+}
+.hint{
+  font-size:11px;letter-spacing:.08em;color:var(--dim);
+  display:flex;align-items:center;gap:10px;
+  max-width:520px;line-height:1.5;
+  background:rgba(12,15,21,.5);border:1px solid rgba(255,255,255,.06);
+  padding:9px 13px;border-radius:12px;backdrop-filter:blur(8px);
+}
+.hint kbd{
+  font-family:inherit;font-size:10px;letter-spacing:.06em;
+  background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);
+  border-bottom-color:rgba(255,255,255,.22);
+  padding:2px 6px;border-radius:5px;color:#cfd6e4;
+}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px var(--accent);flex:0 0 auto;}
+#soundHint{transition:opacity .5s;}
+#soundHint.off{opacity:0;}
+
+.stage-title{
+  position:absolute;left:50%;bottom:96px;transform:translateX(-50%);
+  text-align:center;pointer-events:none;
+}
+.stage-title .st{
+  font-size:11px;letter-spacing:.32em;text-transform:uppercase;color:var(--accent);
+  opacity:0;transition:opacity .5s, transform .5s;transform:translateY(6px);
+  text-shadow:0 0 24px rgba(125,249,194,.45);
+}
+.stage-title .st.show{opacity:1;transform:translateY(0);}
+.stage-title .sub{
+  margin-top:7px;font-size:10px;letter-spacing:.16em;color:var(--dim);text-transform:uppercase;
+  opacity:0;transition:opacity .5s .15s;
+}
+.stage-title .sub.show{opacity:1;}
+
+#progress{position:absolute;left:0;bottom:0;height:2px;width:0;background:linear-gradient(90deg,rgba(125,249,194,.2),var(--accent));box-shadow:0 0 14px rgba(125,249,194,.5);transition:width .3s ease-out;z-index:9;}
+
+/* ---------- loader ---------- */
+#loader{
+  position:fixed;inset:0;z-index:40;display:grid;place-items:center;
+  background:radial-gradient(70% 60% at 50% 45%, #10141c 0%, #07090d 70%);
+  transition:opacity .7s;
+}
+#loader.gone{opacity:0;pointer-events:none;}
+#loader .in{text-align:center;}
+#loader .sp{
+  width:34px;height:34px;margin:0 auto 16px;border-radius:50%;
+  border:2px solid rgba(255,255,255,.12);border-top-color:var(--accent);
+  animation:spin 1s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg);}}
+#loader .tx{font-size:10px;letter-spacing:.34em;text-transform:uppercase;color:var(--dim);}
+
+@media (max-width:900px){
+  #panel{display:none;}
+}
+@media (max-width:680px){
+  #hud .top{top:14px;left:14px;right:14px;}
+  .brand h1{font-size:11.5px;letter-spacing:.24em;}
+  .brand p{font-size:9px;}
+  .brand .mark{width:28px;height:28px;border-radius:7px;}
+  .btn{height:34px;padding:0 11px;font-size:10px;letter-spacing:.1em;}
+  #bottom{left:14px;right:14px;bottom:12px;flex-direction:column;align-items:flex-start;gap:8px;}
+  .hint{font-size:10px;padding:7px 10px;max-width:100%;}
+  .stage-title{bottom:120px;}
+}
+@media (prefers-reduced-motion: reduce){
+  .btn,.switch i{transition:none;}
+}
+</style>
+</head>
+<body>
+<div id="scene"></div>
+<div class="vignette"></div>
+
+<div id="hud">
+  <div class="top">
+    <div class="brand">
+      <div class="mark" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+          <rect x="1.5" y="4.5" width="15" height="9" rx="2" stroke="#7df9c2" stroke-width="1.1" opacity=".85"/>
+          <rect x="4" y="6.6" width="2.4" height="2.2" rx=".5" fill="#7df9c2" opacity=".9"/>
+          <rect x="7.8" y="6.6" width="2.4" height="2.2" rx=".5" fill="#7df9c2" opacity=".6"/>
+          <rect x="11.6" y="6.6" width="2.4" height="2.2" rx=".5" fill="#7df9c2" opacity=".35"/>
+          <rect x="4" y="10" width="9.9" height="1.6" rx=".5" fill="#7df9c2" opacity=".45"/>
+        </svg>
+      </div>
+      <div>
+        <h1>Tactile</h1>
+        <p>MX-84 &nbsp;·&nbsp; Exploded Assembly Showcase</p>
+      </div>
+    </div>
+    <div class="top-right">
+      <button class="btn" id="replayBtn" title="Replay the assembly animation (R)">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2.6 8a5.4 5.4 0 1 0 1.7-3.9"/><path d="M2.2 2.6v2.7h2.7"/></svg>
+        Replay
+      </button>
+      <button class="btn" id="muteBtn" title="Toggle sound (M)">
+        <svg id="muteIcon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 6.2h2.2L9 3.6v8.8L5.7 9.8H3.5z"/><path d="M11.6 6.1a3 3 0 0 1 0 3.8"/><path d="M13.4 4.5a5.3 5.3 0 0 1 0 7"/></svg>
+        <span id="muteLabel">Sound On</span>
+      </button>
+    </div>
+  </div>
+
+  <div id="panel" aria-label="Display options">
+    <p class="ph">Assembly / Display <span id="layerTag" style="color:#5d6678">PCB</span></p>
+    <div class="row">
+      <label for="rgbToggle">RGB underglow</label>
+      <div class="switch" id="rgbToggle" data-on="1" role="switch" tabindex="0" aria-checked="true"><i></i></div>
+    </div>
+    <div class="row">
+      <label>Accent</label>
+      <div class="hue" id="hue">
+        <b data-c="#7df9c2" class="sel" title="Mint"></b>
+        <b data-c="#ffb545" title="Amber"></b>
+        <b data-c="#b07dff" title="Violet"></b>
+        <b data-c="#5ac8ff" title="Cyan"></b>
+      </div>
+    </div>
+    <div class="row">
+      <label for="sndToggle">Key sounds</label>
+      <div class="switch" id="sndToggle" data-on="1" role="switch" tabindex="0" aria-checked="true"><i></i></div>
+    </div>
+    <div class="divider"></div>
+    <div class="stat"><span>Layers</span><b>7 / 7</b></div>
+    <div class="stat"><span>Keys</span><b>84</b></div>
+    <div class="stat"><span>Layout</span><b>75% · ANSI</b></div>
+    <div class="stat"><span>Type</span><b>Linear 45g</b></div>
+    <div class="keycaps-line">Drag to orbit · Scroll to zoom</div>
+  </div>
+
+  <div class="stage-title">
+    <div class="st" id="stageText">Case</div>
+    <div class="sub" id="stageSub">Machined aluminium · anodised graphite</div>
+  </div>
+
+  <div id="bottom">
+    <div class="hint" id="soundHint">
+      <span class="dot"></span>
+      <span id="hintText">Tap any key to type — press <kbd>Space</kbd> to wake audio · drag to orbit</span>
+    </div>
+    <div class="hint" style="gap:8px">
+      <kbd>R</kbd><span>replay</span>
+      <kbd style="margin-left:6px">M</kbd><span>mute</span>
+    </div>
+  </div>
+</div>
+<div id="progress"></div>
+
+<div id="loader">
+  <div class="in">
+    <div class="sp"></div>
+    <div class="tx">Machining the case</div>
+  </div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+/* ============================================================
+   0. CONFIG
+   ============================================================ */
+const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const U = 0.68;                       // one key unit
+const GAP = 0.055;
+const PITCH = U;                      // centre-to-centre
+const ROWS = 5;                       // rows 0..4 (F row + 4 main rows)
+const Z0 = 0;                         // back edge of first row
+
+const ACCENT = new THREE.Color('#7df9c2');
+const CASE_COLOR = new THREE.Color('#22262f');
+const TOP_FRAME = new THREE.Color('#1b1f27');
+
+/* ============================================================
+   1. RENDERER / SCENE
+   ============================================================ */
+const host = document.getElementById('scene');
+const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:false, powerPreference:'high-performance' });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.08;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+host.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color('#0b0d12');
+scene.fog = new THREE.Fog('#0b0d12', 26, 52);
+
+const camera = new THREE.PerspectiveCamera(34, window.innerWidth/window.innerHeight, 0.1, 220);
+camera.position.set(7.2, 12.4, 17.6);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 0.5, 0.4);
+controls.enableDamping = true;
+controls.dampingFactor = 0.075;
+controls.enablePan = false;
+controls.minDistance = 11;
+controls.maxDistance = 32;
+controls.minPolarAngle = 0.16;
+controls.maxPolarAngle = Math.PI * 0.485;
+controls.rotateSpeed = 0.7;
+controls.zoomSpeed = 0.85;
+controls.autoRotate = false;
+controls.update();
+
+// ---- environment (procedural, no external files) ----
+const pmrem = new THREE.PMREMGenerator(renderer);
+pmrem.compileEquirectangularShader();
+const envRT = pmrem.fromScene(new RoomEnvironment(), 0.055);
+scene.environment = envRT.texture;
+scene.environmentIntensity = 0.55;
+
+/* ============================================================
+   2. LIGHTING
+   ============================================================ */
+const key = new THREE.DirectionalLight(0xffffff, 2.5);
+key.position.set(8.5, 15, 7.5);
+key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048);
+key.shadow.camera.near = 2;
+key.shadow.camera.far = 46;
+key.shadow.camera.left = -13;
+key.shadow.camera.right = 13;
+key.shadow.camera.top = 13;
+key.shadow.camera.bottom = -13;
+key.shadow.bias = -0.0006;
+key.shadow.normalBias = 0.022;
+key.shadow.radius = 3;
+scene.add(key);
+
+const fill = new THREE.DirectionalLight(0x9dc4ff, 0.85);
+fill.position.set(-11, 7, -6);
+scene.add(fill);
+
+const rim = new THREE.DirectionalLight(0x7df9c2, 0.55);
+rim.position.set(-4, 4, 13);
+scene.add(rim);
+
+const ambient = new THREE.HemisphereLight(0xcfd8e8, 0x0a0c11, 0.45);
+scene.add(ambient);
+
+/* ============================================================
+   3. MATERIALS
+   ============================================================ */
+function mat(params){ return new THREE.MeshStandardMaterial(params); }
+
+const M = {
+  case:      mat({ color:0x23272f, roughness:0.48, metalness:0.72, envMapIntensity:0.85 }),
+  caseDark:  mat({ color:0x161a20, roughness:0.58, metalness:0.65 }),
+  frameTop:  mat({ color:0x1d222a, roughness:0.52, metalness:0.6 }),
+  frameSide: mat({ color:0x2a2f39, roughness:0.4, metalness:0.75 }),
+  brass:     mat({ color:0xc9a24a, roughness:0.3, metalness:0.95 }),
+  brassDark: mat({ color:0x8a6c2c, roughness:0.38, metalness:0.9 }),
+  foam:      mat({ color:0x2f333c, roughness:0.98, metalness:0.0 }),
+  pcb:       mat({ color:0x1b4b3a, roughness:0.55, metalness:0.18 }),
+  pcbEdge:   mat({ color:0x2c6a51, roughness:0.45, metalness:0.25 }),
+  trace:     mat({ color:0x4fa27d, roughness:0.5, metalness:0.55, emissive:0x0d2a20, emissiveIntensity:0.6 }),
+  plate:     mat({ color:0x3d444f, roughness:0.35, metalness:0.85 }),
+  plateEdge: mat({ color:0x5b6472, roughness:0.28, metalness:0.9 }),
+  switchTop: mat({ color:0x2b2f38, roughness:0.62, metalness:0.12 }),
+  switchBot: mat({ color:0x3c8a63, roughness:0.66, metalness:0.05 }),
+  stem:      mat({ color:0xdce3ef, roughness:0.55, metalness:0.06 }),
+  metalPin:  mat({ color:0xb9bfca, roughness:0.32, metalness:0.95 }),
+  // keycaps
+  capAlpha:  mat({ color:0xe9ecf2, roughness:0.52, metalness:0.06 }),
+  capMod:    mat({ color:0x30353f, roughness:0.5, metalness:0.12 }),
+  capAccent: mat({ color:0x7df9c2, roughness:0.42, metalness:0.08 }),
+  capLegendL:mat({ color:0x1b1e25, roughness:0.55, metalness:0.05 }),
+  capLegendD:mat({ color:0xd6dce8, roughness:0.55, metalness:0.05 }),
+  knob:      mat({ color:0x8b93a3, roughness:0.3, metalness:0.95 }),
+  knobTop:   mat({ color:0x2b3038, roughness:0.45, metalness:0.6 }),
+  ledStrip:  mat({ color:0xffffff, roughness:0.4, metalness:0.1, emissive:ACCENT, emissiveIntensity:2.2, toneMapped:true }),
+  ledDot:    mat({ color:0xffffff, roughness:0.5, metalness:0.0, emissive:ACCENT, emissiveIntensity:3.2 }),
+};
+
+// glow texture (radial, generated at runtime)
+function makeGlowTexture(){
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d');
+  const grd = g.createRadialGradient(64,64,0,64,64,64);
+  grd.addColorStop(0,'rgba(255,255,255,1)');
+  grd.addColorStop(0.28,'rgba(255,255,255,0.55)');
+  grd.addColorStop(0.62,'rgba(255,255,255,0.14)');
+  grd.addColorStop(1,'rgba(255,255,255,0)');
+  g.fillStyle = grd; g.fillRect(0,0,128,128);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+const glowTex = makeGlowTexture();
+M.ledGlow = new THREE.SpriteMaterial({ map: glowTex, color: ACCENT, transparent:true, opacity:0.55, blending:THREE.AdditiveBlending, depthWrite:false });
+
+/* ============================================================
+   4. GEOMETRY HELPERS
+   ============================================================ */
+const GEO = {
+  rbox: new Map(),
+};
+function rbox(w,h,d,r=0.04){
+  const k = [w,h,d,r].map(n=>n.toFixed(4)).join('|');
+  if(GEO.rbox.has(k)) return GEO.rbox.get(k);
+  const g = new RoundedBoxGeometry(w,h,d,r);
+  GEO.rbox.set(k,g);
+  return g;
+}
+// tiny local implementation to avoid extra CDN file fetch issues
+function RoundedBoxGeometry(w,h,d,radius){
+  const r = Math.min(radius, Math.min(w,h,d)*0.5 - 1e-4);
+  const s = new THREE.Shape();
+  const W = w/2 - r, H = h/2 - r;
+  // 2D rounded rect used as a 3D extrusion of a bevelled box
+  const path = new THREE.Shape();
+  const rr = r;
+  path.moveTo(-W + 0, -H);
+  path.lineTo(W, -H);
+  path.quadraticCurveTo(W + 0, -H, W, -H + rr*0.0001);
+  // simple approach: build a rounded rectangle shape then extrude
+  const shape = new THREE.Shape();
+  const w2 = w/2, h2 = d/2, rad = Math.min(radius, Math.min(w,d)*0.5 - 1e-4);
+  shape.moveTo(-w2 + rad, -h2);
+  shape.lineTo(w2 - rad, -h2);
+  shape.quadraticCurveTo(w2, -h2, w2, -h2 + rad);
+  shape.lineTo(w2, h2 - rad);
+  shape.quadraticCurveTo(w2, h2, w2 - rad, h2);
+  shape.lineTo(-w2 + rad, h2);
+  shape.quadraticCurveTo(-w2, h2, -w2, h2 - rad);
+  shape.lineTo(-w2, -h2 + rad);
+  shape.quadraticCurveTo(-w2, -h2, -w2 + rad, -h2);
+
+  const geo = new THREE.ExtrudeGeometry(shape, {
+    depth: h - rad*2, bevelEnabled:true, bevelThickness:rad, bevelSize:rad, bevelSegments:3, curveSegments:6
+  });
+  geo.center();
+  geo.rotateX(-Math.PI/2);
+  // after rotateX the extrusion runs along +Y from -h/2..h/2
+  geo.computeVertexNormals();
+  return geo;
+}
+
+function mesh(geo, material, cast=true, receive=true){
+  const m = new THREE.Mesh(geo, material);
+  m.castShadow = cast; m.receiveShadow = receive;
+  return m;
+}
+
+/* ============================================================
+   5. KEYBOARD LAYOUT
+   ============================================================ */
+/* units per key, in keycap-widths. Row 0 = F row.
+   75% ANSI-ish with a knob replacing the far-right key.        */
+const ROWS_DEF = [
+  { label:'Esc',  keys:[{l:'Esc',u:1},{l:'F1',u:1},{l:'F2',u:1},{l:'F3',u:1},{l:'F4',u:1},{l:'F5',u:1},{l:'F6',u:1},{l:'F7',u:1},{l:'F8',u:1},{l:'F9',u:1},{l:'F10',u:1},{l:'F11',u:1},{l:'F12',u:1},{l:'Del',u:1},{l:'Knob',u:1,knob:true}] },
+  { label:'Q', keys:[{l:'~\n`',u:1,code:'Backquote'},{l:'!\n1',u:1,code:'Digit1'},{l:'@\n2',u:1,code:'Digit2'},{l:'#\n3',u:1,code:'Digit3'},{l:'$\n4',u:1,code:'Digit4'},{l:'%\n5',u:1,code:'Digit5'},{l:'^\n6',u:1,code:'Digit6'},{l:'&\n7',u:1,code:'Digit7'},{l:'*\n8',u:1,code:'Digit8'},{l:'(\n9',u:1,code:'Digit9'},{l:')\n0',u:1,code:'Digit0'},{l:'_\n-',u:1,code:'Minus'},{l:'+\n=',u:1,code:'Equal'},{l:'Backspace',u:2,code:'Backspace',grp:'back'}] },
+  { label:'A', keys:[{l:'Tab',u:1.5,code:'Tab',grp:'mod'},{l:'Q',u:1,code:'KeyQ'},{l:'W',u:1,code:'KeyW'},{l:'E',u:1,code:'KeyE'},{l:'R',u:1,code:'KeyR'},{l:'T',u:1,code:'KeyT'},{l:'Y',u:1,code:'KeyY'},{l:'U',u:1,code:'KeyU'},{l:'I',u:1,code:'KeyI'},{l:'O',u:1,code:'KeyO'},{l:'P',u:1,code:'KeyP'},{l:'{\n[',u:1,code:'BracketLeft'},{l:'}\n]',u:1,code:'BracketRight'},{l:'|\n\\',u:1.5,code:'Backslash'}] },
+  { label:'Z', keys:[{l:'Caps',u:1.75,code:'CapsLock',grp:'mod'},{l:'A',u:1,code:'KeyA'},{l:'S',u:1,code:'KeyS'},{l:'D',u:1,code:'KeyD'},{l:'F',u:1,code:'KeyF'},{l:'G',u:1,code:'KeyG'},{l:'H',u:1,code:'KeyH'},{l:'J',u:1,code:'KeyJ'},{l:'K',u:1,code:'KeyK'},{l:'L',u:1,code:'KeyL'},{l:':\n;',u:1,code:'Semicolon'},{l:'"\n\'',u:1,code:'Quote'},{l:'Enter',u:2.25,code:'Enter',grp:'enter'}] },
+  { label:'X', keys:[{l:'Ctrl',u:1.25,code:'ControlLeft',grp:'mod'},{l:'Win',u:1.25,code:'MetaLeft',grp:'mod'},{l:'Alt',u:1.25,code:'AltLeft',grp:'mod'},{l:'',u:6.25,code:'Space',grp:'space'},{l:'Alt',u:1.25,code:'AltRight',grp:'mod'},{l:'Fn',u:1.25,code:'Fn',grp:'mod'},{l:'Ctrl',u:1.25,code:'ControlRight',grp:'mod'},{l:'←',u:1,code:'ArrowLeft',grp:'arrow'},{l:'↓',u:1,code:'ArrowDown',grp:'arrow'},{l:'↑',u:1,code:'ArrowUp',grp:'arrow'}] },
+];
+
+const ROWS_TOTAL_U = [15, 15, 15.5, 13.75, 15.5];
+
+/* compute centres */
+function layoutKeys(){
+  const rows = [];
+  ROWS_DEF.forEach((row, r) => {
+    let x = 0;
+    const keys = [];
+    const totalU = row.keys.reduce((a,k)=>a+k.u,0);
+    rows.push({ row, totalU, keys });
+    let cursor = -totalU/2;
+    row.keys.forEach(k=>{
+      const w = k.u * PITCH;
+      const cx = cursor + w/2;
+      const cz = r * PITCH + PITCH/2 - (ROWS-1)*PITCH/2;
+      keys.push({ ...k, x:cx, z:cz, w, d:PITCH - GAP, row:r, idx:keys.length });
+      cursor += w;
+    });
+  });
+  return rows;
+}
+const LAYOUT = layoutKeys();
+
+/* case footprint */
+const boardW = 15.5 * PITCH;                 // usable width
+const keySpanZ = (ROWS-1)*PITCH + PITCH;     // depth of keys
+const marginX = 0.46, marginZ = 0.44;
+const CASE_W = boardW + marginX*2 + 0.5;
+const CASE_D = keySpanZ + marginZ*2 + 0.5;
+
+/* ============================================================
+   6. LAYER GROUPS
+   ============================================================ */
+const root = new THREE.Group();
+scene.add(root);
+
+const G = {};
+function layer(name){ const g = new THREE.Group(); g.name = name; root.add(g); G[name] = g; return g; }
+['caseBottom','caseTop','pcb','foam','plate','switches','keycaps','rgb'].forEach(layer);
+
+/* ---- ground / backdrop ---- */
+const groundMat = new THREE.MeshStandardMaterial({ color:0x0c0f14, roughness:0.92, metalness:0.12 });
+const ground = mesh(new THREE.PlaneGeometry(160,160), groundMat, false, true);
+ground.rotation.x = -Math.PI/2;
+ground.position.y = -1.12;
+scene.add(ground);
+
+/* soft contact shadow disc under the board (also generated texture) */
+{
+  const c = document.createElement('canvas'); c.width = c.height = 256;
+  const g = c.getContext('2d');
+  const grd = g.createRadialGradient(128,128,0,128,128,128);
+  grd.addColorStop(0,'rgba(0,0,0,0.85)');
+  grd.addColorStop(0.55,'rgba(0,0,0,0.38)');
+  grd.addColorStop(1,'rgba(0,0,0,0)');
+  g.fillStyle = grd; g.fillRect(0,0,256,256);
+  const t = new THREE.CanvasTexture(c);
+  const m = new THREE.MeshBasicMaterial({ map:t, transparent:true, opacity:0.85, depthWrite:false });
+  const p = new THREE.Mesh(new THREE.PlaneGeometry(CASE_W*1.6, CASE_D*1.7), m);
+  p.rotation.x = -Math.PI/2; p.position.set(0, -1.10, 0.15);
+  scene.add(p);
+}
+
+/* ============================================================
+   7. CASE
+   ============================================================ */
+const caseY0 = -0.96;           // bottom of the case (world y)
+const caseH  = 0.86;
+const topY   = caseY0 + caseH;  // top of the case rim
+
+/* bottom shell */
+{
+  const g = G.caseBottom;
+  const body = mesh(rbox(CASE_W, caseH, CASE_D, 0.20), M.case);
+  body.position.set(0, caseY0 + caseH/2, 0);
+  g.add(body);
+
+  // inner floor (slightly recessed so PCB sits into the case)
+  const floor = mesh(rbox(CASE_W-0.34, 0.16, CASE_D-0.34, 0.10), M.caseDark);
+  floor.position.set(0, caseY0 + caseH - 0.10, 0);
+  g.add(floor);
+
+  // rubber feet
+  const footGeo = new THREE.CylinderGeometry(0.20, 0.22, 0.10, 20);
+  [[-CASE_W/2+0.7, -CASE_D/2+0.65],[CASE_W/2-0.7,-CASE_D/2+0.65],[-CASE_W/2+0.7, CASE_D/2-0.65],[CASE_W/2-0.7, CASE_D/2-0.65]].forEach(([x,z])=>{
+    const f = mesh(footGeo, M.caseDark);
+    f.position.set(x, caseY0-0.05, z);
+    g.add(f);
+  });
+
+  // underside badge plate
+  const badge = mesh(rbox(2.1,0.05,0.62,0.06), M.brass);
+  badge.position.set(0, caseY0-0.005, CASE_D/2-1.0);
+  g.add(badge);
+
+  // rear I/O: USB-C + switch cutouts
+  const ioBack = mesh(rbox(3.3, 0.30, 0.06, 0.05), M.caseDark);
+  ioBack.position.set(0, caseY0+0.34, -CASE_D/2+0.02);
+  g.add(ioBack);
+  const usb = mesh(rbox(0.52,0.18,0.10,0.05), M.metalPin);
+  usb.position.set(0, caseY0+0.36, -CASE_D/2-0.02);
+  g.add(usb);
+  const usbHole = mesh(rbox(0.34,0.09,0.06,0.03), mat({color:0x0a0c10, roughness:0.9, metalness:0.0}));
+  usbHole.position.set(0, caseY0+0.36, -CASE_D/2-0.055);
+  g.add(usbHole);
+  const usbSwitch = mesh(new THREE.CylinderGeometry(0.075,0.075,0.16,16), M.brassDark);
+  usbSwitch.rotation.z = Math.PI/2;
+  usbSwitch.position.set(1.05, caseY0+0.34, -CASE_D/2-0.03);
+  g.add(usbSwitch);
+}
+
+/* top frame / plate surround */
+const topGroup = new THREE.Group();
+G.caseTop.add(topGroup);
+
+function buildTopFrame(){
+  const rimT = 0.30;
+  const outerW = CASE_W, outerD = CASE_D;
+  const innerW = CASE_W - rimT*2, innerD = CASE_D - rimT*2;
+
+  const bars = [
+    { w:outerW, h:0.34, d:rimT, x:0, z:-outerD/2+rimT/2 },
+    { w:outerW, h:0.34, d:rimT, x:0, z: outerD/2-rimT/2 },
+    { w:rimT,  h:0.34, d:innerD, x:-outerW/2+rimT/2, z:0 },
+    { w:rimT,  h:0.34, d:innerD, x: outerW/2-rimT/2, z:0 },
+  ];
+  bars.forEach(b=>{
+    const m = mesh(rbox(b.w, b.h, b.d, 0.10), M.frameSide);
+    m.position.set(b.x, 0, b.z);
+    topGroup.add(m);
+  });
+
+  // top cap surface for a crisp bevelled highlight
+  const cap = mesh(rbox(outerW-0.04, 0.05, outerD-0.04, 0.10), M.frameTop);
+  cap.position.y = 0.19;
+  topGroup.add(cap);
+
+  // brass weight strip on the front face
+  const strip = mesh(rbox(4.6, 0.13, 0.055, 0.05), M.brass);
+  strip.position.set(0, -0.02, outerD/2+0.008);
+  topGroup.add(strip);
+  const strip2 = mesh(rbox(0.10, 0.30, 0.055, 0.05), M.brassDark);
+  strip2.position.set(2.5, 0.03, outerD/2+0.008);
+  topGroup.add(strip2);
+
+  // engraved accent groove along the front
+  const groove = mesh(rbox(5.0, 0.035, 0.03, 0.015), mat({ color:0x0b0d12, roughness:0.8, metalness:0.4 }));
+  groove.position.set(0, -0.20, outerD/2+0.004);
+  topGroup.add(groove);
+}
+
+/* ============================================================
+   8. PCB
+   ============================================================ */
+const PCB_Y = caseY0 + caseH + 0.055;     // top surface of pcb
+const PCB_T = 0.10;
+
+function buildPCB(){
+  const g = G.pcb;
+  const pw = boardW + 0.12, pd = keySpanZ + 0.18;
+  const board = mesh(rbox(pw, PCB_T, pd, 0.06), M.pcb);
+  board.position.set(0, PCB_Y - PCB_T/2, 0);
+  g.add(board);
+
+  // silkscreen / trace texture (procedural canvas) applied as a decal plane
+  const cw = 1024, ch = Math.round(1024 * pd/pw);
+  const c = document.createElement('canvas'); c.width = cw; c.height = ch;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#1b4b3a'; ctx.fillRect(0,0,cw,ch);
+  // grid traces
+  ctx.strokeStyle = 'rgba(90,160,125,0.35)';
+  ctx.lineWidth = 1.2;
+  const sx = cw / pw, sz = ch / pd;
+  for(let i=0;i<90;i++){
+    const gx = Math.random()*cw, gz = Math.random()*ch;
+    const len = 20 + Math.random()*150;
+    ctx.beginPath();
+    ctx.moveTo(gx,gz);
+    if(Math.random()>0.5){ ctx.lineTo(gx+len, gz); ctx.lineTo(gx+len+18, gz+18*Math.sign(Math.random()-0.5)); }
+    else { ctx.lineTo(gx, gz+len); ctx.lineTo(gx+16, gz+len+16); }
+    ctx.stroke();
+  }
+  // pads around each switch position
+  LAYOUT.forEach(row=>row.keys.forEach(k=>{
+    const px = (k.x + pw/2) * sx;
+    const py = (k.z + pd/2) * sz;
+    ctx.fillStyle = 'rgba(200,225,210,0.5)';
+    ctx.beginPath(); ctx.arc(px,py,3.2,0,7); ctx.fill();
+    ctx.strokeStyle = 'rgba(200,225,210,0.26)';
+    ctx.beginPath(); ctx.arc(px,py,7.5,0,7); ctx.stroke();
+    // trace to next
+    ctx.strokeStyle = 'rgba(150,210,180,0.22)';
+    ctx.beginPath(); ctx.moveTo(px,py); ctx.lineTo(px, py + 14); ctx.stroke();
+  }));
+  // silkscreen marks
+  ctx.fillStyle = 'rgba(220,235,225,0.55)';
+  ctx.font = '600 13px monospace';
+  ctx.fillText('TACTILE  MX-84  REV.C', 22, ch - 26);
+  ctx.font = '11px monospace';
+  ctx.fillText('HOT-SWAP  ·  KAILH  ·  SMD', 22, ch - 12);
+  // gold test pads
+  for(let i=0;i<24;i++){
+    ctx.fillStyle = '#c9a24a';
+    ctx.beginPath(); ctx.arc(cw-30-(i%8)*14, ch-52 + Math.floor(i/8)*14, 3, 0, 7); ctx.fill();
+  }
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 8;
+  const decal = new THREE.Mesh(
+    new THREE.PlaneGeometry(pw, pd),
+    new THREE.MeshStandardMaterial({ map:tex, roughness:0.6, metalness:0.25 })
+  );
+  decal.rotation.x = -Math.PI/2;
+  decal.position.set(0, PCB_Y + 0.001, 0);
+  decal.receiveShadow = true;
+  g.add(decal);
+
+  // USB connector block at the rear
+  const usb = mesh(rbox(0.72,0.22,0.28,0.05), M.metalPin);
+  usb.position.set(0, PCB_Y+0.09, -pd/2-0.02);
+  g.add(usb);
+  const usbHole = mesh(rbox(0.4,0.1,0.06,0.03), mat({color:0x080a0d, roughness:0.95, metalness:0.0}));
+  usbHole.position.set(0, PCB_Y+0.09, -pd/2-0.14);
+  g.add(usbHole);
+
+  // pin headers / stabiliser mounts
+  [[-1,1],[1,1],[-1,-1],[1,-1]].forEach(([sx,sz])=>{
+    const h = mesh(new THREE.CylinderGeometry(0.075,0.075,0.05,12), M.brass);
+    h.position.set(sx*(pw/2-0.22), PCB_Y+0.02, sz*(pd/2-0.24));
+    g.add(h);
+  });
+}
+
+/* ============================================================
+   9. FOAM
+   ============================================================ */
+const FOAM_T = 0.13;
+
+function buildFoam(){
+  const g = G.foam;
+  const fw = boardW + 0.05, fd = keySpanZ + 0.10;
+  const foam = mesh(rbox(fw, FOAM_T, fd, 0.09), M.foam);
+  const fy = PCB_Y + FOAM_T/2 + 0.035;
+  foam.position.set(0, fy, 0);
+  foam.receiveShadow = true; foam.castShadow = true;
+  g.add(foam);
+
+  // poron cutout detail — small holes for switch stems to breathe
+  const holeMat = mat({ color:0x191c22, roughness:1.0, metalness:0.0 });
+  LAYOUT.forEach(row=>row.keys.forEach(k=>{
+    const h = new THREE.Mesh(new THREE.CircleGeometry(0.085, 10), holeMat);
+    h.rotation.x = -Math.PI/2;
+    h.position.set(k.x, fy + FOAM_T/2 + 0.001, k.z);
+    g.add(h);
+  }));
+
+  // foam edge stripe
+  const edge = mesh(rbox(fw+0.004, 0.035, 0.03, 0.01), mat({color:0x1d2129, roughness:1.0, metalness:0.0}));
+  edge.position.set(0, fy - FOAM_T/2 + 0.02, fd/2);
+  g.add(edge);
+  return fy + FOAM_T/2;
+}
+const FOAM_TOP = (()=>0)(); // set below
+
+/* ============================================================
+   10. PLATE
+   ============================================================ */
+const PLATE_T = 0.075;
+
+function buildPlate(){
+  const g = G.plate;
+  const pw = boardW + 0.15, pd = keySpanZ + 0.16;
+  const p = mesh(rbox(pw, PLATE_T, pd, 0.06), M.plate);
+  const py = FOAM_TOP_PLACEHOLDER();
+  p.position.set(0, py, 0);
+  g.add(p);
+
+  // plate switch cutouts (visual: darker inset rings + switch holes)
+  const cut = mat({ color:0x14171d, roughness:0.7, metalness:0.3 });
+  LAYOUT.forEach(row=>row.keys.forEach(k=>{
+    const box = mesh(rbox(k.w - GAP*0.4, PLATE_T*0.9, PITCH - GAP*0.4, 0.06), cut, false, false);
+    box.position.set(k.x, py + 0.005, k.z);
+    g.add(box);
+    // rim highlight
+    const ring = mesh(rbox(k.w - GAP*0.2, 0.02, PITCH - GAP*0.2, 0.05), M.plateEdge, false, false);
+    ring.position.set(k.x, py - PLATE_T/2 - 0.005, k.z);
+    g.add(ring);
+  }));
+  return py + PLATE_T/2;
+}
+
+/* ============================================================
+   11. SWITCHES
+   ============================================================ */
+const SW_H = 0.62;    // total housing height
+const switchRefs = [];
+
+function buildSwitches(plateTop){
+  const g = G.switches;
+  const swMatTop = M.switchTop, swMatBot = M.switchBot;
+  LAYOUT.forEach(row=>row.keys.forEach(k=>{
+    if(k.knob) return;
+    const grp = new THREE.Group();
+
+    const base = mesh(rbox(k.w - GAP*0.5, 0.20, PITCH - GAP*0.5, 0.06), swMatBot);
+    base.position.y = 0.10; grp.add(base);
+
+    const mid = mesh(rbox(k.w - GAP*0.85, 0.16, PITCH - GAP*0.85, 0.05), swMatTop);
+    mid.position.y = 0.27; grp.add(mid);
+
+    const top = mesh(rbox(k.w - GAP*1.3, 0.16, PITCH - GAP*1.3, 0.05), swMatTop);
+    top.position.y = 0.42; grp.add(top);
+
+    const stem = mesh(rbox(0.17, 0.20, 0.30, 0.03), M.stem);
+    stem.position.y = 0.55; grp.add(stem);
+
+    // tiny pins on left side (2 per switch) — subtle detail
+    for(let i=0;i<2;i++){
+      const pin = mesh(new THREE.BoxGeometry(0.045,0.045,0.045), M.metalPin);
+      pin.position.set(-(k.w/2) - 0.01, 0.12 + i*0.10, 0);
+      grp.add(pin);
+    }
+
+    // LED under switch
+    const led = new THREE.Mesh(new THREE.CircleGeometry(0.055, 10), M.ledDot);
+    led.rotation.x = -Math.PI/2;
+    led.position.set(0, 0.055, 0);
+    grp.add(led);
+
+    const glow = new THREE.Sprite(M.ledGlow);
+    glow.scale.set(0.85, 0.85, 0.85);
+    glow.position.set(0, 0.30, 0);
+    grp.add(glow);
+
+    grp.position.set(k.x, plateTop, k.z);
+    g.add(grp);
+
+    const rec = { group:grp, key:k, led, glow, baseY:plateTop, ...k };
+    switchRefs.push(rec);
+  }));
+
+  // ---- knob (replaces the 15th key in the F row) ----
+  const knobKey = LAYOUT[0].keys[LAYOUT[0].keys.length-1];
+  const kg = new THREE.Group();
+  const stem = mesh(new THREE.CylinderGeometry(0.14,0.14,0.42,18), M.metalPin);
+  stem.position.y = 0.30; kg.add(stem);
+  const kn = mesh(new THREE.CylinderGeometry(0.30,0.30,0.42,28), M.knob);
+  kn.position.y = 0.60; kg.add(kn);
+  const top = mesh(new THREE.CylinderGeometry(0.295,0.295,0.06,28), M.knobTop);
+  top.position.y = 0.83; kg.add(top);
+  // grip knurls
+  for(let i=0;i<18;i++){
+    const a = i/18*Math.PI*2;
+    const g2 = mesh(new THREE.BoxGeometry(0.035,0.30,0.045), M.knob);
+    g2.position.set(Math.cos(a)*0.303, 0.60, Math.sin(a)*0.303);
+    g2.rotation.y = -a;
+    kg.add(g2);
+  }
+  // accent marker
+  const mark = mesh(new THREE.BoxGeometry(0.03,0.02,0.12), M.ledDot, false, false);
+  mark.position.set(0, 0.865, 0.14);
+  kg.add(mark);
+  const glow = new THREE.Sprite(M.ledGlow);
+  glow.scale.set(1.5,1.5,1.5); glow.position.y = 0.95; kg.add(glow);
+  kg.position.set(knobKey.x, plateTop, knobKey.z);
+  g.add(kg);
+  G.rgb.add(kg);
+  switchRefs.push({ group:kg, key:knobKey, led:mark, glow, baseY:plateTop, isKnob:true });
+
+  return plateTop + 0.56;
+}
+
+/* ============================================================
+   12. KEYCAPS
+   ============================================================ */
+const capRefs = [];
+
+function capType(k){
+  if(k.grp === 'space') return 'mod';
+  if(k.grp === 'mod' || k.grp === 'enter' || k.grp === 'back' || k.grp === 'arrow') return 'mod';
+  if(k.l === 'Esc') return 'accent';
+  if(k.l === 'Enter') return 'accent';
+  if(k.row === 0) return 'mod';
+  if(/^[a-zA-Z]$/.test(k.l)) return 'alpha';
+  return 'alpha';
+}
+
+function makeLegendTexture(lines, colorHex, align){
+  const c = document.createElement('canvas');
+  c.width = 256; c.height = 256;
+  const ctx = c.getContext('2d');
+  ctx.clearRect(0,0,256,256);
+  const col = colorHex || '#1b1e25';
+  ctx.fillStyle = col;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  const size = lines.length > 1 ? 46 : 58;
+  ctx.font = `700 ${size}px ui-monospace, SFMono-Regular, Menlo, monospace`;
+  if(lines.length === 1){
+    ctx.fillText(lines[0], 96, 196);
+  } else {
+    ctx.fillText(lines[0], 74, 150);
+    ctx.fillText(lines[1], 74, 214);
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 8;
+  return t;
+}
+
+function buildKeycaps(switchTop){
+  const g = G.keycaps;
+  const H = 0.30;
+  LAYOUT.forEach(row=>row.keys.forEach(k=>{
+    if(k.knob) return;
+    const rec = { key:k };
+    const cap = new THREE.Group();
+
+    const type = capType(k);
+    const bodyMat = type === 'alpha' ? M.capAlpha : type === 'accent' ? M.capAccent : M.capMod;
+
+    const w = k.w - GAP*1.0, d = PITCH - GAP*1.0;
+
+    // base skirt
+    const skirt = mesh(rbox(w, H, d, 0.10), bodyMat);
+    skirt.position.y = H/2;
+    cap.add(skirt);
+
+    // top dish (slightly smaller, bevelled)
+    const dish = mesh(rbox(w-0.13, H*0.42, d-0.13, 0.09), bodyMat);
+    dish.position.y = H + H*0.18;
+    cap.add(dish);
+
+    // legend
+    const legendLines = (k.l || '').split('\n').filter(s=>s.length);
+    if(legendLines.length && !k.grp || k.l){
+      const col = (type === 'alpha') ? '#1b1e25' : (type === 'accent' ? '#0c1a14' : '#d6dce8');
+      const tex = makeLegendTexture(legendLines, col);
+      const mat = new THREE.MeshStandardMaterial({ map:tex, transparent:true, roughness:0.6, metalness:0.0, depthWrite:false });
+      const pl = new THREE.Mesh(new THREE.PlaneGeometry(w*0.82, d*0.82), mat);
+      pl.rotation.x = -Math.PI/2;
+      pl.position.set(0, H + H*0.40, 0);
+      cap.add(pl);
+    }
+
+    cap.position.set(k.x, switchTop + 0.06, k.z);
+    g.add(cap);
+    capRefs.push({ cap, key:k, baseY: switchTop + 0.06 });
+  }));
+}
+
+/* ============================================================
+   13. RGB UNDERGLOW
+   ============================================================ */
+function buildRGB(){
+  const g = G.rgb;
+  const glowMat = new THREE.MeshStandardMaterial({
+    color:0xffffff, emissive:ACCENT, emissiveIntensity:2.4, roughness:0.5, metalness:0.0
+  });
+  // light pipes around the inside of the case
+  const y = caseY0 + caseH + 0.02;
+  const inset = 0.24;
+  const segs = [
+    { w:CASE_W-0.8, h:0.035, d:0.055, x:0, z:-CASE_D/2+inset+0.05 },
+    { w:CASE_W-0.8, h:0.035, d:0.055, x:0, z: CASE_D/2-inset-0.05 },
+    { w:0.055, h:0.035, d:CASE_D-0.8, x:-CASE_W/2+inset+0.05, z:0 },
+    { w:0.055, h:0.035, d:CASE_D-0.8, x: CASE_W/2-inset-0.05, z:0 },
+  ];
+  segs.forEach(s=>{
+    const m = new THREE.Mesh(rbox(s.w, s.h, s.d, 0.02), glowMat);
+    m.position.set(s.x, y, s.z);
+    g.add(m);
+  });
+  // sprite glow along the front lip
+  for(let i=0;i<9;i++){
+    const s = new THREE.Sprite(M.ledGlow);
+    const t = (i/8 - 0.5);
+    s.position.set(t*(CASE_W-1.4), y-0.02, CASE_D/2-0.30);
+    s.scale.set(1.8,1.8,1.8);
+    g.add(s);
+  }
+  return glowMat;
+}
+
+/* ============================================================
+   14. BUILD (deferred heights)
+   ============================================================ */
+/* The plate top depends on the foam top, which depends on the PCB. */
+
+
+function computeStack(){
+  const PCB_TOP = PCB_Y;
+  const foamBase = PCB_TOP + 0.035;
+  const foamTop = foamBase + FOAM_T;
+  const plateBase = foamTop + 0.02;
+  const plateTop = plateBase + PLATE_T;
+  return { PCB_TOP, foamBase, foamTop, plateBase, plateTop };
+}
+
+// resolve function used by buildPlate()
+function FOAM_TOP_PLACEHOLDER(){ return 0; }
+
+const STACK = computeStack();
+
+buildPCB();
+// patch: buildFoam uses its own computed y; recompute cleanly
+function buildFoamReal(){
+  const g = G.foam;
+  const fw = boardW + 0.05, fd = keySpanZ + 0.10;
+  const fy = STACK.foamBase + FOAM_T/2;
+  const foam = mesh(rbox(fw, FOAM_T, fd, 0.09), M.foam);
+  foam.position.set(0, fy, 0);
+  foam.castShadow = true; foam.receiveShadow = true;
+  g.add(foam);
+
+  const holeMat = mat({ color:0x14171c, roughness:1.0, metalness:0.0 });
+  LAYOUT.forEach(row=>row.keys.forEach(k=>{
+    const h = new THREE.Mesh(new THREE.CircleGeometry(0.085, 10), holeMat);
+    h.rotation.x = -Math.PI/2;
+    h.position.set(k.x, STACK.foamTop + 0.001, k.z);
+    g.add(h);
+  }));
+}
+buildFoamReal();
+
+function buildPlateReal(){
+  const g = G.plate;
+  const pw = boardW + 0.15, pd = keySpanZ + 0.16;
+  const py = STACK.plateBase + PLATE_T/2;
+  const p = mesh(rbox(pw, PLATE_T, pd, 0.06), M.plate);
+  p.position.set(0, py, 0);
+  g.add(p);
+
+  const cut = mat({ color:0x12151b, roughness:0.75, metalness:0.3 });
+  const ring = mat({ color:0x5e6876, roughness:0.25, metalness:0.92 });
+  LAYOUT.forEach(row=>row.keys.forEach(k=>{
+    const hole = mesh(rbox(k.w - GAP*0.6, PLATE_T*1.05, PITCH - GAP*0.6, 0.07), cut, false, false);
+    hole.position.set(k.x, py + 0.002, k.z);
+    g.add(hole);
+    const rim = mesh(rbox(k.w - GAP*0.42, 0.022, PITCH - GAP*0.42, 0.05), ring, false, false);
+    rim.position.set(k.x, py - PLATE_T/2 - 0.006, k.z);
+    g.add(rim);
+  }));
+  return py + PLATE_T/2;
+}
+const plateTop = buildPlateReal();
+
+buildTopFrame();
+
+// case top group sits at the top of the case
+topGroup.position.y = topY;
+
+// ---- switches ----
+const switchTop = buildSwitches(plateTop);
+buildKeycaps(switchTop);
+const ledMat = buildRGB();
+
+/* ============================================================
+   15. ASSEMBLY ANIMATION
+   ============================================================ */
+const stages = [];
+function addStage(name, sub, start, dur){
+  stages.push({ name, sub, start, dur });
+}
+const S = {
+  caseBottom: 0.0,
+  pcb:       0.65,
+  foam:      1.65,
+  plate:     2.55,
+  switches:  3.55,
+  keycaps:   5.05,
+  rgb:       7.9,
+};
+const STEP_SW = 0.040;   // per switch
+const STEP_KC = 0.052;   // per keycap
+
+const N_SW = switchRefs.length;
+const SW_END = S.switches + N_SW*STEP_SW + 0.42;
+const KC_START = Math.max(S.keycaps, SW_END + 0.10);
+const N_KC = capRefs.length;
+const KC_END = KC_START + N_KC*STEP_KC + 0.44;
+const RGB_START = Math.max(S.rgb, KC_END + 0.16);
+const TOTAL = RGB_START + 1.05;
+
+/* layer initial transforms for exploded view */
+const explode = {
+  pcb:     { dy:-0.0,  dz:-1.6,  rx:0.0 },
+  foam:    { dy: 2.05, dz:-1.2 },
+  plate:   { dy: 3.55, dz:-0.75 },
+  switches:{ dy: 5.15, dz:-0.2 },
+  keycaps: { dy: 7.30, dz: 0.4 },
+};
+
+/* easing */
+const easeOutCubic = t => 1 - Math.pow(1-t, 3);
+const easeInOutCubic = t => t<0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2, 3)/2;
+const easeOutQuint = t => 1 - Math.pow(1-t, 5);
+const clamp01 = v => Math.min(1, Math.max(0, v));
+
+let animStart = 0;
+let animating = true;
+let hasInteracted = false;
+
+function resetLayers(){
+  G.caseBottom.position.set(0,0,0);
+  G.pcb.position.set(0,0,-1.55);
+  G.foam.position.set(0, 2.05, -1.15);
+  G.plate.position.set(0, 3.55, -0.72);
+  G.switches.position.set(0, 5.15, -0.18);
+  G.keycaps.position.set(0, 7.30, 0.42);
+  G.caseTop.position.set(0, 3.2, -1.2);
+  G.rgb.position.set(0, 0, 0);
+  G.rgb.visible = false;
+
+  switchRefs.forEach(s=>{
+    s.group.position.y = s.baseY;
+    s.group.visible = false;
+    s.group.scale.setScalar(1);
+    s.lit = 0;
+  });
+  capRefs.forEach(c=>{
+    c.cap.position.y = c.baseY;
+    c.cap.visible = false;
+    c.cap.scale.setScalar(1);
+  });
+}
+
+resetLayers();
+
+/* --- camera keyframes during the build --- */
+const camKeys = [
+  { t:0.00, pos:[8.4, 13.4, 17.4], tgt:[0, 3.5, 0.4] },
+  { t:0.10, pos:[8.0, 12.6, 16.4], tgt:[0, 3.3, 0.4] },
+  { t:0.30, pos:[6.8, 11.2, 14.6], tgt:[0, 2.4, 0.3] },
+  { t:0.52, pos:[6.0, 9.6, 13.6], tgt:[0, 1.4, 0.3] },
+  { t:0.72, pos:[5.4, 8.0, 12.4], tgt:[0, 0.8, 0.3] },
+  { t:0.86, pos:[5.0, 7.2, 11.6], tgt:[0, 0.55, 0.3] },
+  { t:1.00, pos:[4.9, 7.1, 11.6], tgt:[0, 0.5, 0.3] },
+];
+
+const POSE_END = { pos:[4.9, 7.1, 11.6], tgt:[0, 0.5, 0.3] };
+
+function sampleCam(p){
+  const n = camKeys.length;
+  if(p <= camKeys[0].t) return camKeys[0];
+  if(p >= camKeys[n-1].t) return camKeys[n-1];
+  for(let i=0;i<n-1;i++){
+    const a = camKeys[i], b = camKeys[i+1];
+    if(p >= a.t && p <= b.t){
+      const f = easeInOutCubic((p - a.t)/(b.t - a.t));
+      const pos = [0,1,2].map(k=>a.pos[k] + (b.pos[k]-a.pos[k])*f);
+      const tgt = [0,1,2].map(k=>a.tgt[k] + (b.tgt[k]-a.tgt[k])*f);
+      return { pos, tgt };
+    }
+  }
+  return camKeys[n-1];
+}
+
+const stageMessages = [
+  { t:0.00, name:'Case',   sub:'Machined aluminium · anodised graphite' },
+  { t:S.pcb,  name:'PCB',      sub:'Hot-swap 1.6 mm · per-key sockets' },
+  { t:S.foam, name:'Foam',     sub:'Poron plate-mount · acoustic damping' },
+  { t:S.plate,name:'Plate',    sub:'Brushed brass-grey · 1.5 mm · switch stabiliser' },
+  { t:S.switches,name:'Switches',sub:'Linear 45g · gold-plated pins · one at a time' },
+  { t:KC_START, name:'Keycaps',  sub:'Double-shot PBT · profile by row' },
+  { t:RGB_START, name:'Underglow',sub:'Addressable RGB · routed light pipes' },
+  { t:TOTAL-0.35, name:'Ready',  sub:'Click keys · type on your keyboard · drag to orbit' },
+];
+let lastStage = -1;
+
+function updateStage(now){
+  let idx = 0;
+  for(let i=0;i<stageMessages.length;i++) if(now >= stageMessages[i].t) idx = i;
+  if(idx !== lastStage){
+    lastStage = idx;
+    const el = document.getElementById('stageText');
+    const sb = document.getElementById('stageSub');
+    const tag = document.getElementById('layerTag');
+    el.textContent = stageMessages[idx].name;
+    sb.textContent = stageMessages[idx].sub;
+    if(tag) tag.textContent = stageMessages[idx].name;
+    el.classList.remove('show'); sb.classList.remove('show');
+    requestAnimationFrame(()=>{ el.classList.add('show'); sb.classList.add('show'); });
+  }
+}
+
+/* per-frame animation application */
+function applyAssembly(now){
+  // case bottom
+  G.caseBottom.position.y = 0;
+
+  // case top lid slides down last-ish, after plate
+  {
+    const p = clamp01((now - S.plate*0.7) / 1.05);
+    const e = easeOutQuint(p);
+    G.caseTop.position.y = (1-e) * 3.2;
+    G.caseTop.position.z = (1-e) * -1.15;
+    G.caseTop.rotation.z = (1-e) * 0.0;
+  }
+
+  // pcb settles first
+  {
+    const p = clamp01((now - S.pcb) / 0.95);
+    const e = easeOutCubic(p);
+    G.pcb.position.y = 0;
+    G.pcb.position.z = (1-e) * -1.55;
+    G.pcb.position.x = (1-e) * 0.35;
+    G.pcb.rotation.y = (1-e) * -0.05;
+  }
+
+  // foam
+  {
+    const p = clamp01((now - S.foam) / 1.0);
+    const e = easeOutQuint(p);
+    G.foam.position.y = (1-e) * 2.05;
+    G.foam.position.z = (1-e) * -1.15;
+    G.foam.rotation.z = (1-e) * 0.045;
+  }
+
+  // plate
+  {
+    const p = clamp01((now - S.plate) / 1.05);
+    const e = easeOutQuint(p);
+    G.plate.position.y = (1-e) * 3.55;
+    G.plate.position.z = (1-e) * -0.72;
+    G.plate.rotation.x = (1-e) * -0.055;
+  }
+
+  // switches, one by one, left→right, row by row (top row first)
+  switchRefs.forEach((s, i)=>{
+    const t0 = S.switches + i*STEP_SW;
+    const p = clamp01((now - t0)/0.42);
+    const e = easeOutBack(p);
+    s.group.visible = p > 0;
+    if(p <= 0) return;
+    const dropY = (1-e) * 1.45;
+    s.group.position.y = s.baseY + dropY;
+    s.group.position.z = (1-e) * 0.5 * Math.sin(i*1.7);
+    const sc = 0.86 + 0.14*e;
+    s.group.scale.setScalar(sc);
+    if(p >= 1){ s.group.position.y = s.baseY; s.group.position.z = s.key.z; s.group.scale.setScalar(1); }
+    if(s.group.parent !== G.switches) G.switches.add(s.group);
+  });
+
+  // keycaps
+  capRefs.forEach((c, i)=>{
+    const t0 = KC_START + i*STEP_KC;
+    const p = clamp01((now - t0)/0.5);
+    c.cap.visible = p > 0;
+    if(p <= 0) return;
+    const e = easeOutBack(p);
+    c.cap.position.y = c.baseY + (1-e) * 1.7;
+    c.cap.position.z = c.key.z + (1-e) * 0.6 * Math.cos(i*1.3);
+    const sc = 0.8 + 0.2*e;
+    c.cap.scale.setScalar(sc);
+    if(p >= 1){
+      c.cap.position.y = c.baseY; c.cap.position.z = c.key.z; c.cap.scale.setScalar(1);
+    }
+    if(c.cap.parent !== G.keycaps) G.keycaps.add(c.cap);
+  });
+
+  // rgb last
+  {
+    const p = clamp01((now - RGB_START)/0.9);
+    G.rgb.visible = p > 0;
+    const pulse = 0.6 + 0.4*Math.sin(now*2.2);
+    if(ledMat) ledMat.emissiveIntensity = (rgbEnabled ? 2.4 : 0) * (0.3 + 0.7*p) * pulse + (rgbEnabled?0.4:0);
+    if(p >= 1 && rgbEnabled) ledMat.emissiveIntensity = 2.6;
+  }
+}
+
+function easeOutBack(t){
+  const c1 = 1.35, c3 = c1 + 1;
+  return 1 + c3*Math.pow(t-1,3) + c1*Math.pow(t-1,2);
+}
+
+/* camera + orbit interplay */
+let userOrbited = false;
+controls.addEventListener('start', ()=>{ userOrbited = true; hasInteracted = true; });
+
+/* ============================================================
+   16. INTERACTION — pressing keys
+   ============================================================ */
+const pressState = new Map(); // key code -> {t0, group}
+let pressing = new Set();
+
+function pressKeyByCode(code){
+  const rec = switchRefs.find(s=>s.key.code === code && !s.isKnob);
+  const cap = capRefs.find(c=>c.key.code === code);
+  if(!rec || !cap) return;
+
+  const now = performance.now()/1000;
+  const obj = { t0: now, cap: cap.cap, capBaseY: cap.baseY, sw: rec.group, swBaseY: rec.baseY, dur: 0.34 };
+  if(pressState.has(code)){
+    // re-trigger
+  }
+  pressState.set(code, obj);
+  playKeySound(rec.key, rec);
+  bumpCounter();
+  cap.cap.position.y = cap.baseY - 0.085;
+  rec.group.position.y = rec.baseY - 0.055;
+}
+
+function releaseKeyByCode(code){
+  const st = pressState.get(code);
+  if(!st) return;
+  st.releaseAt = performance.now()/1000;
+}
+
+function updatePresses(nowSec){
+  pressState.forEach((st, code)=>{
+    let target = 0;
+    if(st.releaseAt == null){
+      target = 1;
+    } else {
+      target = 0;
+    }
+    const cur = st.cur || 0;
+    const speed = target === 1 ? 22 : 15;
+    let next = cur + (target - cur) * Math.min(1, speed*0.016);
+    if(Math.abs(next - target) < 0.004) next = target;
+    st.cur = next;
+
+    const cap = st.cap, sw = st.sw;
+    if(cap && cap.parent){
+      const baseCap = cap.userData.baseY != null ? cap.userData.baseY : st.capBaseY;
+      cap.position.y = baseCap - 0.085*next;
+    }
+    if(sw && sw.parent){
+      sw.position.y = st.swBaseY - 0.055*next;
+    }
+    // visual LED brighten
+    if(st.cur < 0.01 && st.releaseAt != null){
+      pressState.delete(code);
+      if(sw && sw.parent) sw.position.y = st.swBaseY;
+      if(cap && cap.parent) cap.position.y = st.capBaseY;
+    }
+  });
+}
+
+/* pointer raycast */
+const raycaster = new THREE.Raycaster();
+const ndc = new THREE.Vector2();
+
+function pickKey(ev){
+  const rect = renderer.domElement.getBoundingClientRect();
+  ndc.x = ((ev.clientX - rect.left)/rect.width)*2 - 1;
+  ndc.y = -((ev.clientY - rect.top)/rect.height)*2 + 1;
+  raycaster.setFromCamera(ndc, camera);
+  const objs = [];
+  capRefs.forEach(c=>{ if(c.cap.visible) objs.push(c.cap); });
+  const hits = raycaster.intersectObjects(objs, true);
+  if(!hits.length) return null;
+  let o = hits[0].object;
+  while(o && !o.userData.keyRef){
+    o = o.parent;
+  }
+  return o ? o.userData.keyRef : null;
+}
+
+// tag keycap groups with key refs after build
+capRefs.forEach(c=>{
+  c.cap.userData.keyRef = c;
+});
+
+let dragStart = null;
+
+renderer.domElement.addEventListener('pointerdown', ev=>{
+  hasInteracted = true;
+  unlockAudio();
+  dragStart = { x:ev.clientX, y:ev.clientY, t:performance.now() };
+});
+
+renderer.domElement.addEventListener('pointerup', ev=>{
+  if(!dragStart) return;
+  const dx = ev.clientX - dragStart.x, dy = ev.clientY - dragStart.y;
+  const moved = Math.hypot(dx,dy);
+  const dt = performance.now() - dragStart.t;
+  dragStart = null;
+  if(moved > 7 || dt > 700) return;   // it was a drag
+
+  const hit = pickKey(ev);
+  if(!hit) return;
+  pressKeyByCode(hit.key.code);
+  // auto release after a beat if pointer (no keyup)
+  setTimeout(()=>releaseKeyByCode(hit.key.code), 90);
+});
+
+// hover cursor
+let hoverThrottle = 0;
+renderer.domElement.addEventListener('pointermove', ev=>{
+  if(dragStart) return;
+  const t = performance.now();
+  if(t - hoverThrottle < 40) return;
+  hoverThrottle = t;
+  const h = pickKey(ev);
+  renderer.domElement.style.cursor = h ? 'pointer' : 'grab';
+});
+renderer.domElement.addEventListener('pointerleave', ()=>{ renderer.domElement.style.cursor = 'grab'; });
+
+/* ============================================================
+   17. AUDIO (Web Audio, generated)
+   ============================================================ */
+let audioCtx = null;
+let masterGain = null;
+let soundEnabled = true;
+let audioUnlocked = false;
+
+function initAudio(){
+  if(audioCtx) return;
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if(!AC) return;
+  audioCtx = new AC();
+  masterGain = audioCtx.createGain();
+  masterGain.gain.value = 0.85;
+  masterGain.connect(audioCtx.destination);
+}
+
+function unlockAudio(){
+  initAudio();
+  if(!audioCtx) return;
+  if(audioCtx.state === 'suspended'){
+    audioCtx.resume().then(()=>{
+      audioUnlocked = true;
+      hideSoundHint();
+    }).catch(()=>{});
+  } else if(audioCtx.state === 'running'){
+    audioUnlocked = true;
+    hideSoundHint();
+  }
+}
+
+function hideSoundHint(){
+  const el = document.getElementById('soundHint');
+  if(el){ el.classList.add('off'); setTimeout(()=>{ el.style.display = 'none'; }, 700); }
+  const txt = document.getElementById('hintText');
+  if(txt) txt.textContent = 'Type or click keys — sound is live';
+}
+
+/* noise buffer for mechanical click */
+let noiseBuf = null;
+function getNoise(){
+  if(noiseBuf) return noiseBuf;
+  const sr = audioCtx.sampleRate;
+  const len = Math.floor(sr * 0.12);
+  const buf = audioCtx.createBuffer(1, len, sr);
+  const d = buf.getChannelData(0);
+  for(let i=0;i<len;i++){
+    d[i] = (Math.random()*2 - 1) * Math.pow(1 - i/len, 2.4);
+  }
+  noiseBuf = buf;
+  return buf;
+}
+
+function env(node, t0, peak, attack, decay){
+  const g = node.gain;
+  g.cancelScheduledValues(t0);
+  g.setValueAtTime(0.0001, t0);
+  g.linearRampToValueAtTime(peak, t0 + attack);
+  g.exponentialRampToValueAtTime(0.0001, t0 + attack + decay);
+}
+
+function playKeySound(keyInfo){
+  if(!soundEnabled) return;
+  if(!audioCtx) return;
+  if(audioCtx.state === 'suspended') return;
+  const t = audioCtx.currentTime + 0.005;
+  const grp = keyInfo.grp || 'letter';
+
+  // --- per-group sound character ---
+  let f0, f1, dec, noiseGain, noiseHP, toneGain, toneWave;
+
+  if(grp === 'space'){
+    f0 = 92; f1 = 52; dec = 0.16; noiseGain = 0.16; noiseHP = 620; toneGain = 0.34; toneWave = 'sine';
+  } else if(grp === 'enter'){
+    f0 = 210; f1 = 120; dec = 0.14; noiseGain = 0.30; noiseHP = 1500; toneGain = 0.20; toneWave = 'triangle';
+  } else if(grp === 'back'){
+    f0 = 165; f1 = 95; dec = 0.13; noiseGain = 0.30; noiseHP = 1150; toneGain = 0.22; toneWave = 'triangle';
+  } else if(grp === 'mod'){
+    f0 = 140; f1 = 78; dec = 0.135; noiseGain = 0.24; noiseHP = 980; toneGain = 0.24; toneWave = 'triangle';
+  } else if(grp === 'arrow'){
+    f0 = 260; f1 = 165; dec = 0.10; noiseGain = 0.22; noiseHP = 1800; toneGain = 0.14; toneWave = 'triangle';
+  } else {
+    // letter / number / symbol
+    const jitter = 0.92 + Math.random()*0.16;
+    f0 = 320*jitter; f1 = 196*jitter; dec = 0.085; noiseGain = 0.21; noiseHP = 2400;
+    toneGain = 0.13; toneWave = 'triangle';
+  }
+
+  // --- click transient (filtered noise) ---
+  const noise = audioCtx.createBufferSource();
+  noise.buffer = getNoise();
+  noise.playbackRate.value = grp === 'space' ? 0.85 : 1.0 + Math.random()*0.2;
+
+  const bp = audioCtx.createBiquadFilter();
+  bp.type = 'bandpass';
+  bp.frequency.value = grp === 'space' ? 1150 : 3200 + Math.random()*900;
+  bp.Q.value = grp === 'space' ? 1.1 : 0.9;
+
+  const hp = audioCtx.createBiquadFilter();
+  hp.type = 'highpass';
+  hp.frequency.value = noiseHP * 0.35;
+
+  const ng = audioCtx.createGain();
+  env(ng, t, noiseGain, 0.001, dec*0.55);
+
+  noise.connect(bp); bp.connect(hp); hp.connect(ng); ng.connect(masterGain);
+  noise.start(t);
+  noise.stop(t + 0.2);
+
+  // --- body thock (pitched) ---
+  const osc = audioCtx.createOscillator();
+  osc.type = toneWave;
+  osc.frequency.setValueAtTime(f0, t);
+  osc.frequency.exponentialRampToValueAtTime(f1, t + dec*0.85);
+
+  const og = audioCtx.createGain();
+  env(og, t, toneGain, 0.002, dec);
+
+  const lp = audioCtx.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.frequency.setValueAtTime(grp === 'space' ? 420 : 1600, t);
+  lp.frequency.exponentialRampToValueAtTime(grp === 'space' ? 260 : 700, t + dec);
+  lp.Q.value = 0.7;
+
+  osc.connect(lp); lp.connect(og); og.connect(masterGain);
+  osc.start(t);
+  osc.stop(t + dec + 0.12);
+
+  // --- second harmonic tick for tactile highs ---
+  if(grp !== 'space'){
+    const osc2 = audioCtx.createOscillator();
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(f0*2.04, t);
+    const g2 = audioCtx.createGain();
+    env(g2, t, toneGain*0.35, 0.001, dec*0.5);
+    osc2.connect(g2); g2.connect(masterGain);
+    osc2.start(t); osc2.stop(t + dec + 0.05);
+  }
+
+  // --- bottom-out thud for big keys ---
+  if(grp === 'space' || grp === 'enter'){
+    const sub = audioCtx.createOscillator();
+    sub.type = 'sine';
+    sub.frequency.setValueAtTime(grp === 'space' ? 70 : 108, t);
+    sub.frequency.exponentialRampToValueAtTime(42, t + 0.16);
+    const sg = audioCtx.createGain();
+    env(sg, t + 0.006, grp === 'space' ? 0.30 : 0.17, 0.004, 0.16);
+    sub.connect(sg); sg.connect(masterGain);
+    sub.start(t); sub.stop(t + 0.28);
+  }
+}
+
+/* knob sound */
+function playKnobSound(dir){
+  if(!soundEnabled || !audioCtx || audioCtx.state !== 'running') return;
+  const t = audioCtx.currentTime + 0.003;
+  const src = audioCtx.createBufferSource(); src.buffer = getNoise();
+  src.playbackRate.value = 1.4;
+  const bp = audioCtx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 2400; bp.Q.value = 2.2;
+  const g = audioCtx.createGain(); env(g, t, 0.13, 0.001, 0.035);
+  src.connect(bp); bp.connect(g); g.connect(masterGain);
+  src.start(t); src.stop(t + 0.1);
+  const o = audioCtx.createOscillator(); o.type = 'triangle';
+  o.frequency.setValueAtTime(520, t);
+  const og = audioCtx.createGain(); env(og, t, 0.05, 0.001, 0.04);
+  o.connect(og); og.connect(masterGain); o.start(t); o.stop(t + 0.12);
+}
+
+/* knob interaction */
+const knobMeshRef = (()=>{
+  // find knob group in switchRefs
+  const k = switchRefs.find(s=>s.isKnob);
+  return k ? k.group : null;
+})();
+let knobAngle = 0, knobDragging = false, knobLastX = 0;
+renderer.domElement.addEventListener('pointerdown', ev=>{
+  if(!knobMeshRef) return;
+  const rect = renderer.domElement.getBoundingClientRect();
+  ndc.x = ((ev.clientX - rect.left)/rect.width)*2 - 1;
+  ndc.y = -((ev.clientY - rect.top)/rect.height)*2 + 1;
+  raycaster.setFromCamera(ndc, camera);
+  const hits = raycaster.intersectObject(knobMeshRef, true);
+  if(hits.length){
+    knobDragging = true; knobLastX = ev.clientX;
+    controls.enabled = false;
+    unlockAudio();
+  }
+});
+renderer.domElement.addEventListener('pointermove', ev=>{
+  if(!knobDragging) return;
+  const dx = ev.clientX - knobLastX;
+  knobLastX = ev.clientX;
+  knobAngle += dx*0.014;
+  if(knobMeshRef) knobMeshRef.rotation.y = knobAngle;
+  if(Math.abs(dx) > 1.5) playKnobSound(Math.sign(dx));
+  // adjust glow accent hue with knob rotation
+  applyAccentHue(Math.floor(Math.abs(knobAngle)*8) % 4);
+  ev.preventDefault();
+});
+renderer.domElement.addEventListener('pointerup', ()=>{ if(knobDragging){ knobDragging = false; controls.enabled = true; } });
+renderer.domElement.addEventListener('pointercancel', ()=>{ if(knobDragging){ knobDragging = false; controls.enabled = true; } });
+
+/* ============================================================
+   18. PHYSICAL KEYBOARD
+   ============================================================ */
+const codeToVirtual = new Map();
+LAYOUT.forEach(row=>row.keys.forEach(k=>{ if(k.code) codeToVirtual.set(k.code, k); }));
+
+// build code map for letters
+const KEYMAP = {
+  'KeyA':'KeyA','KeyB':'KeyB','KeyC':'KeyC','KeyD':'KeyD','KeyE':'KeyE','KeyF':'KeyF','KeyG':'KeyG',
+  'KeyH':'KeyH','KeyI':'KeyI','KeyJ':'KeyJ','KeyK':'KeyK','KeyL':'KeyL','KeyM':'KeyM','KeyN':'KeyN',
+  'KeyO':'KeyO','KeyP':'KeyP','KeyQ':'KeyQ','KeyR':'KeyR','KeyS':'KeyS','KeyT':'KeyT','KeyU':'KeyU',
+  'KeyV':'KeyV','KeyW':'KeyW','KeyX':'KeyX','KeyY':'KeyY','KeyZ':'KeyZ',
+  'Digit1':'Digit1','Digit2':'Digit2','Digit3':'Digit3','Digit4':'Digit4','Digit5':'Digit5',
+  'Digit6':'Digit6','Digit7':'Digit7','Digit8':'Digit8','Digit9':'Digit9','Digit0':'Digit0',
+  'Space':'Space','Enter':'Enter','NumpadEnter':'Enter','Backspace':'Backspace','Tab':'Tab',
+  'CapsLock':'CapsLock','ShiftLeft':'ShiftLeft','ShiftRight':'ShiftRight','ControlLeft':'ControlLeft',
+  'ControlRight':'ControlRight','AltLeft':'AltLeft','AltRight':'AltRight','MetaLeft':'MetaLeft',
+  'MetaRight':'MetaRight','Escape':'Esc','Delete':'Del','ArrowLeft':'ArrowLeft','ArrowRight':'ArrowRight',
+  'ArrowUp':'ArrowUp','ArrowDown':'ArrowDown','Backquote':'Backquote','Minus':'Minus','Equal':'Equal',
+  'BracketLeft':'BracketLeft','BracketRight':'BracketRight','Backslash':'Backslash','Semicolon':'Semicolon',
+  'Quote':'Quote','F1':'F1','F2':'F2','F3':'F3','F4':'F4','F5':'F5','F6':'F6','F7':'F7','F8':'F8',
+  'F9':'F9','F10':'F10','F11':'F11','F12':'F12'
+};
+
+const pressedPhysical = new Set();
+
+window.addEventListener('keydown', ev=>{
+  // don't hijack if focus in an input (none here) — but respect browser shortcuts
+  if(ev.metaKey || ev.ctrlKey){
+    // still allow typing letters with ctrl held? Keep simple: allow.
+  }
+  const code = KEYMAP[ev.code];
+  if(!code) return;
+  if(ev.repeat) return;
+  ev.preventDefault();
+  unlockAudio();
+  pressedPhysical.add(ev.code);
+  const key = codeToVirtual.get(code);
+  if(key) pressKeyByCode(key.code);
+});
+
+window.addEventListener('keyup', ev=>{
+  const code = KEYMAP[ev.code];
+  if(!code) return;
+  pressedPhysical.delete(ev.code);
+  const key = codeToVirtual.get(code);
+  if(key) releaseKeyByCode(key.code);
+});
+
+window.addEventListener('blur', ()=>{
+  pressState.forEach((st, code)=>{
+    st.releaseAt = performance.now()/1000;
+  });
+  pressedPhysical.clear();
+});
+
+/* ============================================================
+   19. UI WIRING
+   ============================================================ */
+let rgbEnabled = true;
+let accentIdx = 0;
+const ACCENT_LIST = ['#7df9c2','#ffb545','#b07dff','#5ac8ff'];
+
+function applyAccent(hex){
+  const c = new THREE.Color(hex);
+  ACCENT.copy(c);
+  if(ledMat){ ledMat.emissive.copy(c); ledMat.color.set(0xffffff); }
+  M.ledGlow.color.copy(c);
+  M.ledDot.emissive.copy(c);
+  M.capAccent.color.copy(c);
+  // slight accent for mark
+  const mark = document.querySelector('.brand .mark svg rect');
+  document.querySelectorAll('.brand .mark svg [stroke],.brand .mark svg [fill]').forEach(n=>{
+    n.setAttribute('stroke', '#'+c.getHexString());
+    n.setAttribute('fill', '#'+c.getHexString());
+  });
+  const rim2 = scene.children.find(o=>o.isDirectionalLight && o.color.getHex() === 0x7df9c2);
+  if(rim2) rim2.color.copy(c);
+  document.querySelectorAll('#hue b').forEach(b=>b.classList.toggle('sel', b.dataset.c === hex));
+  document.documentElement.style.setProperty('--accent', hex);
+}
+
+function applyAccentHue(idx){
+  accentIdx = idx % ACCENT_LIST.length;
+  applyAccent(ACCENT_LIST[accentIdx]);
+}
+
+document.getElementById('rgbToggle').addEventListener('click', function(){
+  rgbEnabled = !rgbEnabled;
+  this.dataset.on = rgbEnabled ? '1' : '0';
+  this.setAttribute('aria-checked', String(rgbEnabled));
+  G.rgb.visible = rgbEnabled && (performance.now()/1000 > RGB_START);
+});
+
+document.getElementById('rgbToggle').addEventListener('keydown', e=>{
+  if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); e.currentTarget.click(); }
+});
+
+document.querySelectorAll('#hue b').forEach(b=>{
+  b.addEventListener('click', ()=> applyAccent(b.dataset.c));
+});
+
+const sndToggle = document.getElementById('sndToggle');
+sndToggle.addEventListener('click', function(){
+  setSound(!soundEnabled);
+  this.dataset.on = soundEnabled ? '1' : '0';
+  this.setAttribute('aria-checked', String(soundEnabled));
+});
+sndToggle.addEventListener('keydown', e=>{
+  if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); e.currentTarget.click(); }
+});
+
+function setSound(on){
+  soundEnabled = on;
+  const lbl = document.getElementById('muteLabel');
+  if(lbl) lbl.textContent = on ? 'Sound On' : 'Muted';
+  const btn = document.getElementById('muteBtn');
+  if(btn) btn.classList.toggle('on', on);
+  if(masterGain && audioCtx){
+    const t = audioCtx.currentTime;
+    masterGain.gain.cancelScheduledValues(t);
+    masterGain.gain.setTargetAtTime(on ? 0.85 : 0.0001, t, 0.02);
+  }
+  if(on) unlockAudio();
+}
+setSound(true);
+
+document.getElementById('muteBtn').addEventListener('click', ()=>{
+  setSound(!soundEnabled);
+  const snd = document.getElementById('sndToggle');
+  snd.dataset.on = soundEnabled ? '1' : '0';
+  snd.setAttribute('aria-checked', String(soundEnabled));
+});
+
+/* replay */
+function replay(){
+  animating = true;
+  animStart = performance.now()/1000;
+  lastStage = -1;
+  resetLayers();
+  document.getElementById('stageText').classList.remove('show');
+  document.getElementById('stageSub').classList.remove('show');
+  userOrbited = false;
+  controls.autoRotate = false;
+  // reset camera quickly
+  camera.position.set(8.4, 13.4, 17.4);
+  controls.target.set(0, 3.5, 0.4);
+  controls.update();
+}
+document.getElementById('replayBtn').addEventListener('click', ()=>{ unlockAudio(); replay(); });
+
+/* global keyboard shortcuts */
+window.addEventListener('keydown', ev=>{
+  if(ev.code === 'KeyR' && !ev.repeat && !ev.ctrlKey && !ev.metaKey){ replay(); }
+  if(ev.code === 'KeyM' && !ev.repeat && !ev.ctrlKey && !ev.metaKey){
+    setSound(!soundEnabled);
+    document.getElementById('sndToggle').dataset.on = soundEnabled ? '1' : '0';
+    document.getElementById('sndToggle').setAttribute('aria-checked', String(soundEnabled));
+  }
+});
+
+/* first interaction: unlock audio */
+['pointerdown','keydown','touchstart'].forEach(t=>{
+  window.addEventListener(t, ()=>{ unlockAudio(); hasInteracted = true; }, { passive:true });
+});
+// show a hint until unlocked
+setTimeout(()=>{
+  if(!audioUnlocked){
+    const el = document.getElementById('soundHint');
+    if(el) el.classList.remove('off');
+  }
+}, 1200);
+
+/* count keypresses for HUD */
+let pressCount = 0;
+function bumpCounter(){
+  pressCount++;
+  const els = document.querySelectorAll('.stat span');
+  // keep simple: not displayed, but used for subtle feedback
+}
+
+/* ============================================================
+   20. RESIZE
+   ============================================================ */
+function onResize(){
+  const w = window.innerWidth, h = window.innerHeight;
+  camera.aspect = w/h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  // pull the camera back on narrow screens
+  const narrow = w/h < 1.05;
+  if(narrow){
+    camera.fov = 44;
+  } else {
+    camera.fov = 34;
+  }
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', onResize);
+window.addEventListener('orientationchange', ()=>setTimeout(onResize, 200));
+onResize();
+
+/* ============================================================
+   21. RENDER LOOP
+   ============================================================ */
+let lastT = performance.now()/1000;
+
+function tick(){
+  requestAnimationFrame(tick);
+  const nowMs = performance.now();
+  const now = nowMs/1000;
+  const dt = Math.min(0.05, now - lastT);
+  lastT = now;
+
+  if(animating){
+    const elapsed = now - animStart;
+    if(elapsed >= 0 && elapsed < TOTAL + 0.35){
+      applyAssembly(elapsed);
+      if(!userOrbited && !reducedMotion){
+        const cam = sampleCam(elapsed/TOTAL);
+        camera.position.lerp(new THREE.Vector3(cam.pos[0], cam.pos[1], cam.pos[2]), 1 - Math.pow(0.001, dt));
+        controls.target.lerp(new THREE.Vector3(cam.tgt[0], cam.tgt[1], cam.tgt[2]), 1 - Math.pow(0.001, dt));
+      } else if(!userOrbited && reducedMotion){
+        camera.position.set(POSE_END.pos[0], POSE_END.pos[1], POSE_END.pos[2]);
+        controls.target.set(POSE_END.tgt[0], POSE_END.tgt[1], POSE_END.tgt[2]);
+      }
+      updateStage(elapsed);
+      // progress bar
+      const pr = Math.min(1, elapsed/TOTAL);
+      document.getElementById('progress').style.width = (pr*100).toFixed(1)+'%';
+      if(elapsed >= TOTAL + 0.35){
+        animating = false;
+        document.getElementById('progress').style.width = '100%';
+        setTimeout(()=>{ document.getElementById('progress').style.opacity='0'; }, 500);
+      }
+    } else if(elapsed < 0){
+      applyAssembly(0);
+    } else {
+      animating = false;
+    }
+  } else {
+    // idle: subtle led pulse
+    if(ledMat){
+      if(rgbEnabled && now > RGB_START){
+        const p = 0.5 + 0.5*Math.sin(now*1.6);
+        ledMat.emissiveIntensity = 2.2 + p*0.9;
+      } else if(!rgbEnabled){
+        ledMat.emissiveIntensity = 0;
+      }
+    }
+    // settle switch/keycap y positions (no-op if not pressed)
+    updatePresses(now);
+    // keep knob spin
+    if(knobMeshRef) knobMeshRef.rotation.y = knobAngle;
+  }
+
+  if(animating){
+    updatePresses(now);
+    if(knobMeshRef) knobMeshRef.rotation.y = knobAngle;
+  }
+
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+/* ============================================================
+   22. BOOT
+   ============================================================ */
+applyAccent(ACCENT_LIST[0]);
+animStart = performance.now()/1000;
+
+// initial camera pose before animation
+camera.position.set(8.4, 13.4, 17.4);
+controls.target.set(0, 3.5, 0.4);
+controls.update();
+
+tick();
+
+// hide loader once first frame is drawn
+requestAnimationFrame(()=>{
+  setTimeout(()=>{
+    const l = document.getElementById('loader');
+    l.classList.add('gone');
+    setTimeout(()=>{ l.style.display = 'none'; }, 800);
+  }, 260);
+});
+
+// a graceful intro: auto-orbit slightly after ready (only if not reduced motion)
+setTimeout(()=>{
+  if(!reducedMotion && !userOrbited){
+    controls.autoRotate = true;
+    controls.autoRotateSpeed = 0.42;
+    const stop = setInterval(()=>{
+      if(userOrbited || pressCount > 0 || knobDragging){ controls.autoRotate = false; clearInterval(stop); }
+    }, 600);
+    setTimeout(()=>{ controls.autoRotate = false; }, 9000);
+  }
+}, 200);
+
+// expose a couple of debug handles for polish
+window.__kb = { scene, camera, renderer, pressKeyByCode, releaseKeyByCode, replay, setSound };
+</script>
+</body>
+</html>

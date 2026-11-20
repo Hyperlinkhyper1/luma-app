@@ -1,0 +1,570 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>luma brag</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0">
+<style>
+:root{
+  --rail:#121019;--bg:#17141F;--surface:#1E1B28;--hover:#272232;--border:#2C2839;
+  --accent:#B49DF5;--accentHover:#C6B4F8;--accentSubtle:rgba(180,157,245,.2);--onAccent:#1A1526;
+  --t1:#ECEAF4;--t2:#A9A3BD;--t3:#6F6981;--ok:#57D9A3;--bad:#FF6B81;--warn:#FFC15E;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1920px;height:1080px;overflow:hidden;background:#0d0b12}
+body{font-family:"Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;color:var(--t1);-webkit-font-smoothing:antialiased}
+.ic{font-family:"Material Symbols Rounded";font-variation-settings:"FILL" 1,"wght" 400;font-weight:normal;font-style:normal;line-height:1;letter-spacing:0;white-space:nowrap;display:inline-block;direction:ltr;-webkit-font-feature-settings:"liga";user-select:none}
+#stage{position:absolute;inset:0;overflow:hidden;background:radial-gradient(1200px 800px at 68% 50%,#221c33 0%,#141119 55%,#0d0b12 100%)}
+#glow{position:absolute;width:1400px;height:1400px;left:570px;top:-160px;border-radius:50%;background:radial-gradient(circle,rgba(180,157,245,.22) 0%,rgba(180,157,245,0) 60%);pointer-events:none}
+
+#caption{position:absolute;left:0;right:0;top:170px;text-align:center;font-size:104px;font-weight:700;letter-spacing:-2px}
+#caption em{font-style:normal;color:var(--accent)}
+.tile{position:absolute;width:190px;height:190px;border-radius:40px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;box-shadow:0 18px 40px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.08)}
+.tile .ic{font-size:72px;color:rgba(255,255,255,.92)}
+.tile span.l{font-size:20px;font-weight:600;color:rgba(255,255,255,.85)}
+
+#win{position:absolute;left:700px;top:150px;width:1140px;height:780px;border-radius:18px;overflow:hidden;background:var(--bg);border:1px solid var(--border);box-shadow:0 40px 120px rgba(0,0,0,.6),0 0 0 1px rgba(180,157,245,.06),0 0 120px rgba(180,157,245,.12)}
+#rail{position:absolute;left:0;top:0;bottom:0;width:72px;background:var(--rail);border-right:1px solid var(--border)}
+.rb{position:absolute;left:14px;width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;color:var(--t2)}
+.rb .ic{font-size:24px}
+#selBg{position:absolute;left:14px;width:44px;height:44px;border-radius:12px;background:var(--accentSubtle)}
+#selBar{position:absolute;left:0;width:3px;height:24px;border-radius:0 3px 3px 0;background:var(--accent)}
+#plan{position:absolute;left:50%;transform:translateX(-50%);bottom:14px;height:22px;padding:0 8px;border-radius:20px;background:var(--accentSubtle);border:1px solid rgba(180,157,245,.4);color:var(--accent);font-size:10px;font-weight:700;display:flex;align-items:center}
+#top{position:absolute;left:72px;right:0;top:0;height:52px;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 22px;gap:12px}
+#top .crumb{font-size:15px;font-weight:600;color:var(--t1)}
+#top .sp{flex:1}
+#top .tb{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;color:var(--t2);background:var(--surface);border:1px solid var(--border)}
+#top .tb .ic{font-size:18px}
+#content{position:absolute;left:72px;right:0;top:52px;bottom:0;overflow:hidden}
+.pane{position:absolute;inset:0;padding:28px;display:none}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px}
+.h1{font-size:28px;font-weight:700;letter-spacing:-.3px}
+.muted{color:var(--t3)} .sec{color:var(--t2)}
+.lbl{font-size:13px;font-weight:600;color:var(--t2)}
+.big{font-size:40px;font-weight:700;letter-spacing:-.5px}
+.pill{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border-radius:20px;font-size:13.5px;font-weight:600;background:var(--surface);border:1px solid var(--border);color:var(--t2);white-space:nowrap}
+.pill.on{background:var(--accentSubtle);border-color:rgba(180,157,245,.45);color:var(--accent)}
+.pill .ic{font-size:17px}
+.bar{height:8px;border-radius:8px;background:var(--hover);overflow:hidden}
+.bar > i{display:block;height:100%;border-radius:8px;background:var(--accent)}
+.mono{font-family:"Cascadia Mono",Consolas,monospace}
+.tog{width:46px;height:26px;border-radius:13px;background:var(--hover);border:1px solid var(--border);position:relative;flex:none}
+.tog i{position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:var(--t3)}
+.key{height:54px;border-radius:12px;background:var(--hover);display:flex;align-items:center;justify-content:center;font-size:21px;font-weight:600;color:var(--t1)}
+.key.op{color:var(--accent)}
+.key.eq{background:var(--accent);color:var(--onAccent)}
+
+.lt{position:absolute;left:120px;width:540px;top:0;height:1080px;display:flex;flex-direction:column;justify-content:center;opacity:0}
+.eyebrow{display:flex;align-items:center;gap:12px;font-size:26px;font-weight:600;color:var(--accent);margin-bottom:18px}
+.eyebrow .ic{font-size:32px;width:52px;height:52px;border-radius:14px;background:var(--accentSubtle);display:flex;align-items:center;justify-content:center}
+.line{font-size:66px;font-weight:700;line-height:1.06;letter-spacing:-1.5px}
+.line em{font-style:normal;color:var(--accent)}
+
+#cursor{position:absolute;left:0;top:0;width:34px;height:34px;transform-origin:4px 3px;opacity:0;filter:drop-shadow(0 4px 8px rgba(0,0,0,.5))}
+#ripple{position:absolute;width:60px;height:60px;border-radius:50%;border:3px solid var(--accent);opacity:0}
+#outro{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="glow"></div>
+  <div id="caption">Stop opening <em>14</em> apps.</div>
+  <div id="tiles"></div>
+
+  <div class="lt" id="lt-reveal">
+    <div style="display:flex;align-items:center;gap:26px;margin-bottom:26px">
+      <img src="logo.png" style="width:118px;height:118px;border-radius:28px;box-shadow:0 18px 50px rgba(180,157,245,.25)">
+      <div style="font-size:150px;font-weight:700;letter-spacing:-6px;line-height:1">luma</div>
+    </div>
+    <div class="line" style="font-size:52px;letter-spacing:-1px;color:var(--t2)" id="revealSub">Everything you open daily. <span style="color:var(--t1)">One window.</span></div>
+  </div>
+  <div class="lt" id="lt-fin"><div class="eyebrow"><span class="ic">account_balance_wallet</span>Finance</div><div class="line">Budgets, pots &amp; <em>net worth.</em></div></div>
+  <div class="lt" id="lt-pw"><div class="eyebrow"><span class="ic">lock</span>Password Manager</div><div class="line">An encrypted vault with <em>built-in 2FA.</em></div></div>
+  <div class="lt" id="lt-conv"><div class="eyebrow"><span class="ic">swap_horiz</span>File Converter</div><div class="line">Audio, video, images. <em>Offline.</em></div></div>
+  <div class="lt" id="lt-ai"><div class="eyebrow"><span class="ic">smart_toy</span>Assistant</div><div class="line">AI chat in <em>three modes.</em></div></div>
+  <div class="lt" id="lt-groc"><div class="eyebrow"><span class="ic">local_grocery_store</span>Groceries List</div><div class="line">Supermarket prices, <em>side by side.</em></div></div>
+  <div class="lt" id="lt-recipe"><div class="eyebrow"><span class="ic">restaurant_menu</span>Recipe Book</div><div class="line">Recipes and a <em>weekly meal planner.</em></div></div>
+  <div class="lt" id="lt-sync"><div class="eyebrow"><span class="ic">sync</span>Sync &amp; account</div><div class="line"><em>Encrypted</em> sync across your devices.</div></div>
+  <div class="lt" id="lt-pl1"><div class="eyebrow"><span class="ic">extension</span>Plugins</div><div class="line"><em>43 more</em> tools, one click each.</div></div>
+  <div class="lt" id="lt-pl2"><div class="eyebrow"><span class="ic">extension</span>Plugins</div><div class="line">Also, a <em>Minecraft launcher.</em></div></div>
+
+  <div id="win">
+    <div id="rail">
+      <div id="selBg"></div><div id="selBar"></div>
+      <div id="railItems"></div>
+      <div id="plan">Orbit</div>
+    </div>
+    <div id="top">
+      <span class="crumb" id="crumb">Home</span><span class="sp"></span>
+      <span class="tb"><span class="ic">search</span></span>
+      <span class="tb"><span class="ic">sync</span></span>
+      <span class="tb"><span class="ic">dark_mode</span></span>
+    </div>
+    <div id="content">
+
+      <div class="pane" id="p-home">
+        <div class="h1">Good evening</div>
+        <div class="sec" style="margin-top:6px;font-size:15px">Jump back in</div>
+        <div id="homeGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:22px"></div>
+      </div>
+
+      <div class="pane" id="p-fin">
+        <div style="display:flex;gap:8px;margin-bottom:20px">
+          <span class="pill on">Overview</span><span class="pill">Transactions</span><span class="pill">Pots</span><span class="pill">Recurring</span><span class="pill">Stocks</span>
+        </div>
+        <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:16px">
+          <div class="card fc" style="position:relative;overflow:hidden">
+            <div class="lbl">Net worth</div>
+            <div class="big" id="nw" style="margin-top:8px;font-size:48px">€0.00</div>
+            <div style="color:var(--ok);font-size:14px;font-weight:600;margin-top:4px">▲ €640.00 this month</div>
+            <svg width="180" height="80" viewBox="0 0 420 70" preserveAspectRatio="none" style="position:absolute;right:24px;top:44px"><path id="spark" d="M0 60 C40 55 60 58 90 48 S150 40 180 42 S240 30 270 28 S330 18 360 14 S400 8 420 6" fill="none" stroke="#B49DF5" stroke-width="3" stroke-linecap="round" stroke-dasharray="520" stroke-dashoffset="520"/></svg>
+          </div>
+          <div class="card fc"><div class="lbl">Income</div><div class="big" style="font-size:30px;margin-top:10px;color:var(--ok)">+€3,200.00</div><div class="muted" style="font-size:13px;margin-top:4px">November</div></div>
+          <div class="card fc"><div class="lbl">Expenses</div><div class="big" style="font-size:30px;margin-top:10px;color:var(--bad)">−€1,845.50</div><div class="muted" style="font-size:13px;margin-top:4px">November</div></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
+          <div class="card fc" style="height:340px">
+            <div style="display:flex;justify-content:space-between"><div style="font-size:17px;font-weight:700">Pots</div><span class="pill" style="height:26px">+ New pot</span></div>
+            <div id="pots" style="margin-top:14px;display:flex;flex-direction:column;gap:26px"></div>
+          </div>
+          <div class="card fc" style="height:340px">
+            <div style="font-size:17px;font-weight:700">This week by category</div>
+            <div id="week" style="margin-top:18px;display:flex;align-items:flex-end;gap:18px;height:262px"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pane" id="p-pw">
+        <div style="display:flex;gap:12px;align-items:center;margin-bottom:20px">
+          <div style="flex:1;height:42px;border-radius:12px;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;gap:10px;padding:0 14px;color:var(--t3);font-size:15px"><span class="ic" style="font-size:20px">search</span>Search vault</div>
+          <span class="pill on" style="height:42px;padding:0 16px"><span class="ic">verified_user</span>Offline breach check</span>
+          <span class="pill" style="height:42px;padding:0 16px;background:var(--accent);color:var(--onAccent);border-color:var(--accent)"><span class="ic">add</span>Add login</span>
+        </div>
+        <div class="card" style="padding:6px 0" id="pwList"></div>
+      </div>
+
+      <div class="pane" id="p-conv">
+        <div id="toolChips" style="display:flex;gap:6px;flex-wrap:nowrap;margin-bottom:22px"></div>
+        <div class="card" style="padding:26px">
+          <div style="display:flex;align-items:center;gap:18px;padding:18px;border-radius:12px;background:var(--bg);border:1px dashed #3a3550">
+            <div style="width:60px;height:60px;border-radius:14px;background:var(--accentSubtle);display:flex;align-items:center;justify-content:center"><span class="ic" style="font-size:32px;color:var(--accent)">movie</span></div>
+            <div style="flex:1"><div style="font-size:19px;font-weight:700">holiday.mov</div><div class="muted" style="font-size:14px;margin-top:2px">48.2 MB · 00:42</div></div>
+            <span class="pill">Replace</span>
+          </div>
+          <div class="lbl" style="margin:24px 0 10px">Convert to</div>
+          <div style="display:flex;gap:10px" id="fmts"></div>
+          <div style="display:flex;align-items:center;gap:20px;margin-top:30px">
+            <div style="flex:1">
+              <div class="bar" style="height:10px"><i id="prog" style="width:0%"></i></div>
+              <div class="muted" style="font-size:13.5px;margin-top:8px" id="progTxt">Ready</div>
+            </div>
+            <div id="convBtn" style="height:46px;padding:0 26px;border-radius:12px;background:var(--accent);color:var(--onAccent);font-weight:700;font-size:16px;display:flex;align-items:center;gap:8px"><span class="ic" style="font-size:20px">bolt</span>Convert</div>
+          </div>
+        </div>
+        <div id="toast" style="position:absolute;right:28px;bottom:28px;display:flex;align-items:center;gap:12px;padding:14px 20px;border-radius:14px;background:#1d2a26;border:1px solid rgba(87,217,163,.4);font-size:16px;font-weight:600;opacity:0"><span class="ic" style="color:var(--ok);font-size:24px">check_circle</span>Exported holiday.mp4</div>
+      </div>
+
+      <div class="pane" id="p-ai">
+        <div style="display:flex;gap:10px;justify-content:center" id="modes"></div>
+        <div style="position:absolute;left:28px;right:28px;top:100px;bottom:110px">
+          <div id="uMsg" style="position:absolute;right:0;top:20px;max-width:520px;padding:14px 18px;border-radius:16px 16px 4px 16px;background:var(--accentSubtle);border:1px solid rgba(180,157,245,.35);font-size:17px;opacity:0">Plan a cheap weekend in Lisbon</div>
+          <div id="aMsg" style="position:absolute;left:0;top:96px;display:flex;gap:14px;max-width:760px;opacity:0">
+            <div style="flex:none;width:38px;height:38px;border-radius:12px;background:var(--accentSubtle);display:flex;align-items:center;justify-content:center"><span class="ic" style="font-size:22px;color:var(--accent)">smart_toy</span></div>
+            <div class="card" style="padding:16px 20px;font-size:17px;line-height:1.55;color:var(--t1)" id="aTxt"></div>
+          </div>
+        </div>
+        <div style="position:absolute;left:28px;right:28px;bottom:28px;height:60px;border-radius:16px;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;padding:0 10px 0 20px;gap:12px">
+          <div style="flex:1;font-size:17px" id="inp"></div>
+          <div id="sendBtn" style="width:42px;height:42px;border-radius:12px;background:var(--hover);display:flex;align-items:center;justify-content:center"><span class="ic" style="font-size:22px;color:var(--t2)" id="sendIc">arrow_upward</span></div>
+        </div>
+      </div>
+
+      <div class="pane" id="p-groc">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:18px" id="gStores"></div>
+        <div style="display:grid;grid-template-columns:1.2fr 1fr;gap:16px">
+          <div class="card gc" style="padding:20px;height:620px;position:relative">
+            <div style="height:46px;border-radius:12px;background:var(--bg);border:1px solid rgba(180,157,245,.45);display:flex;align-items:center;gap:10px;padding:0 14px;font-size:16px"><span class="ic" style="font-size:21px;color:var(--accent)">search</span><span id="gq"></span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin:16px 0 8px"><div class="lbl" id="gCount">Results</div><span class="pill on" style="height:26px">Price ↑</span></div>
+            <div id="gRes"></div>
+            <div class="muted" style="position:absolute;left:20px;bottom:16px;font-size:12px">Example prices</div>
+          </div>
+          <div class="card gc" style="padding:20px;height:620px;display:flex;flex-direction:column">
+            <div style="display:flex;justify-content:space-between;align-items:baseline"><div style="font-size:18px;font-weight:700">Weekend shop</div><div class="muted" style="font-size:13.5px" id="gItems">5 items</div></div>
+            <div id="gList" style="flex:1;margin-top:10px"></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding-top:14px;border-top:1px solid var(--border)"><div style="font-size:16px;font-weight:700">Total</div><div class="mono" style="font-size:26px;font-weight:700;color:var(--accent)" id="gTot">€12.95</div></div>
+          </div>
+        </div>
+        <div id="gToast" style="position:absolute;left:48px;bottom:72px;display:flex;align-items:center;gap:10px;padding:12px 18px;border-radius:14px;background:#1d2a26;border:1px solid rgba(87,217,163,.4);font-size:15px;font-weight:600;opacity:0;white-space:nowrap"><span class="ic" style="color:var(--ok);font-size:22px">check_circle</span>Added &quot;Oat drink 1 L&quot; to your list</div>
+      </div>
+
+      <div class="pane" id="p-recipe">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:18px"><span class="pill">Favourites</span><span class="pill">Public</span><span class="pill">Private</span><span class="pill on"><span class="ic">calendar_month</span>Meal planner</span><span style="flex:1"></span><span class="sec" style="font-size:15px;font-weight:600">23 – 29 November</span></div>
+        <div id="week7" style="display:grid;grid-template-columns:repeat(7,1fr);gap:10px"></div>
+        <div class="card rc" style="margin-top:14px;display:flex;align-items:center;gap:16px;padding:16px 20px">
+          <div style="width:44px;height:44px;border-radius:12px;background:rgba(87,217,163,.15);display:flex;align-items:center;justify-content:center"><span class="ic" style="color:var(--ok);font-size:24px">shopping_cart</span></div>
+          <div style="flex:1"><div style="font-size:16px;font-weight:700">Shopping list for this week</div><div class="muted" style="font-size:13.5px;margin-top:2px" id="shopTxt">0 ingredients</div></div>
+          <span class="pill on">Open list</span>
+        </div>
+      </div>
+
+      <div class="pane" id="p-sync">
+        <div style="display:grid;grid-template-columns:540px 1fr;gap:16px">
+          <div class="card sc" style="padding:22px">
+            <div style="display:flex;align-items:center;gap:14px;padding-bottom:18px;border-bottom:1px solid var(--border)">
+              <div style="width:46px;height:46px;border-radius:50%;background:var(--accentSubtle);color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:20px">A</div>
+              <div style="flex:1"><div style="font-size:17px;font-weight:700">alex@example.com</div><div class="muted" style="font-size:13.5px">Orbit plan</div></div>
+              <span class="pill" style="color:var(--ok);border-color:rgba(87,217,163,.45);background:rgba(87,217,163,.12)"><span class="ic">verified</span>Approved</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:baseline;margin:18px 0 6px"><div style="font-size:16px;font-weight:700">Synced features</div><div class="sec" style="font-size:14px" id="syncCount">0 of 5</div></div>
+            <div id="syncList"></div>
+          </div>
+          <div class="card sc" style="padding:22px;display:flex;flex-direction:column;align-items:center">
+            <div style="font-size:16px;font-weight:700;align-self:flex-start">Your devices</div>
+            <div style="position:relative;width:100%;height:300px;margin-top:20px">
+              <div style="position:absolute;left:10px;top:60px;width:150px;display:flex;flex-direction:column;align-items:center;gap:10px"><div style="width:96px;height:96px;border-radius:24px;background:var(--accentSubtle);display:flex;align-items:center;justify-content:center"><span class="ic" style="font-size:54px;color:var(--accent)">computer</span></div><div style="font-size:15px;font-weight:600">Desktop</div><div class="muted" style="font-size:12.5px">Windows</div></div>
+              <div style="position:absolute;right:10px;top:60px;width:150px;display:flex;flex-direction:column;align-items:center;gap:10px"><div style="width:96px;height:96px;border-radius:24px;background:var(--accentSubtle);display:flex;align-items:center;justify-content:center"><span class="ic" style="font-size:54px;color:var(--accent)">smartphone</span></div><div style="font-size:15px;font-weight:600">Phone</div><div class="muted" style="font-size:12.5px">Android</div></div>
+              <div style="position:absolute;left:150px;right:150px;top:105px;height:4px;border-radius:4px;background:var(--border)"></div>
+              <div id="packets"></div>
+              <div style="position:absolute;left:50%;top:84px;transform:translateX(-50%);width:46px;height:46px;border-radius:50%;background:var(--surface);border:2px solid var(--accent);display:flex;align-items:center;justify-content:center"><span class="ic" style="color:var(--accent);font-size:22px">lock</span></div>
+            </div>
+            <div class="sec" style="font-size:14px;text-align:center;line-height:1.5">Encrypted on your device before upload.</div>
+            <div style="display:flex;gap:8px;margin-top:16px"><span class="pill"><span class="ic">dns</span>Self-hosted server</span><span class="pill"><span class="ic">wifi</span>Wi-Fi / LAN, no server</span></div>
+            <div id="synced" style="margin-top:22px;display:flex;align-items:center;gap:8px;color:var(--ok);font-weight:700;font-size:15px;opacity:0"><span class="ic" style="font-size:20px">cloud_done</span>Synced just now</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pane" id="p-pl">
+        <div style="display:flex;align-items:baseline;gap:12px"><div class="h1">Plugins</div><div class="muted" style="font-size:15px">43 available</div></div>
+        <div style="display:flex;gap:8px;margin-top:16px" id="cats"></div>
+        <div style="position:absolute;left:28px;right:28px;top:138px;bottom:0;overflow:hidden">
+          <div id="plGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;padding-bottom:40px"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div id="outro">
+    <div style="display:flex;align-items:center;gap:36px" id="oMark">
+      <img src="logo.png" style="width:170px;height:170px;border-radius:40px;box-shadow:0 24px 80px rgba(180,157,245,.35)">
+      <div style="font-size:210px;font-weight:700;letter-spacing:-9px;line-height:1">luma</div>
+    </div>
+    <div style="font-size:44px;font-weight:600;color:var(--t2);margin-top:40px" id="oSub">Free &amp; local-first · Windows, Linux, Android</div>
+    <div class="mono" style="font-size:30px;color:var(--accent);margin-top:22px" id="oUrl">github.com/Hyperlinkhyper1/luma-app</div>
+  </div>
+
+  <svg id="cursor" viewBox="0 0 24 24"><path d="M4 2.5 L4 20 L8.6 15.6 L11.7 22.2 L14.6 20.9 L11.6 14.4 L18 14.2 Z" fill="#fff" stroke="#14111c" stroke-width="1.4" stroke-linejoin="round"/></svg>
+  <div id="ripple"></div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const cl=(x,a=0,b=1)=>Math.min(b,Math.max(a,x));
+const p=(t,a,b)=>cl((t-a)/(b-a));
+const eo=x=>1-Math.pow(1-x,3);
+const eio=x=>x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2;
+const back=x=>{const c1=1.70158,c3=c1+1;return 1+c3*Math.pow(x-1,3)+c1*Math.pow(x-1,2)};
+const lerp=(a,b,k)=>a+(b-a)*k;
+const h=(tag,css,html)=>{const e=document.createElement(tag);if(css)e.style.cssText=css;if(html!=null)e.innerHTML=html;return e};
+const pill=(parent,html)=>{const d=document.createElement('div');d.innerHTML=html;parent.appendChild(d.firstChild);};
+
+/* ---------- timeline on the song's beat grid (105 BPM) ---------- */
+const B=60/105;
+const S={hook:0,reveal:6*B,fin:12*B,pw:18*B,conv:24*B,ai:30*B,groc:36*B,recipe:42*B,sync:48*B,pl:54*B,outro:62*B,end:68*B};
+const DURATION=S.end;
+
+/* ---------- hook tiles ---------- */
+const TILES=[["Budget","account_balance_wallet","#2f6f58"],["Vault","lock","#7a4f34"],["Authenticator","pin","#34557a"],["Converter","swap_horiz","#7a3455"],["Notes","sticky_note_2","#7a6c2f"],["AI chat","smart_toy","#43347a"],["Calendar","calendar_month","#2f6f6b"],
+["Calculator","calculate","#555560"],["Recipes","restaurant_menu","#7a4434"],["QR codes","qr_code_2","#2b2b36"],["Speed test","speed","#346b7a"],["Downloader","download","#6a347a"],["Flashcards","school","#4f7a34"],["Minecraft","sports_esports","#45692a"]];
+function shade(c){const n=parseInt(c.slice(1),16);return'rgb('+((n>>16)*.6|0)+','+((n>>8&255)*.6|0)+','+((n&255)*.6|0)+')'}
+const tileEls=TILES.map(([l,i,c],k)=>{
+  const e=h('div','background:linear-gradient(160deg,'+c+','+shade(c)+')','<span class="ic">'+i+'</span><span class="l">'+l+'</span>');
+  e.className='tile';$('tiles').appendChild(e);e._x=211+(k%7)*218;e._y=430+Math.floor(k/7)*218;return e;});
+
+/* ---------- rail ---------- */
+const RAIL=[["home","dashboard"],["conv","swap_horiz"],["fin","account_balance_wallet"],["pw","lock"],["notes","sticky_note_2"],["ai","smart_toy"],["groc","local_grocery_store"],["recipe","restaurant_menu"],["mc","sports_esports"]];
+const railY={},railEls={};
+RAIL.forEach(([id,ic],i)=>{const e=h('div','top:'+(14+i*56)+'px','<span class="ic">'+ic+'</span>');e.className='rb';$('railItems').appendChild(e);railY[id]=14+i*56;railEls[id]=e;});
+[["plugins","extension",576],["settings","settings",632],["account","badge",688]].forEach(([id,ic,y])=>{const e=h('div','top:'+y+'px','<span class="ic">'+ic+'</span>');e.className='rb';$('rail').appendChild(e);railY[id]=y;railEls[id]=e;});
+
+/* ---------- home ---------- */
+[["Finance","account_balance_wallet","€12,480.00 net worth"],["Password Manager","lock","24 logins · 0 weak"],["File Converter","swap_horiz","8 tools"],["Notes","sticky_note_2","3 notes edited today"],["Assistant","smart_toy","Aurora · Nebula · Pulsar"],["Plugins","extension","43 available"]].forEach(([n,i,s])=>{
+  $('homeGrid').appendChild(h('div','background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px;height:212px;display:flex;flex-direction:column;justify-content:space-between',
+  '<div style="width:48px;height:48px;border-radius:13px;background:var(--accentSubtle);display:flex;align-items:center;justify-content:center"><span class="ic" style="font-size:26px;color:var(--accent)">'+i+'</span></div><div><div style="font-size:18px;font-weight:700">'+n+'</div><div class="muted" style="font-size:13.5px;margin-top:3px">'+s+'</div></div>'));});
+
+/* ---------- finance ---------- */
+const eur=c=>'€'+Math.floor(c/100).toLocaleString('en-US')+'.'+String(c%100).padStart(2,'0');
+const potBars=[["Rent","home",95000,95000,"#B49DF5"],["Groceries","shopping_cart",21000,30000,"#57D9A3"],["Holiday","flight",64000,150000,"#FFC15E"]].map(([n,i,v,g,c])=>{const e=h('div','',
+ '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><span class="ic" style="font-size:20px;color:'+c+'">'+i+'</span><span style="font-size:15px;font-weight:600;flex:1">'+n+'</span><span style="font-size:14px" class="sec">'+eur(v)+' <span class="muted">/ '+eur(g)+'</span></span></div><div class="bar"><i style="width:0;background:'+c+'"></i></div>');
+ $('pots').appendChild(e);const b=e.querySelector('i');b._w=v/g;return b;});
+const weekBars=[["Groceries",.82],["Transport",.45],["Eating out",.62],["Subscr.",.3],["Fun",.52]].map(([n,v])=>{const e=h('div','flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;height:100%;justify-content:flex-end',
+ '<div style="width:100%;border-radius:8px 8px 4px 4px;background:linear-gradient(180deg,#C6B4F8,#8f78d6);height:0"></div><div class="muted" style="font-size:12.5px">'+n+'</div>');
+ $('week').appendChild(e);const b=e.firstChild;b._v=v;return b;});
+const finCards=[...document.querySelectorAll('#p-fin .fc')];
+
+/* ---------- passwords ---------- */
+const PW=[["M","Mail","alex@example.com","#B49DF5","482 913",false],["B","Bank","alex.m","#57D9A3","107 655",false],["G","Game store","alexplays","#FFC15E","930 284",true],["W","Work portal","a.morgan@example.com","#7fb2ff","661 047",false],["S","Shop","alex@example.com","#FF6B81","215 398",false],["C","Cloud drive","alex@example.com","#5fd0e0","804 172",false],["T","Streaming","alex.m","#e09a5f","379 520",false]];
+const pwRows=PW.map(([L,n,u,c,code,breach],i)=>{const e=h('div','display:flex;align-items:center;gap:16px;padding:16px 22px;'+(i<PW.length-1?'border-bottom:1px solid var(--border)':''),
+ '<div style="width:44px;height:44px;border-radius:12px;background:'+c+'26;color:'+c+';display:flex;align-items:center;justify-content:center;font-weight:700;font-size:19px">'+L+'</div>'+
+ '<div style="flex:1"><div style="font-size:17px;font-weight:700;display:flex;align-items:center;gap:10px">'+n+(breach?'<span class="bp" style="font-size:12px;font-weight:700;color:var(--bad);background:rgba(255,107,129,.14);border:1px solid rgba(255,107,129,.4);border-radius:20px;padding:2px 10px;opacity:0">Found in a known breach</span>':'')+'</div><div class="muted" style="font-size:14px;margin-top:2px">'+u+'</div></div>'+
+ '<div class="sec mono" style="font-size:18px;letter-spacing:3px">••••••••</div>'+
+ '<div style="display:flex;align-items:center;gap:10px;width:160px;justify-content:flex-end"><span class="mono" style="font-size:22px;font-weight:700;color:var(--accent)">'+code+'</span><span class="ring" style="width:22px;height:22px;border-radius:50%"></span></div>');
+ $('pwList').appendChild(e);return e;});
+const rings=[...document.querySelectorAll('#pwList .ring')];
+
+/* ---------- converter ---------- */
+[["Audio","graphic_eq"],["Picture","image"],["Video","movie"],["Image downscaler","photo_size_select_large"],["Video downscaler","compress"],["Image editor","auto_fix_high"],["Audio editor","content_cut"],["Collage maker","dashboard"]].forEach(([n,i])=>
+ pill($('toolChips'),'<span class="pill'+(n=='Video'?' on':'')+'" style="height:36px;padding:0 10px;font-size:12.5px;gap:5px"><span class="ic">'+i+'</span>'+n+'</span>'));
+["MP4","MOV","WEBM","OGV","MPG","M4V"].forEach(f=>pill($('fmts'),'<span class="pill'+(f=='MP4'?' on':'')+'" style="height:42px;padding:0 20px;font-size:15px">'+f+'</span>'));
+
+/* ---------- assistant ---------- */
+const modeEls=[["Aurora","fast","bolt"],["Nebula","smarter","auto_awesome"],["Pulsar","smartest","rocket_launch"]].map(([n,d,i])=>{const e=h('div','display:flex;align-items:center;gap:10px;padding:10px 18px;border-radius:14px;border:1px solid var(--border);background:var(--surface)',
+ '<span class="ic" style="font-size:22px">'+i+'</span><div><div style="font-size:16px;font-weight:700">'+n+'</div><div class="muted" style="font-size:12.5px">'+d+'</div></div>');$('modes').appendChild(e);return e;});
+const PROMPT="Plan a cheap weekend in Lisbon";
+const REPLY="Here’s a €150 weekend: walk Alfama and ride tram 28 on Saturday, then LX Factory and sunset at a miradouro on Sunday. Want a packing list too?";
+
+/* ---------- groceries ---------- */
+const MK={jumbo:["Jumbo","#F6C500"],ah:["Albert Heijn","#4FA8DE"],hoog:["Hoogvliet","#E53935"],lidl:["Lidl","#3D6DC7"]};
+const dot=c=>'<span style="width:10px;height:10px;border-radius:50%;background:'+c+';display:inline-block;flex:none"></span>';
+pill($('gStores'),'<span class="pill on">All stores</span>');
+Object.values(MK).forEach(([n,c])=>pill($('gStores'),'<span class="pill">'+dot(c)+n+'</span>'));
+const GQ="oat drink";
+const RES=[["lidl",129],["jumbo",149],["hoog",155],["ah",179]];
+const gRows=RES.map(([m,c],i)=>{const e=h('div','display:flex;align-items:center;gap:14px;padding:13px 14px;border-radius:12px;margin-bottom:8px;background:var(--bg);border:1px solid '+(i==0?'rgba(87,217,163,.45)':'var(--border)'),
+ '<div style="width:44px;height:44px;border-radius:11px;background:var(--hover);display:flex;align-items:center;justify-content:center"><span class="ic" style="font-size:24px;color:var(--t2)">local_drink</span></div>'+
+ '<div style="flex:1"><div style="font-size:15.5px;font-weight:700">Oat drink 1 L</div><div style="display:flex;align-items:center;gap:7px;font-size:13px;margin-top:3px" class="sec">'+dot(MK[m][1])+MK[m][0]+(i==0?'<span class="gBadge" style="margin-left:6px;font-size:11.5px;font-weight:700;color:var(--ok);background:rgba(87,217,163,.14);border:1px solid rgba(87,217,163,.4);border-radius:20px;padding:1px 8px">Cheapest</span>':'')+'</div></div>'+
+ '<div class="mono" style="font-size:19px;font-weight:700;color:'+(i==0?'var(--ok)':'var(--t1)')+'">€'+(c/100).toFixed(2)+'</div>'+
+ '<div class="gAdd" style="width:36px;height:36px;border-radius:10px;border:1px solid rgba(180,157,245,.5);display:flex;align-items:center;justify-content:center;color:var(--accent)"><span class="ic" style="font-size:20px">add</span></div>');
+ $('gRes').appendChild(e);return e;});
+const gAddBtn=gRows[0].querySelector('.gAdd'),gBadge=gRows[0].querySelector('.gBadge');
+const LIST=[["lidl",[["Bananas",119],["Pasta 500 g",89]]],["jumbo",[["Coffee beans",649],["Eggs ×10",299]]],["hoog",[["Tomatoes",139]]]];
+let gNew=null;const gSecTot={};
+LIST.forEach(([m,items])=>{const sec=h('div','margin-bottom:14px',
+ '<div style="display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:700;margin-bottom:6px">'+dot(MK[m][1])+MK[m][0]+'<span style="flex:1"></span><span class="mono sec gst" style="font-size:13px"></span></div>');
+ items.forEach(([n,c])=>sec.appendChild(h('div','display:flex;justify-content:space-between;padding:7px 0 7px 18px;font-size:14.5px;border-bottom:1px solid var(--border)','<span>'+n+'</span><span class="mono sec">€'+(c/100).toFixed(2)+'</span>')));
+ if(m=='lidl'){gNew=h('div','display:flex;justify-content:space-between;padding:7px 0 7px 18px;font-size:14.5px;border-bottom:1px solid var(--border);border-radius:8px','<span>Oat drink 1 L</span><span class="mono" style="color:var(--ok)">€1.29</span>');sec.appendChild(gNew);}
+ gSecTot[m]=[sec.querySelector('.gst'),items.reduce((a,b)=>a+b[1],0)];
+ $('gList').appendChild(sec);});
+const grocCards=[...document.querySelectorAll('#p-groc .gc')];
+
+/* ---------- recipe planner ---------- */
+const DAYS=[["Mon","23","Greek salad","Pasta pesto"],["Tue","24","Tomato soup","Chicken curry"],["Wed","25","Falafel wrap","Veggie lasagne"],["Thu","26","Poke bowl","Shakshuka"],["Fri","27","Leftovers","Homemade pizza"],["Sat","28","Pancakes","Ramen"],["Sun","29","Bagels","Roast veg tray"]];
+const dayCards=[],mealEls=[];
+DAYS.forEach(([d,n,l,dn],i)=>{const e=h('div','background:var(--surface);border:1px solid '+(i==0?'rgba(180,157,245,.5)':'var(--border)')+';border-radius:14px;padding:14px 12px;height:470px;display:flex;flex-direction:column;gap:16px',
+ '<div><div class="muted" style="font-size:13px;font-weight:600">'+d+'</div><div style="font-size:26px;font-weight:700;color:'+(i==0?'var(--accent)':'var(--t1)')+'">'+n+'</div></div>');
+ [["Breakfast",i==5?"Pancakes":"Overnight oats","#FFC15E"],["Lunch",l,"#57D9A3"],["Dinner",dn,"#B49DF5"]].forEach(([slot,meal,c],j)=>{
+   if(i==5&&j==1)meal="Sandwiches";
+   const m=h('div','border-radius:10px;background:var(--bg);border:1px solid var(--border);padding:14px 10px;min-height:96px;border-left:3px solid '+c,
+   '<div style="font-size:11px;font-weight:700;color:'+c+';text-transform:uppercase;letter-spacing:.5px">'+slot+'</div><div style="font-size:14.5px;font-weight:600;margin-top:6px;line-height:1.3">'+meal+'</div>');
+   e.appendChild(m);mealEls.push([m,i,j]);});
+ $('week7').appendChild(e);dayCards.push(e);});
+
+/* ---------- sync ---------- */
+const SYNC=[["Settings","settings",true],["Finance","account_balance_wallet",false],["Passwords","lock",false],["Notes","sticky_note_2",false],["Calendar","calendar_month",false]];
+const togs=SYNC.map(([n,i,always],k)=>{const e=h('div','display:flex;align-items:center;gap:14px;padding:13px 0;'+(k<SYNC.length-1?'border-bottom:1px solid var(--border)':''),
+ '<span class="ic" style="font-size:22px;color:var(--t2)">'+i+'</span><div style="flex:1;font-size:15.5px;font-weight:600">'+n+(always?' <span class="muted" style="font-size:12.5px;font-weight:500">· always on</span>':'')+'</div><div class="tog"><i></i></div>');
+ $('syncList').appendChild(e);return e.querySelector('.tog');});
+const packets=[0,1,2,3].map(()=>{const e=h('div','position:absolute;top:100px;width:14px;height:14px;border-radius:50%;background:var(--accent);box-shadow:0 0 12px rgba(180,157,245,.8)');$('packets').appendChild(e);return e;});
+const syncCards=[...document.querySelectorAll('#p-sync .sc')];
+
+/* ---------- plugins ---------- */
+["All","Utility","Productivity","Games","Social","Shopping"].forEach((c,i)=>pill($('cats'),'<span class="pill'+(i==0?' on':'')+'">'+c+'</span>'));
+const PL=[["Calculator","functions","Utility","An everyday calculator that switches into a graphing one."],
+["Recipe Book","restaurant_menu","Productivity","Private or public recipes, plus a weekly meal planner."],
+["Calendar","calendar_month","Productivity","Month view, repeat rules and reminders."],
+["Subway Builder","directions_subway","Games","A real-world transit simulator on a live 3D map."],
+["Space Colony","rocket_launch","Games","Build and run your own colony."],
+["School","school","Productivity","Homework, flashcards, a GPA calculator and timetable."],
+["Chat","chat","Social","End-to-end encrypted messaging between luma users."],
+["Media Downloader","video_library","Utility","YouTube video and audio downloads."],
+["Wi-Fi Speed Test","speed","Utility","Check how fast your connection really is."],
+["City Planner","location_city","Games","Lay out and grow a city of your own."],
+["Minecraft Launcher","sports_esports","Games","Vanilla, Fabric, Forge, NeoForge and Quilt. Mods and Java, handled."],
+["Mood Journal","mood","Productivity","Log how you feel, day by day."],
+["Price Tracker","show_chart","Utility","Price-history graphs from a pasted product URL."],
+["Groceries List","local_grocery_store","Shopping","Compare prices across Dutch supermarkets."],
+["Auto Clicker","ads_click","Utility","Let luma do the repetitive clicking."]];
+const plCards=PL.map(([n,i,c,d])=>{const e=h('div','background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px;height:162px;display:flex;flex-direction:column',
+ '<div style="display:flex;gap:14px;align-items:center"><div style="flex:none;width:46px;height:46px;border-radius:13px;background:var(--accentSubtle);display:flex;align-items:center;justify-content:center"><span class="ic" style="font-size:26px;color:var(--accent)">'+i+'</span></div><div style="font-size:17px;font-weight:700">'+n+'</div></div>'+
+ '<div class="sec" style="font-size:13.5px;line-height:1.4;margin-top:10px;flex:1">'+d+'</div>'+
+ '<div style="display:flex;align-items:center;justify-content:space-between"><span class="muted" style="font-size:12.5px;font-weight:600">'+c+'</span><span class="inst" style="height:30px;padding:0 14px;border-radius:9px;border:1px solid rgba(180,157,245,.5);color:var(--accent);font-size:13.5px;font-weight:700;display:flex;align-items:center;gap:6px">Install</span></div>');
+ $('plGrid').appendChild(e);return e;});
+const mcCard=plCards[10],mcBtn=mcCard.querySelector('.inst');
+[1,13].forEach(i=>{const b=plCards[i].querySelector('.inst');b.innerHTML='<span class="ic" style="font-size:17px">check</span>Installed';b.style.color='var(--t3)';b.style.borderColor='var(--border)';});
+
+/* ---------- scenes in the window ---------- */
+const CUTS=[[S.reveal,'home','Home','p-home'],[S.fin,'fin','Finance','p-fin'],[S.pw,'pw','Password Manager','p-pw'],[S.conv,'conv','File Converter','p-conv'],[S.ai,'ai','Assistant','p-ai'],[S.groc,'groc','Groceries List','p-groc'],[S.recipe,'recipe','Recipe Book','p-recipe'],[S.sync,'settings','Sync & account','p-sync'],[S.pl,'plugins','Plugins','p-pl']];
+
+/* ---------- cursor: [arrive time, target, move duration] ---------- */
+const rail=id=>()=>railEls[id];
+const CK=[[0,[1520,760],0],
+ [S.fin-.08,rail('fin'),.55],[S.fin+1.4,[1330,560],.8],
+ [S.pw-.08,rail('pw'),.6],[S.pw+1.4,[1420,520],.8],
+ [S.conv-.08,rail('conv'),.6],[S.conv+.8,()=>$('convBtn'),.6],
+ [S.ai-.08,rail('ai'),.7],[S.ai+.5,()=>modeEls[1],.45],[S.ai+2,[1500,640],.9],
+ [S.groc-.08,rail('groc'),.7],[S.groc+1.8,()=>gAddBtn,.8],[S.groc+2.8,[1420,640],.7],
+ [S.recipe-.08,rail('recipe'),.7],[S.recipe+1.6,()=>dayCards[4],.9],
+ [S.sync-.08,rail('settings'),.7],[S.sync+.85,()=>togs[1],.6],[S.sync+1.4,()=>togs[2],.4],[S.sync+1.95,()=>togs[3],.4],
+ [S.pl-.08,rail('plugins'),.7],[S.pl+2.2,()=>mcBtn,.8],[S.outro-.3,[1600,820],.9]];
+const CLICKS=[S.fin,S.pw,S.conv,S.conv+.85,S.ai,S.ai+.55,S.groc,S.groc+1.85,S.recipe,S.sync,S.sync+.9,S.sync+1.45,S.sync+2,S.pl,S.pl+2.3];
+window.CLICKS=CLICKS;window.DURATION=DURATION;
+
+let T=0;
+function block(el,tin,tout,dy=28){
+  const a=eo(p(T,tin,tin+.35)),b=p(T,tout-.18,tout);
+  const o=a*(1-b);el.style.opacity=o;el.style.display=o>0.001?'':'none';
+  el.style.transform='translateY('+((1-a)*dy-b*14)+'px)';return a;}
+function pt(tg){if(Array.isArray(tg))return tg;const el=typeof tg=='function'?tg():tg;const r=el.getBoundingClientRect();return [r.left+r.width*.55,r.top+r.height*.6];}
+function cursorPos(){let i=0;while(i<CK.length-1&&T>=CK[i+1][0])i++;const a=CK[i],b=CK[Math.min(i+1,CK.length-1)];
+  const pa=pt(a[1]);if(a===b)return pa;const pb=pt(b[1]);const k=eio(p(T,b[0]-b[2],b[0]));return [lerp(pa[0],pb[0],k),lerp(pa[1],pb[1],k)];}
+function stagger(els,t0,step,dur,fn){els.forEach((e,i)=>{const a=eo(p(T,t0+i*step,t0+i*step+dur));fn(e,a,i);});}
+const rise=(e,a)=>{e.style.opacity=a;e.style.transform='translateY('+(1-a)*18+'px)';};
+function setTog(el,on){el.style.background=on?'var(--accent)':'var(--hover)';el.style.borderColor=on?'var(--accent)':'var(--border)';const k=el.firstChild;k.style.left=on?'23px':'3px';k.style.background=on?'var(--onAccent)':'var(--t3)';}
+
+function render(t){
+  T=t;
+  /* hook */
+  const capIn=eo(p(t,0,.4)),capOut=p(t,S.reveal-.25,S.reveal);
+  $('caption').style.opacity=capIn*(1-capOut);
+  $('caption').style.transform='translateY('+((1-capIn)*30-capOut*20)+'px) scale('+(1+.02*p(t,0,S.reveal))+')';
+  const F=S.reveal-.05;
+  tileEls.forEach((e,k)=>{
+    const s=back(p(t,.25+.15*k,.25+.15*k+.32));
+    const fly=eio(p(t,F+k*.015,F+.6+k*.015));
+    const x=lerp(e._x,1270-95,fly),y=lerp(e._y,540-95,fly);
+    const wob=Math.sin(t*12+k*1.7)*1.6*(1-fly);
+    e.style.transform='translate('+x+'px,'+y+'px) scale('+(s*(1-.8*fly))+') rotate('+wob+'deg)';
+    e.style.opacity=(s>0?1:0)*(1-p(t,F+.35+k*.015,F+.6+k*.015));
+    e.style.display=t<F+.85?'':'none';
+  });
+  $('glow').style.opacity=.5+.5*eo(p(t,S.reveal-.2,S.reveal+.6));
+
+  /* window */
+  const R=S.reveal;
+  const wIn=eo(p(t,R+.35,R+.95)),wOut=p(t,S.outro-.2,S.outro+.05);
+  const win=$('win');win.style.display=(t>R+.3&&t<S.outro+.1)?'':'none';
+  win.style.opacity=cl(p(t,R+.35,R+.7))*(1-wOut);
+  win.style.transform='scale('+(lerp(.82,1,wIn)-.03*wOut)+')';
+
+  /* left text */
+  block($('lt-reveal'),R+.8,S.fin);
+  const sA=eo(p(t,R+1,R+1.35));$('revealSub').style.opacity=sA;$('revealSub').style.transform='translateY('+(1-sA)*18+'px)';
+  block($('lt-fin'),S.fin,S.pw);block($('lt-pw'),S.pw,S.conv);block($('lt-conv'),S.conv,S.ai);block($('lt-ai'),S.ai,S.groc);
+  block($('lt-groc'),S.groc,S.recipe);block($('lt-recipe'),S.recipe,S.sync);block($('lt-sync'),S.sync,S.pl);
+  const PS=S.pl+2.3;block($('lt-pl1'),S.pl,PS);block($('lt-pl2'),PS,S.outro);
+
+  /* panes */
+  let cur=CUTS[0],ci=0;CUTS.forEach((c,i)=>{if(t>=c[0]){cur=c;ci=i;}});
+  CUTS.forEach((c,i)=>{const end=i<CUTS.length-1?CUTS[i+1][0]:99;const el=$(c[3]);
+    const a=eo(p(t,c[0]+.05,c[0]+.4)),b=p(t,end-.15,end),o=a*(1-b);
+    el.style.display=(t>=c[0]&&t<end)?'block':'none';el.style.opacity=o;el.style.transform='translateY('+(1-a)*16+'px)';});
+  $('crumb').textContent=cur[2];
+
+  /* rail selection */
+  const prev=CUTS[Math.max(0,ci-1)],sk=eo(p(t,cur[0],cur[0]+.25));
+  const sy=lerp(railY[prev[1]],railY[cur[1]],sk);
+  $('selBg').style.top=sy+'px';$('selBar').style.top=(sy+10)+'px';
+  Object.entries(railEls).forEach(([id,e])=>{e.style.color=(id==cur[1]&&sk>.5)?'var(--accent)':'var(--t2)';});
+  const mcS=back(p(t,S.pl+2.4,S.pl+2.75));railEls.mc.style.transform='scale('+mcS+')';railEls.mc.style.opacity=mcS>0?1:0;
+  if(t>S.pl+2.4&&t<S.pl+3.3)railEls.mc.style.color='var(--accent)';
+
+  /* home */
+  stagger([...$('homeGrid').children],R+.7,.07,.45,rise);
+
+  /* finance */
+  let s0=S.fin;
+  stagger(finCards,s0+.05,.07,.45,rise);
+  $('nw').textContent=eur(Math.round(1248000*eo(p(t,s0+.15,s0+1.2))));
+  $('spark').style.strokeDashoffset=520*(1-eo(p(t,s0+.3,s0+1.4)));
+  potBars.forEach((b,i)=>b.style.width=(b._w*100*eo(p(t,s0+.45+i*.1,s0+1.3+i*.1)))+'%');
+  weekBars.forEach((b,i)=>b.style.height=(b._v*225*eo(p(t,s0+.5+i*.08,s0+1.3+i*.08)))+'px');
+
+  /* passwords */
+  s0=S.pw;
+  stagger(pwRows,s0+.05,.07,.45,(r,a)=>{r.style.opacity=a;r.style.transform='translateX('+(1-a)*-24+'px)';});
+  rings.forEach((r,i)=>{const sec=((t*1.2+i*7)%30)/30;r.style.background='conic-gradient(#B49DF5 '+(360*(1-sec))+'deg, #2C2839 0)';});
+  const bp=document.querySelector('.bp'),bpk=back(p(t,s0+1.1,s0+1.45));bp.style.opacity=cl(bpk);bp.style.transform='scale('+bpk+')';
+
+  /* converter */
+  s0=S.conv;
+  const pk=p(t,s0+.95,s0+2.1);$('prog').style.width=(eio(pk)*100)+'%';
+  $('progTxt').textContent=t<s0+.9?'Ready':pk<1?'Converting to MP4… '+Math.round(eio(pk)*100)+'%':'Done in 1.1s';
+  $('convBtn').style.transform='scale('+((t>s0+.8&&t<s0+.95)?.95:1)+')';
+  const tk=back(p(t,s0+2.2,s0+2.55));$('toast').style.opacity=cl(p(t,s0+2.2,s0+2.4));$('toast').style.transform='translateY('+(1-tk)*30+'px)';
+
+  /* assistant */
+  s0=S.ai;
+  const modeSel=t>=s0+.55?1:0;
+  modeEls.forEach((m,i)=>{const on=i==modeSel;m.style.background=on?'var(--accentSubtle)':'var(--surface)';m.style.borderColor=on?'rgba(180,157,245,.5)':'var(--border)';m.style.color=on?'var(--accent)':'var(--t1)';});
+  const typed=Math.round(PROMPT.length*p(t,s0+.65,s0+1.45)),sent=t>=s0+1.6;
+  $('inp').innerHTML=(sent||!typed)?'<span class="muted">Message Nebula…</span>':PROMPT.slice(0,typed)+'<span style="color:var(--accent)">|</span>';
+  $('sendBtn').style.background=(typed>0&&!sent)?'var(--accent)':'var(--hover)';$('sendIc').style.color=(typed>0&&!sent)?'var(--onAccent)':'var(--t2)';
+  const ua=eo(p(t,s0+1.6,s0+1.85));$('uMsg').style.opacity=ua;$('uMsg').style.transform='translateY('+(1-ua)*16+'px)';
+  $('aMsg').style.opacity=eo(p(t,s0+1.75,s0+1.95));
+  const rc=Math.round(REPLY.length*p(t,s0+1.85,s0+3.1));$('aTxt').innerHTML=rc?REPLY.slice(0,rc)+(rc<REPLY.length?'<span style="color:var(--accent)">▍</span>':''):'<span class="muted">…</span>';
+
+  /* groceries */
+  s0=S.groc;
+  stagger(grocCards,s0+.05,.08,.45,rise);
+  const gt=Math.round(GQ.length*p(t,s0+.35,s0+.9));
+  $('gq').innerHTML=gt?GQ.slice(0,gt)+(gt<GQ.length?'<span style="color:var(--accent)">|</span>':''):'<span class="muted">Search products…</span>';
+  $('gCount').textContent=t>=s0+.95?'4 results · 4 stores':'Results';
+  stagger(gRows,s0+.95,.09,.35,(e,a)=>{e.style.opacity=a;e.style.transform='translateY('+(1-a)*14+'px)';});
+  const gb=back(p(t,s0+1.35,s0+1.65));gBadge.style.opacity=cl(gb);gBadge.style.display='inline-block';gBadge.style.transform='scale('+gb+')';
+  const added=t>=s0+1.85;
+  gAddBtn.style.background=added?'rgba(87,217,163,.15)':'transparent';gAddBtn.style.borderColor=added?'rgba(87,217,163,.5)':'rgba(180,157,245,.5)';
+  gAddBtn.innerHTML='<span class="ic" style="font-size:20px;color:'+(added?'var(--ok)':'var(--accent)')+'">'+(added?'check':'add')+'</span>';
+  gAddBtn.style.transform='scale('+((t>s0+1.8&&t<s0+1.93)?.9:1)+')';
+  const na=eo(p(t,s0+1.85,s0+2.2));gNew.style.display=added?'flex':'none';gNew.style.opacity=na;gNew.style.background='rgba(87,217,163,'+(.18*(1-p(t,s0+2.3,s0+3)))+')';gNew.style.transform='translateX('+(1-na)*-20+'px)';
+  Object.entries(gSecTot).forEach(([m,[el,v]])=>{el.textContent='€'+((v+(m=='lidl'&&added?129:0))/100).toFixed(2);});
+  const tot=1295+Math.round(129*eo(p(t,s0+1.9,s0+2.5)));$('gTot').textContent='€'+(tot/100).toFixed(2);
+  $('gItems').textContent=(added?6:5)+' items';
+  const gtk=back(p(t,s0+1.95,s0+2.3));$('gToast').style.opacity=cl(p(t,s0+1.95,s0+2.1))*(1-p(t,s0+3.1,s0+3.3));$('gToast').style.transform='translateY('+(1-gtk)*24+'px)';
+
+  /* recipe */
+  s0=S.recipe;
+  stagger(dayCards,s0+.05,.06,.4,rise);
+  mealEls.forEach(([m,i,j])=>{const a=back(p(t,s0+.45+i*.13+j*.05,s0+.75+i*.13+j*.05));m.style.opacity=cl(a);m.style.transform='scale('+(.85+.15*a)+')';});
+  const rcard=document.querySelector('#p-recipe .rc');rise(rcard,eo(p(t,s0+1.5,s0+1.9)));
+  $('shopTxt').textContent=Math.round(23*eo(p(t,s0+1.6,s0+2.4)))+' ingredients, grouped by aisle';
+
+  /* sync */
+  s0=S.sync;
+  stagger(syncCards,s0+.05,.08,.45,rise);
+  const onAt=[-1,s0+.9,s0+1.45,s0+2,1e9];
+  let n=0;togs.forEach((g,i)=>{const on=i==0||t>=onAt[i];setTog(g,on);if(on&&i>0)n++;});
+  $('syncCount').textContent=n+' of 5';
+  packets.forEach((e,i)=>{const ph=((t*.55+i/4)%1);const dir=i%2;const x=150+(dir?1-ph:ph)*112;e.style.left=(x-7)+'px';e.style.opacity=(t>s0+.4?1:0)*Math.sin(Math.PI*ph);});
+  const sd=eo(p(t,s0+2.3,s0+2.6));$('synced').style.opacity=sd;$('synced').style.transform='translateY('+(1-sd)*10+'px)';
+
+  /* plugins */
+  s0=S.pl;
+  plCards.forEach((c,i)=>{c.style.opacity=eo(p(t,s0+.05+i*.03,s0+.4+i*.03));});
+  $('plGrid').style.transform='translateY('+(-300*eio(p(t,s0+.4,s0+1.8)))+'px)';
+  const hov=t>s0+1.95;mcCard.style.borderColor=hov?'rgba(180,157,245,.7)':'var(--border)';mcCard.style.boxShadow=hov?'0 0 0 1px rgba(180,157,245,.35),0 12px 40px rgba(180,157,245,.15)':'none';
+  const inst=t>=s0+2.3;mcBtn.innerHTML=inst?'<span class="ic" style="font-size:17px">check</span>Installed':'Install';
+  mcBtn.style.background=inst?'rgba(87,217,163,.15)':(hov?'var(--accentSubtle)':'transparent');mcBtn.style.borderColor=inst?'rgba(87,217,163,.5)':'rgba(180,157,245,.5)';mcBtn.style.color=inst?'var(--ok)':'var(--accent)';
+  mcBtn.style.transform='scale('+(t>s0+2.25&&t<s0+2.38?.92:1)+')';
+
+  /* cursor */
+  const curV=cl(p(t,S.fin-1.3,S.fin-1))*(1-p(t,S.outro-.35,S.outro-.1));
+  const cu=$('cursor'),rp=$('ripple');
+  if(curV>0){
+    const [x,y]=cursorPos();let press=0,rk=-1;
+    for(const c of CLICKS){if(t>=c-.06&&t<c+.1)press=1;if(t>=c&&t<c+.45)rk=(t-c)/.45;}
+    cu.style.opacity=curV;cu.style.transform='translate('+x+'px,'+y+'px) scale('+(press?.82:1)+')';
+    if(rk>=0){rp.style.opacity=(1-rk)*.8;rp.style.transform='translate('+(x-30)+'px,'+(y-30)+'px) scale('+(.3+rk)+')';}else rp.style.opacity=0;
+  }else{cu.style.opacity=0;rp.style.opacity=0;}
+
+  /* outro */
+  const O=S.outro,o=$('outro');o.style.opacity=cl(p(t,O+.05,O+.35));o.style.display=t>O?'flex':'none';
+  $('oMark').style.transform='scale('+lerp(.85,1,back(p(t,O+.05,O+.5)))+')';
+  const os=eo(p(t,O+.3,O+.65));$('oSub').style.opacity=os;$('oSub').style.transform='translateY('+(1-os)*20+'px)';
+  const ou=eo(p(t,O+.45,O+.8));$('oUrl').style.opacity=ou;$('oUrl').style.transform='translateY('+(1-ou)*20+'px)';
+}
+window.render=render;
+window.ready=(async()=>{await document.fonts.load('24px "Material Symbols Rounded"','home');await document.fonts.ready;await Promise.all([...document.images].map(i=>i.complete?1:new Promise(r=>i.onload=r)));render(0);return true})();
+</script>
+</body>
+</html>

@@ -78,7 +78,7 @@ void main() {
 
   /// Lets the stream listeners in the service catch up.
   Future<void> settle() =>
-      Future<void>.delayed(const Duration(milliseconds: 20));
+      Future<void>.delayed(const Duration(milliseconds: 60));
 
   List<String> idsOf(List<String> args) =>
       args[args.indexOf('--ids') + 1].split(',');

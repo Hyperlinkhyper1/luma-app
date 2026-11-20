@@ -879,10 +879,10 @@
           houseGroup.add(rMesh);
 
           // Small warm glowing window at night
-          const winLight = new THREE.PointLight(0xfef08a, 0, 15);
+          if (i % 30 === 0) { const winLight = new THREE.PointLight(0xfef08a, 0, 15);
           winLight.position.set(hx, hy + h * 0.6, hz + d * 0.52);
           this.scene.add(winLight);
-          this.nightLights.push(winLight);
+          this.nightLights.push(winLight); }
 
           // Stone Pines / Cypresses in courtyards
           if (Math.random() > 0.75) {
@@ -1788,7 +1788,7 @@
         bridgeGroup.add(cable2);
 
         // Suspension cable night lights
-        for (let pt = 0; pt <= 20; pt++) {
+        for (let pt = 0; pt <= 20; pt += 5) {
           const t = pt / 20;
           const p = cableCurve1.getPoint(t);
           const bLight = new THREE.PointLight(0xfef08a, 0, 30);

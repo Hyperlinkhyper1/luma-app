@@ -14492,6 +14492,24 @@ abstract class L {
   /// **'Create a new note to get started.'**
   String get notesCreateToStart;
 
+  /// No description provided for @notesTakeANote.
+  ///
+  /// In en, this message translates to:
+  /// **'Take a note…'**
+  String get notesTakeANote;
+
+  /// No description provided for @notesNewListTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'New list'**
+  String get notesNewListTooltip;
+
+  /// No description provided for @notesEmptyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Notes you add appear here'**
+  String get notesEmptyHint;
+
   /// No description provided for @passwordsUnreadableCredential.
   ///
   /// In en, this message translates to:

@@ -8786,6 +8786,15 @@ class LEn extends L {
   String get notesCreateToStart => 'Create a new note to get started.';
 
   @override
+  String get notesTakeANote => 'Take a note…';
+
+  @override
+  String get notesNewListTooltip => 'New list';
+
+  @override
+  String get notesEmptyHint => 'Notes you add appear here';
+
+  @override
   String get passwordsUnreadableCredential => 'Unreadable credential';
 
   @override

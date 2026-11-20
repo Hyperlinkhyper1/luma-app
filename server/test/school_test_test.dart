@@ -701,7 +701,7 @@ void main() {
       expect(tests, greaterThan(control));
       final controlPanel = html.substring(control, tests);
       final testsPanel = html.substring(tests);
-      for (final id in ['bmUploadBtn', 'bannersMissingBtn']) {
+      for (final id in ['bmUploadBtn', 'bmCoverageBtn', 'bannersMissingBtn']) {
         expect(controlPanel, isNot(contains('id="$id"')), reason: id);
         expect(testsPanel, contains('id="$id"'), reason: id);
       }
