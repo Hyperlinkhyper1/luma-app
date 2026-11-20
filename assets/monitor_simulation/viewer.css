@@ -11,6 +11,6 @@ select { max-width: 320px; }
 #status, .footnote { color: #b9c9cc; line-height: 1.45; }
 #status { min-height: 21px; }
 .screen { position: relative; width: 100%; aspect-ratio: 16 / 9; max-height: 70vh; background: #05090c; border: 1px solid #34444b; border-radius: 10px; overflow: hidden; display: grid; place-items: center; }
-.screen:fullscreen { width: 100%; height: 100%; max-height: none; aspect-ratio: auto; border: 0; border-radius: 0; }
+.screen:fullscreen { width: 100vw; height: 100vh; max-height: none; aspect-ratio: auto; border: 0; border-radius: 0; background: #000; cursor: none; }
 video { width: 100%; height: 100%; object-fit: contain; }
 #placeholder { position: absolute; color: #85979a; text-align: center; padding: 20px; pointer-events: none; }

@@ -1,0 +1,1 @@
+I got tired of keeping a budget app, a password manager, a file converter, an AI chat, a grocery price checker and a meal planner open at once, so I built luma: one local-first app for all of them, with encrypted sync and 43 plugins. Yes, one of them is a Minecraft launcher. Free on Windows, Linux and Android: github.com/Hyperlinkhyper1/luma-app

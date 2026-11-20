@@ -95,6 +95,17 @@ Future<void> windowToggleMaximize() async {
   }
 }
 
+/// Puts the desktop window into, or back out of, borderless full screen.
+Future<void> windowSetFullScreen(bool fullScreen) async {
+  if (!hasCustomTitleBar) return;
+  try {
+    if (await windowManager.isFullScreen() == fullScreen) return;
+    await windowManager.setFullScreen(fullScreen);
+  } on MissingPluginException {
+    return;
+  }
+}
+
 Future<void> windowClose() async {
   if (!hasCustomTitleBar) return;
   _closeEvents.add(null);

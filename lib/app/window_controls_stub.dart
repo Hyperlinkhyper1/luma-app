@@ -23,6 +23,8 @@ Future<bool> windowIsMaximized() async => false;
 
 Future<void> windowToggleMaximize() async {}
 
+Future<void> windowSetFullScreen(bool fullScreen) async {}
+
 Future<void> windowClose() async {}
 
 Future<void> windowShow() async {}

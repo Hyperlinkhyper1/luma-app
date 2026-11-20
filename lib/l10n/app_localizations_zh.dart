@@ -8315,6 +8315,15 @@ class LZh extends L {
   String get notesCreateToStart => '创建一条新笔记即可开始。';
 
   @override
+  String get notesTakeANote => '记个笔记…';
+
+  @override
+  String get notesNewListTooltip => '新建清单';
+
+  @override
+  String get notesEmptyHint => '你添加的笔记会显示在这里';
+
+  @override
   String get passwordsUnreadableCredential => '无法读取的凭据';
 
   @override

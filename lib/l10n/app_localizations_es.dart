@@ -8844,6 +8844,15 @@ class LEs extends L {
   String get notesCreateToStart => 'Crea una nota nueva para empezar.';
 
   @override
+  String get notesTakeANote => 'Crear una nota…';
+
+  @override
+  String get notesNewListTooltip => 'Nueva lista';
+
+  @override
+  String get notesEmptyHint => 'Las notas que añadas aparecerán aquí';
+
+  @override
   String get passwordsUnreadableCredential => 'Credencial ilegible';
 
   @override
