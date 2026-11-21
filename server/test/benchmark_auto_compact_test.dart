@@ -17,6 +17,50 @@ void main() {
         isNot(benchmarkAutoCompactPrompt(brief, 2)));
   });
 
+  test('a retry after overthinking asks for brief planning', () {
+    const brief = 'Build a pagoda.';
+    final plain = benchmarkAutoCompactPrompt(brief, 1);
+    final thought = benchmarkAutoCompactPrompt(brief, 1, overthought: true);
+    expect(plain, isNot(contains('thinking')));
+    expect(thought, contains(brief));
+    expect(thought, contains('thinking'));
+    expect(benchmarkAutoCompactPrompt(brief, 0, overthought: true), brief);
+  });
+
+  test('reasoning that ate the budget is told apart from a long page', () {
+    expect(
+        benchmarkReasoningAteBudget(
+            contentChars: 0, reasoningChars: 173000, outputTokens: 65000),
+        isTrue);
+    expect(
+        benchmarkReasoningAteBudget(
+            contentChars: 7600, reasoningChars: 0, outputTokens: 65000),
+        isTrue,
+        reason: 'hidden reasoning: 7.6k chars cannot fill 65k tokens');
+    expect(
+        benchmarkReasoningAteBudget(
+            contentChars: 200000, reasoningChars: 30000, outputTokens: 65000),
+        isFalse,
+        reason: 'the page itself filled the budget');
+    expect(
+        benchmarkReasoningAteBudget(
+            contentChars: 200000, reasoningChars: 0, outputTokens: 0),
+        isFalse);
+  });
+
+  test('compact retries step reasoning down to medium, then low', () {
+    expect(benchmarkCompactRetryEffort('xhigh', 1), 'medium');
+    expect(benchmarkCompactRetryEffort('medium', 2), 'low');
+    expect(benchmarkCompactRetryEffort('xhigh', 2), 'low');
+    expect(benchmarkCompactRetryEffort('high', 1), 'medium');
+    expect(benchmarkCompactRetryEffort('medium', 1), 'low');
+    expect(benchmarkCompactRetryEffort('low', 2), 'minimal');
+    expect(benchmarkCompactRetryEffort('minimal', 1), isNull);
+    expect(benchmarkCompactRetryEffort('none', 1), isNull);
+    expect(benchmarkCompactRetryEffort(null, 1), isNull);
+    expect(benchmarkCompactRetryEffort('xhigh', 0), isNull);
+  });
+
   test('output-limit detection reads normalized and native finish reasons', () {
     for (final reason in ['length', 'MAX_TOKENS', 'max_output_tokens']) {
       for (final native in [false, true]) {

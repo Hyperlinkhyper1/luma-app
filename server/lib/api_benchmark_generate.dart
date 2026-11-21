@@ -65,6 +65,8 @@ class BenchmarkGenJob {
       providerInput: (j['providerInput'] as num?)?.toDouble(),
       providerOutput: (j['providerOutput'] as num?)?.toDouble(),
     )
+      ..retryEffort = j['retryEffort'] as String?
+      ..overthought = j['overthought'] == true
       ..status = j['status'] == 'failed' || j['status'] == 'stopped'
           ? j['status'] as String
           : 'running'
@@ -95,6 +97,14 @@ class BenchmarkGenJob {
   int startedAtMs;
   final bool autoCompact;
   int compactAttempt;
+
+  /// The lower reasoning effort a compact retry runs at after the previous
+  /// attempt thought its whole output budget away, and whether it did.
+  String? retryEffort;
+  bool overthought = false;
+
+  /// The effort the next request asks for.
+  String? get effort => retryEffort ?? route.reasoningEffort;
   int? batchStartedAtMs;
   int priorInputTokens;
   int priorOutputTokens;
@@ -176,6 +186,7 @@ class BenchmarkGenJob {
         'maxTokens': maxTokens,
         'autoCompact': autoCompact,
         'compactAttempt': compactAttempt,
+        'retryEffort': retryEffort,
         'status': status,
         'waiting': status == 'running' && !active,
         'phase': phase,
@@ -222,6 +233,8 @@ class BenchmarkGenJob {
         'maxTokens': maxTokens,
         'autoCompact': autoCompact,
         'compactAttempt': compactAttempt,
+        'retryEffort': retryEffort,
+        'overthought': overthought,
         'prompt': prompt,
         'batchStartedAtMs': batchStartedAtMs,
         'priorInputTokens': priorInputTokens,
@@ -1001,6 +1014,20 @@ extension BenchmarkGenerateApi on Api {
     job.priorOutputTokens += acc.usage.outputTokens;
     job.priorTotalTokens += acc.usage.totalTokens;
     job.compactAttempt++;
+    // A model that reasons through its whole output budget does the same on
+    // a shorter brief; only thinking less leaves room for the page.
+    job.overthought = benchmarkReasoningAteBudget(
+      contentChars: acc.contentChars,
+      reasoningChars: acc.reasoningChars,
+      outputTokens: acc.usage.outputTokens,
+    );
+    if (job.overthought) {
+      final lower = benchmarkCompactRetryEffort(job.effort, job.compactAttempt);
+      if (lower != null) job.retryEffort = lower;
+      stderr.writeln('[luma] benchmark ${job.sceneId}: reasoning used the '
+          'output budget; compact retry ${job.compactAttempt} at '
+          '${job.effort ?? 'default'} reasoning');
+    }
     job.phase = 'compacting';
     job.chars = 0;
     job.reasoningChars = 0;
@@ -1016,13 +1043,14 @@ extension BenchmarkGenerateApi on Api {
   Map<String, dynamic> _benchmarkRequestBody(BenchmarkGenJob job,
       {required bool stream, required bool withMaxTokens}) {
     final route = job.route;
-    final effort = route.reasoningEffort;
+    final effort = job.effort;
     return {
       if (stream) 'model': route.model,
       'messages': [
         {
           'role': 'user',
-          'content': benchmarkAutoCompactPrompt(job.prompt, job.compactAttempt)
+          'content': benchmarkAutoCompactPrompt(job.prompt, job.compactAttempt,
+              overthought: job.overthought)
         },
       ],
       if (stream) 'stream': true,
@@ -1360,6 +1388,7 @@ extension BenchmarkGenerateApi on Api {
         'from the admin dashboard: '
         '${job.route.upstream.label} · $model'
         '${effort == null ? '' : ' · $effort reasoning'}'
+        '${job.retryEffort == null ? '' : ' (finished on a compact retry at ${job.retryEffort})'}'
         '${job.providerName == null ? '' : ' · via ${job.providerName}'}'
         '${job.batch ? ' · batch' : ''}.';
     final bytes = utf8.encode(page!);
@@ -2455,6 +2484,7 @@ const _bgScript = r'''
         + (j.replaces ? '<span class="badge">Regenerate</span>' : '') + badge + '</div>'
         + '<div class="bg-run-meta">' + esc(j.upstreamLabel) + ' · <code>' + esc(j.model) + '</code>'
         + (j.effort ? ' · ' + esc(EFFORT_LABEL[j.effort] || j.effort) + ' reasoning' : '')
+        + (j.retryEffort ? ' (retried at ' + esc(EFFORT_LABEL[j.retryEffort] || j.retryEffort) + ': it thought its whole budget away)' : '')
         + (j.providerName ? ' · via ' + esc(j.providerName) : '')
         + ' → <code>' + esc(j.sceneId) + '</code></div></div>'
         + '<div class="bg-run-actions">' + actions.join('') + '</div>'

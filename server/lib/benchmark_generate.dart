@@ -318,18 +318,51 @@ bool benchmarkHtmlComplete(String page) =>
 
 /// Instructions for a fresh attempt after the provider cut off a response.
 /// A retry starts over rather than appending two independently generated pages.
-String benchmarkAutoCompactPrompt(String prompt, int attempt) {
+/// [overthought] says the cut-off attempt spent its budget reasoning.
+String benchmarkAutoCompactPrompt(String prompt, int attempt,
+    {bool overthought = false}) {
   if (attempt <= 0) return prompt;
   final guidance = attempt == 1
       ? 'Make the implementation substantially shorter than usual.'
       : 'Make the implementation as compact as necessary to finish, '
           'simplifying details while retaining the core requirements.';
+  final thinking = overthought
+      ? '\nIt spent nearly all of that budget thinking and never finished '
+          'the page. Keep your planning brief and start writing the HTML '
+          'early; the page itself is what counts.'
+      : '';
   return '''$prompt
 
-The previous attempt reached the model's output limit before completing.
+The previous attempt reached the model's output limit before completing.$thinking
 $guidance Use concise code, reuse functions and procedural structures, and
 avoid comments, repeated markup and unnecessary explanation. Prioritize a
 working, complete page ending with </html> within your output budget.''';
+}
+
+/// Whether a cut-off attempt spent most of its output reasoning instead of
+/// writing the page. Hidden reasoning shows only as output tokens the
+/// visible reply cannot account for (about 3.4 characters per token).
+bool benchmarkReasoningAteBudget({
+  required int contentChars,
+  required int reasoningChars,
+  required int outputTokens,
+}) {
+  if (contentChars == 0) return reasoningChars > 0 || outputTokens > 0;
+  if (reasoningChars > contentChars) return true;
+  return outputTokens > 0 && contentChars / 3.4 < outputTokens * 0.5;
+}
+
+const _kBenchmarkEffortLadder = ['minimal', 'low', 'medium', 'high', 'xhigh'];
+
+/// The reasoning effort for compact retry [attempt] when the previous one
+/// thought its whole budget away: at most medium on the first retry and low
+/// on the second, always at least one step below [effort]. Null keeps
+/// [effort] (the model's default, reasoning off, or already minimal).
+String? benchmarkCompactRetryEffort(String? effort, int attempt) {
+  final i = _kBenchmarkEffortLadder.indexOf(effort ?? '');
+  if (i <= 0 || attempt <= 0) return null;
+  final cap = attempt == 1 ? 2 : 1;
+  return _kBenchmarkEffortLadder[i - 1 < cap ? i - 1 : cap];
 }
 
 /// Only a provider-reported output limit justifies a compact retry.
