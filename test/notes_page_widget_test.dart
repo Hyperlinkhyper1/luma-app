@@ -67,5 +67,76 @@ void main() {
     await tester.tap(find.text('Note 10'));
     await tester.pumpAndSettle();
     expect(find.byType(Dialog), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('opening a list note shows real checkboxes, not [ ] text', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.runAsync(
+      () => NotesRepository.instance.importData([
+        Note(
+          id: 'list',
+          title: 'Skins',
+          content: '[ ] R8 - Crazy 8\n[ ] Mac-10 - Light Box\nsome text',
+          updatedAt: DateTime(2026, 1, 1),
+        ).toJson(),
+      ]),
+    );
+    await tester.pumpWidget(_app(const Size(1280, 800)));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Skins'));
+    await tester.pumpAndSettle();
+
+    final dialog = find.byType(Dialog);
+    expect(dialog, findsOneWidget);
+    expect(
+      find.descendant(
+        of: dialog,
+        matching: find.byIcon(Icons.check_box_outline_blank_rounded),
+      ),
+      findsNWidgets(2),
+    );
+    expect(
+      find.descendant(of: dialog, matching: find.textContaining('[ ]')),
+      findsNothing,
+    );
+    expect(
+      find.descendant(of: dialog, matching: find.text('R8 - Crazy 8')),
+      findsOneWidget,
+    );
+
+    await tester.tap(
+      find
+          .descendant(
+            of: dialog,
+            matching: find.byIcon(Icons.check_box_outline_blank_rounded),
+          )
+          .first,
+    );
+    await tester.pump();
+
+    await tester.tap(
+      find.descendant(of: dialog, matching: find.text('Mac-10 - Light Box')),
+    );
+    await tester.pump();
+    await tester.testTextInput.receiveAction(TextInputAction.next);
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.descendant(of: dialog, matching: find.byType(TextField)).at(3),
+      'Nevev - Man o war',
+    );
+
+    await tester.tap(find.text('Close'));
+    await tester.pumpAndSettle();
+
+    expect(
+      NotesRepository.instance.notes.single.content,
+      '[x] R8 - Crazy 8\n[ ] Mac-10 - Light Box\n[ ] Nevev - Man o war\nsome text',
+    );
   });
 }

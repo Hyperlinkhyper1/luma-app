@@ -8853,6 +8853,9 @@ class LEs extends L {
   String get notesEmptyHint => 'Las notas que añadas aparecerán aquí';
 
   @override
+  String get notesListItem => 'Elemento de lista';
+
+  @override
   String get passwordsUnreadableCredential => 'Credencial ilegible';
 
   @override

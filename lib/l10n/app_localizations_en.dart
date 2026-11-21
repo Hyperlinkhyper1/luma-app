@@ -8795,6 +8795,9 @@ class LEn extends L {
   String get notesEmptyHint => 'Notes you add appear here';
 
   @override
+  String get notesListItem => 'List item';
+
+  @override
   String get passwordsUnreadableCredential => 'Unreadable credential';
 
   @override

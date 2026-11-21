@@ -2197,6 +2197,7 @@
   "notesTakeANote": "记个笔记…",
   "notesNewListTooltip": "新建清单",
   "notesEmptyHint": "你添加的笔记会显示在这里",
+  "notesListItem": "列表项",
   "passwordsUnreadableCredential": "无法读取的凭据",
   "passwordsErrorEnterService": "请输入服务名称。",
   "passwordsErrorEnterEmail": "请输入电子邮件。",

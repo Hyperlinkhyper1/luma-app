@@ -14510,6 +14510,12 @@ abstract class L {
   /// **'Notes you add appear here'**
   String get notesEmptyHint;
 
+  /// No description provided for @notesListItem.
+  ///
+  /// In en, this message translates to:
+  /// **'List item'**
+  String get notesListItem;
+
   /// No description provided for @passwordsUnreadableCredential.
   ///
   /// In en, this message translates to:

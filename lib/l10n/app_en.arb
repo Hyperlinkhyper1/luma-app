@@ -5287,6 +5287,7 @@
   "notesTakeANote": "Take a note…",
   "notesNewListTooltip": "New list",
   "notesEmptyHint": "Notes you add appear here",
+  "notesListItem": "List item",
   "passwordsUnreadableCredential": "Unreadable credential",
   "passwordsErrorEnterService": "Enter the service name.",
   "passwordsErrorEnterEmail": "Enter the email.",

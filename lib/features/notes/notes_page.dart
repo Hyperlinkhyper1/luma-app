@@ -54,7 +54,7 @@ class _NotesPageState extends State<NotesPage> {
   Future<void> _openNote(Note note) async {
     await showDialog<void>(
       context: context,
-      barrierColor: Colors.black.withValues(alpha: 0.45),
+      barrierColor: Colors.black.withValues(alpha: 0.6),
       builder: (_) => _NoteDialog(
         note: note,
         onSave: (title, content) {
@@ -553,17 +553,223 @@ class _NoteDialog extends StatefulWidget {
   State<_NoteDialog> createState() => _NoteDialogState();
 }
 
+/// One editable piece of an open note: either a run of plain text lines or a
+/// single checklist item. The note's content is these joined back together.
+class _Block {
+  _Block.text(String text)
+    : isItem = false,
+      checked = false,
+      controller = TextEditingController(text: text);
+
+  _Block.item(String text, {this.checked = false})
+    : isItem = true,
+      controller = TextEditingController(text: text);
+
+  final bool isItem;
+  bool checked;
+  final TextEditingController controller;
+  final FocusNode focus = FocusNode();
+
+  String serialize() =>
+      isItem ? '[${checked ? 'x' : ' '}] ${controller.text}' : controller.text;
+
+  void dispose() {
+    controller.dispose();
+    focus.dispose();
+  }
+}
+
+List<_Block> _parseBlocks(String content) {
+  final blocks = <_Block>[];
+  final pending = <String>[];
+  void flushText() {
+    if (pending.isEmpty) return;
+    blocks.add(_Block.text(pending.join('\n')));
+    pending.clear();
+  }
+
+  for (final line in content.split('\n')) {
+    final match = _checklistRegex.firstMatch(line);
+    if (match == null) {
+      pending.add(line);
+    } else {
+      flushText();
+      blocks.add(
+        _Block.item(
+          match.group(2)!,
+          checked: match.group(1)!.toLowerCase() == 'x',
+        ),
+      );
+    }
+  }
+  flushText();
+  if (blocks.isEmpty) blocks.add(_Block.text(''));
+  return blocks;
+}
+
 class _NoteDialogState extends State<_NoteDialog> {
   late final _title = TextEditingController(text: widget.note.title);
-  late final _content = TextEditingController(text: widget.note.content);
+  late final List<_Block> _blocks = _parseBlocks(widget.note.content);
   bool _deleted = false;
+
+  String get _content =>
+      _blocks.map((b) => b.serialize()).join('\n').trimRight();
 
   @override
   void dispose() {
-    if (!_deleted) widget.onSave(_title.text, _content.text.trimRight());
+    if (!_deleted) {
+      final title = _title.text;
+      final content = _content;
+      final onSave = widget.onSave;
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => onSave(title, content),
+      );
+    }
     _title.dispose();
-    _content.dispose();
+    for (final b in _blocks) {
+      b.dispose();
+    }
     super.dispose();
+  }
+
+  void _focusEnd(_Block block) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      block.focus.requestFocus();
+      block.controller.selection = TextSelection.collapsed(
+        offset: block.controller.text.length,
+      );
+    });
+  }
+
+  void _addItemAt(int index, [String text = '']) {
+    final item = _Block.item(text);
+    setState(() => _blocks.insert(index, item));
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      item.focus.requestFocus();
+      item.controller.selection = const TextSelection.collapsed(offset: 0);
+    });
+  }
+
+  void _addItemAtEnd() {
+    final last = _blocks.last;
+    if (!last.isItem && last.controller.text.trim().isEmpty) {
+      setState(() => _blocks.removeLast());
+    }
+    _addItemAt(_blocks.length);
+  }
+
+  void _splitItem(_Block block) {
+    final index = _blocks.indexOf(block);
+    if (index < 0) return;
+    final text = block.controller.text;
+    final sel = block.controller.selection;
+    final cut = sel.isValid ? sel.start.clamp(0, text.length) : text.length;
+    block.controller.text = text.substring(0, cut);
+    _addItemAt(index + 1, text.substring(cut));
+  }
+
+  KeyEventResult _onItemKey(_Block block, KeyEvent event) {
+    if (event is! KeyDownEvent ||
+        event.logicalKey != LogicalKeyboardKey.backspace) {
+      return KeyEventResult.ignored;
+    }
+    final sel = block.controller.selection;
+    final atStart = !sel.isValid || (sel.isCollapsed && sel.start == 0);
+    if (!atStart) return KeyEventResult.ignored;
+    final index = _blocks.indexOf(block);
+    if (index < 0) return KeyEventResult.ignored;
+    final rest = block.controller.text;
+    final previous = index > 0 ? _blocks[index - 1] : null;
+    if (previous == null) {
+      final asText = _Block.text(rest);
+      setState(() => _blocks[index] = asText);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        block.dispose();
+        if (!mounted) return;
+        asText.focus.requestFocus();
+        asText.controller.selection = const TextSelection.collapsed(offset: 0);
+      });
+      return KeyEventResult.handled;
+    }
+    setState(() => _blocks.removeAt(index));
+    if (rest.isNotEmpty) {
+      final joinAt = previous.controller.text.length;
+      previous.controller.text += rest;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        previous.focus.requestFocus();
+        previous.controller.selection = TextSelection.collapsed(
+          offset: joinAt,
+        );
+      });
+    } else {
+      _focusEnd(previous);
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) => block.dispose());
+    return KeyEventResult.handled;
+  }
+
+  Widget _buildBlock(_Block block, int index, LumaPalette luma, L t) {
+    if (!block.isItem) {
+      final onlyBlock = _blocks.length == 1;
+      return TextField(
+        key: ObjectKey(block),
+        controller: block.controller,
+        focusNode: block.focus,
+        autofocus: index == 0 && widget.note.title.isNotEmpty,
+        style: TextStyle(color: luma.textPrimary, fontSize: 15, height: 1.5),
+        decoration: _bareDecoration(onlyBlock ? t.notesJotHint : '', luma),
+        minLines: onlyBlock ? 3 : 1,
+        maxLines: null,
+        keyboardType: TextInputType.multiline,
+      );
+    }
+    return Row(
+      key: ObjectKey(block),
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => setState(() => block.checked = !block.checked),
+            child: Padding(
+              padding: const EdgeInsets.only(right: 10, top: 4, bottom: 4),
+              child: Icon(
+                block.checked
+                    ? Icons.check_box_rounded
+                    : Icons.check_box_outline_blank_rounded,
+                size: 20,
+                color: block.checked ? luma.textMuted : luma.textSecondary,
+              ),
+            ),
+          ),
+        ),
+        Expanded(
+          child: Focus(
+            onKeyEvent: (_, event) => _onItemKey(block, event),
+            child: TextField(
+              controller: block.controller,
+              focusNode: block.focus,
+              style: TextStyle(
+                color: block.checked ? luma.textMuted : luma.textPrimary,
+                fontSize: 15,
+                height: 1.4,
+                decoration: block.checked ? TextDecoration.lineThrough : null,
+              ),
+              decoration: _bareDecoration(t.notesListItem, luma).copyWith(
+                contentPadding: const EdgeInsets.symmetric(vertical: 6),
+              ),
+              textInputAction: TextInputAction.next,
+              onEditingComplete: () {},
+              onSubmitted: (_) => _splitItem(block),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   @override
@@ -571,25 +777,27 @@ class _NoteDialogState extends State<_NoteDialog> {
     final luma = context.luma;
     final t = L.of(context);
     final size = MediaQuery.sizeOf(context);
+    final narrow = size.width < 600;
+    final hasItems = _blocks.any((b) => b.isItem);
 
     return Dialog(
       backgroundColor: luma.surface,
       surfaceTintColor: Colors.transparent,
-      insetPadding: EdgeInsets.symmetric(
-        horizontal: size.width < 600 ? 12 : 40,
-        vertical: 32,
-      ),
+      insetPadding: narrow
+          ? EdgeInsets.zero
+          : const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(_cardRadius),
-        side: BorderSide(color: luma.border),
+        borderRadius: BorderRadius.circular(narrow ? 0 : _cardRadius),
+        side: narrow ? BorderSide.none : BorderSide(color: luma.border),
       ),
       child: ConstrainedBox(
         constraints: BoxConstraints(
-          maxWidth: 600,
-          maxHeight: size.height * 0.8,
+          maxWidth: narrow ? size.width : 640,
+          minHeight: narrow ? size.height : 0,
+          maxHeight: narrow ? size.height : size.height * 0.85,
         ),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(18, 10, 10, 8),
+          padding: EdgeInsets.fromLTRB(18, narrow ? 28 : 10, 10, 8),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -604,19 +812,45 @@ class _NoteDialogState extends State<_NoteDialog> {
                 decoration: _bareDecoration(t.commonTitle, luma),
               ),
               Flexible(
+                fit: narrow ? FlexFit.tight : FlexFit.loose,
                 child: SingleChildScrollView(
-                  child: TextField(
-                    controller: _content,
-                    autofocus: widget.note.title.isNotEmpty,
-                    style: TextStyle(
-                      color: luma.textPrimary,
-                      fontSize: 15,
-                      height: 1.5,
-                    ),
-                    decoration: _bareDecoration(t.notesJotHint, luma),
-                    minLines: 3,
-                    maxLines: null,
-                    keyboardType: TextInputType.multiline,
+                  padding: const EdgeInsets.only(right: 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (var i = 0; i < _blocks.length; i++)
+                        _buildBlock(_blocks[i], i, luma, t),
+                      if (hasItems)
+                        MouseRegion(
+                          cursor: SystemMouseCursors.text,
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: _addItemAtEnd,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 6),
+                              child: Row(
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.only(right: 10),
+                                    child: Icon(
+                                      Icons.add_rounded,
+                                      size: 20,
+                                      color: luma.textMuted,
+                                    ),
+                                  ),
+                                  Text(
+                                    t.notesListItem,
+                                    style: TextStyle(
+                                      color: luma.textMuted,
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
               ),
@@ -626,7 +860,7 @@ class _NoteDialogState extends State<_NoteDialog> {
                   _IconBtn(
                     icon: Icons.check_box_outlined,
                     tooltip: t.notesAddChecklistTooltip,
-                    onTap: () => _insertChecklistItem(_content),
+                    onTap: _addItemAtEnd,
                   ),
                   const SizedBox(width: 4),
                   _IconBtn(

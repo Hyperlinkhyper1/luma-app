@@ -2197,6 +2197,7 @@
   "notesTakeANote": "Créer une note…",
   "notesNewListTooltip": "Nouvelle liste",
   "notesEmptyHint": "Les notes que vous ajoutez apparaissent ici",
+  "notesListItem": "Élément de liste",
   "passwordsUnreadableCredential": "Identifiant illisible",
   "passwordsErrorEnterService": "Saisissez le nom du service.",
   "passwordsErrorEnterEmail": "Saisissez l'e-mail.",

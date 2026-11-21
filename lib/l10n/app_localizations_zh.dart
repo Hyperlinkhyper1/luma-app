@@ -8324,6 +8324,9 @@ class LZh extends L {
   String get notesEmptyHint => '你添加的笔记会显示在这里';
 
   @override
+  String get notesListItem => '列表项';
+
+  @override
   String get passwordsUnreadableCredential => '无法读取的凭据';
 
   @override

@@ -8879,6 +8879,9 @@ class LFr extends L {
   String get notesEmptyHint => 'Les notes que vous ajoutez apparaissent ici';
 
   @override
+  String get notesListItem => 'Élément de liste';
+
+  @override
   String get passwordsUnreadableCredential => 'Identifiant illisible';
 
   @override

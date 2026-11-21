@@ -8853,6 +8853,9 @@ class LNl extends L {
   String get notesEmptyHint => 'Notities die je toevoegt, verschijnen hier';
 
   @override
+  String get notesListItem => 'Lijstitem';
+
+  @override
   String get passwordsUnreadableCredential => 'Onleesbare inlog';
 
   @override

@@ -2427,6 +2427,7 @@
   "notesTakeANote": "Maak een notitie…",
   "notesNewListTooltip": "Nieuwe lijst",
   "notesEmptyHint": "Notities die je toevoegt, verschijnen hier",
+  "notesListItem": "Lijstitem",
   "passwordsUnreadableCredential": "Onleesbare inlog",
   "passwordsErrorEnterService": "Vul de naam van de dienst in.",
   "passwordsErrorEnterEmail": "Vul het e-mailadres in.",
