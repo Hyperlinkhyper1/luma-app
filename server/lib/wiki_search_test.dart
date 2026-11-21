@@ -1,4 +1,27 @@
+import 'dart:convert';
 import 'dart:math' as math;
+
+/// Asymmetric embedding models that reject a request without `input_type`
+/// (Perplexity's contextual v2 family), so documents and queries go
+/// separately.
+bool wikiNeedsInputType(String model) =>
+    model.startsWith('perplexity/pplx-embed-v2');
+
+/// The provider's error message from a failed embedding response, if any.
+String wikiErrorDetail(String body) {
+  try {
+    final decoded = jsonDecode(body);
+    final error = decoded is Map ? decoded['error'] : null;
+    final message = error is Map ? error['message'] : error;
+    if (message is String && message.trim().isNotEmpty) {
+      final text = message.trim();
+      return ': ${text.length > 200 ? '${text.substring(0, 200)}…' : text}';
+    }
+  } on FormatException {
+    return '';
+  }
+  return '';
+}
 
 /// Parses OpenRouter embedding catalog prices, in USD per million input tokens.
 List<Map<String, dynamic>> wikiCatalogModels(Object? data) {

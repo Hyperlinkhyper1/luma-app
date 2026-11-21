@@ -85,4 +85,20 @@ void main() {
         List.generate(wikiPassages.length + wikiQueries.length, (_) => [0.0]);
     expect(() => wikiScore(vectors), throwsFormatException);
   });
+
+  test('perplexity v2 context models get an input type', () {
+    expect(wikiNeedsInputType('perplexity/pplx-embed-v2-context-9b'), isTrue);
+    expect(wikiNeedsInputType('perplexity/pplx-embed-v2-context-0.6b'), isTrue);
+    expect(wikiNeedsInputType('perplexity/pplx-embed-v1-4b'), isFalse);
+    expect(wikiNeedsInputType('openai/text-embedding-3-small'), isFalse);
+  });
+
+  test('error detail surfaces the provider message', () {
+    expect(
+        wikiErrorDetail(
+            '{"error":{"message":"Perplexity embeddings require input_type"}}'),
+        ': Perplexity embeddings require input_type');
+    expect(wikiErrorDetail('not json'), '');
+    expect(wikiErrorDetail('{"error":{}}'), '');
+  });
 }

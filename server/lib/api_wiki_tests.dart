@@ -142,38 +142,14 @@ extension WikiTestsApi on Api {
     final client = HttpClient()
       ..connectionTimeout = const Duration(seconds: 15);
     try {
-      final req = await client
-          .postUrl(Uri.parse('https://openrouter.ai/api/v1/embeddings'));
-      req.headers.set('Authorization', 'Bearer $key');
-      req.headers.contentType = ContentType.json;
-      req.write(jsonEncode({
-        'model': model,
-        'input': [...wikiPassages, ...wikiQueries]
-      }));
-      final res = await req.close().timeout(const Duration(seconds: 120));
-      final body = await res
-          .transform(utf8.decoder)
-          .join()
-          .timeout(const Duration(seconds: 30));
-      if (res.statusCode != 200)
-        throw HttpException('Embedding request failed (${res.statusCode})');
-      final decoded = jsonDecode(body) as Map;
-      final data = decoded['data'];
-      if (data is! List ||
-          data.length != wikiPassages.length + wikiQueries.length)
-        throw const FormatException('Missing embeddings');
-      final vectors = List<List<double>?>.filled(data.length, null);
-      for (final item in data) {
-        if (item is! Map || item['index'] is! int || item['embedding'] is! List)
-          throw const FormatException('Invalid embedding');
-        final index = item['index'] as int;
-        if (index < 0 || index >= vectors.length || vectors[index] != null)
-          throw const FormatException('Invalid embedding index');
-        vectors[index] = (item['embedding'] as List)
-            .map((v) => (v as num).toDouble())
-            .toList();
-      }
-      final score = wikiScore(vectors.map((v) => v!).toList());
+      final vectors = wikiNeedsInputType(model)
+          ? [
+              ...await _wikiEmbed(client, key, model, wikiPassages, 'document'),
+              ...await _wikiEmbed(client, key, model, wikiQueries, 'query'),
+            ]
+          : await _wikiEmbed(
+              client, key, model, [...wikiPassages, ...wikiQueries], null);
+      final score = wikiScore(vectors);
       wikiTests.runs.removeWhere(
           (r) => r['model'] == model && r['suite'] == _wikiVersion);
       wikiTests.runs.insert(0, {
@@ -189,6 +165,47 @@ extension WikiTestsApi on Api {
       client.close(force: true);
       wikiTests.busy = false;
     }
+  }
+
+  Future<List<List<double>>> _wikiEmbed(HttpClient client, String key,
+      String model, List<String> inputs, String? inputType) async {
+    final req = await client
+        .postUrl(Uri.parse('https://openrouter.ai/api/v1/embeddings'));
+    req.headers.set('Authorization', 'Bearer $key');
+    req.headers.contentType = ContentType.json;
+    req.write(jsonEncode({
+      'model': model,
+      'input': inputs,
+      if (inputType != null) ...{
+        'input_type': inputType,
+        'encoding_format': 'float',
+      },
+    }));
+    final res = await req.close().timeout(const Duration(seconds: 120));
+    final body = await res
+        .transform(utf8.decoder)
+        .join()
+        .timeout(const Duration(seconds: 30));
+    if (res.statusCode != 200) {
+      throw HttpException(
+          'Embedding request failed (${res.statusCode})${wikiErrorDetail(body)}');
+    }
+    final decoded = jsonDecode(body) as Map;
+    final data = decoded['data'];
+    if (data is! List || data.length != inputs.length)
+      throw const FormatException('Missing embeddings');
+    final vectors = List<List<double>?>.filled(data.length, null);
+    for (final item in data) {
+      if (item is! Map || item['index'] is! int || item['embedding'] is! List)
+        throw const FormatException('Invalid embedding');
+      final index = item['index'] as int;
+      if (index < 0 || index >= vectors.length || vectors[index] != null)
+        throw const FormatException('Invalid embedding index');
+      vectors[index] = (item['embedding'] as List)
+          .map((v) => (v as num).toDouble())
+          .toList();
+    }
+    return vectors.map((v) => v!).toList();
   }
 
   String _wikiView() => '''<div id="wikiView" hidden class="dt-view">
