@@ -477,23 +477,66 @@ jobs:
 
       - run: flutter pub get
 
+      # flutter_onnxruntime (Gallery's People recognition runs through it on
+      # iOS too) depends on masicai/onnxruntime-swift-package-manager. That
+      # package's ORT library is a GitHub release asset, but it also declares
+      # an onnxruntime_extensions binary target hosted on
+      # download.onnxruntime.ai, and SwiftPM fetches every binary target of a
+      # dependency whether or not anything uses it. That host now answers
+      # with a *.azureedge.net certificate (the retired Azure CDN), so the
+      # download fails TLS on every attempt, and the archive has no other
+      # home that matches its checksum. flutter_onnxruntime never uses the
+      # extensions product, so resolve the package from a local clone at the
+      # same tag with the extensions product and targets filtered out, and
+      # point the plugin's manifest at that clone. Everything it does use
+      # still comes from the same release, checksum-verified.
+      #
+      # The plugin lives in the pub cache, which flutter-action restores
+      # between runs, so the original manifest is kept beside it and restored
+      # first; the step behaves the same on a warm cache. If a plugin upgrade
+      # changes the pin line, this fails loudly rather than skipping.
+      - name: Drop the unreachable onnxruntime_extensions SPM target
+        shell: bash
+        run: |
+          set -euo pipefail
+          plugin=$(python3 -c 'import json, urllib.parse; p = next(x for x in json.load(open(".dart_tool/package_config.json"))["packages"] if x["name"] == "flutter_onnxruntime"); print(urllib.parse.urlparse(p["rootUri"]).path)')
+          manifest="$plugin/ios/flutter_onnxruntime/Package.swift"
+          [ -f "$manifest.orig" ] || cp "$manifest" "$manifest.orig"
+          cp "$manifest.orig" "$manifest"
+
+          pin='\.package\(url: "(https://github\.com/[^"]+/onnxruntime-swift-package-manager)", exact: "([^"]+)"\)'
+          url=$(sed -nE "s|.*$pin.*|\1|p" "$manifest")
+          ver=$(sed -nE "s|.*$pin.*|\2|p" "$manifest")
+          if [ -z "$url" ] || [ -z "$ver" ]; then
+            echo "::error::flutter_onnxruntime's onnxruntime-swift-package-manager pin changed; update this step"
+            exit 1
+          fi
+
+          dir="$RUNNER_TEMP/ort-spm/onnxruntime-swift-package-manager"
+          rm -rf "$dir"
+          git clone --quiet --depth 1 --branch "$ver" "$url" "$dir"
+          cat >> "$dir/Package.swift" <<'EOF'
+
+          package.products.removeAll { $0.name == "onnxruntime_extensions" }
+          package.targets.removeAll { $0.name == "onnxruntime_extensions" || $0.name.hasPrefix("OnnxRuntimeExtensions") }
+          EOF
+
+          sed -i '' -E "s|$pin|.package(path: \"$dir\")|" "$manifest"
+          grep -q ".package(path: \"$dir\")" "$manifest"
+          echo "flutter_onnxruntime now resolves $url@$ver from $dir"
+
       # No Apple Developer account is configured for this project, so this
       # is an unsigned build (--no-codesign). It produces a real Runner.app
       # but isn't installable on a device as-is — the .ipa needs resigning
       # with at least a free Apple ID (e.g. via AltStore or Sideloadly)
       # before it can be sideloaded.
       #
-      # flutter_onnxruntime (used by Gallery's smart categories on desktop
-      # only — see pubspec.yaml) still links on iOS, and it pulls its
-      # onnxruntime_extensions binary target via Swift Package Manager
-      # straight from download.onnxruntime.ai rather than a GitHub release,
-      # with no cache in front of it. That download has no retry of its own
-      # and occasionally times out on the runner's network, failing an
+      # SwiftPM and CocoaPods downloads have no retry of their own and
+      # occasionally time out on the runner's network, failing an
       # otherwise-unrelated build — the same class of flake the Linux job
       # works around above for apt. Retry the whole build a couple of times
-      # before giving up; anything already resolved (pods, other SPM
-      # checkouts) is cached on disk, so a retry only has to re-fetch what
-      # actually failed.
+      # before giving up; anything already resolved is cached on disk, so a
+      # retry only has to re-fetch what actually failed.
       - name: Build unsigned iOS app
         shell: bash
         run: |
