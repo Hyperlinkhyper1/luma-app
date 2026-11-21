@@ -237,12 +237,13 @@ async function fetchCategories() {
  * One page of products in a category (or matching a free-text query if
  * `query` is given instead of `taxonomyId`).
  */
-async function searchProducts({ taxonomyId, query, page = 0, size = 100 } = {}) {
+async function searchProducts({ taxonomyId, query, page = 0, size = 100, sortOn } = {}) {
   return authedGet('/mobile-services/product/search/v2', {
     taxonomyId,
     query,
     page,
     size,
+    sortOn,
   });
 }
 
