@@ -252,4 +252,14 @@ void main() {
       expect(again.busy, isFalse);
     });
   });
+
+  test('extraction-only catalog models are left out', () {
+    expect(deciderServesDecisions({'endpoints': ['/api/alpha/extractions']}), isFalse);
+    expect(
+        deciderServesDecisions({
+          'endpoints': ['/api/alpha/decisions', '/api/alpha/extractions']
+        }),
+        isTrue);
+    expect(deciderServesDecisions({'id': 'x'}), isTrue);
+  });
 }

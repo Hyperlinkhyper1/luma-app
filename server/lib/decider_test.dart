@@ -32,6 +32,16 @@ const kDeciderTestMaxSuiteChars = 600000;
 /// Runs kept on disk; the oldest go first.
 const kDeciderTestMaxRuns = 120;
 
+/// Whether a catalog entry is served on the decisions endpoint. Some models
+/// listed with decisions output (Cloudflare's Clairic) only answer on
+/// `/api/alpha/extractions`, which has no yes/no, choice or score fields,
+/// so they cannot take this suite. An entry without `endpoints` is kept.
+bool deciderServesDecisions(Map model) {
+  final endpoints = model['endpoints'];
+  if (endpoints is! List) return true;
+  return endpoints.contains('/api/alpha/decisions');
+}
+
 /// The question types the decisions API answers.
 const kDeciderQuestionTypes = ['choice', 'noul', 'score'];
 

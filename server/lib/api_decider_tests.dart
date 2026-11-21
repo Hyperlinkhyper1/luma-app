@@ -5,6 +5,10 @@ part of 'api.dart';
 List<Map<String, dynamic>>? _deciderModels;
 DateTime? _deciderModelsAt;
 
+/// Catalog models that answer on another endpoint only, so a run of one
+/// is refused up front instead of failing case by case.
+final Set<String> _deciderOffEndpoint = {};
+
 /// Models the picker offers when OpenRouter's list can't be fetched.
 const _kDeciderFallbackModels = [
   'perplexity/pplx-decider-v1.2',
@@ -65,6 +69,10 @@ extension DeciderTestsApi on Api {
           if (id.startsWith('~') || id.endsWith('-latest')) continue;
           final outputs = m['architecture']?['output_modalities'];
           if (outputs is List && !outputs.contains('decisions')) continue;
+          if (!deciderServesDecisions(m)) {
+            _deciderOffEndpoint.add(id);
+            continue;
+          }
           final prompt = double.tryParse('${m['pricing']?['prompt'] ?? ''}');
           models.add({
             'id': m['id'],
@@ -190,6 +198,15 @@ extension DeciderTestsApi on Api {
     for (final m in models) {
       if (!isValidAiModelId(m)) {
         return errorResponse(400, 'bad_request', '"$m" is not a valid model ID.');
+      }
+    }
+    if (provider == DeciderProvider.openrouter) {
+      await _deciderModelList();
+      for (final m in models) {
+        if (_deciderOffEndpoint.contains(m)) {
+          return errorResponse(400, 'bad_model',
+              '"$m" is not served on OpenRouter\'s decisions endpoint, so it cannot answer the suite.');
+        }
       }
     }
     final rawKey =
@@ -369,8 +386,9 @@ extension DeciderTestsApi on Api {
         continue;
       }
       final refused = status == 401 || status == 402 || status == 403;
+      final lower = (error ?? '').toLowerCase();
       final badModel = (status == 400 || status == 404) &&
-          (error ?? '').toLowerCase().contains('model');
+          (lower.contains('model') || lower.contains('not served on'));
       return DeciderReply(
         fatal: refused || badModel,
         error: scrub('HTTP $status${error == null ? '' : ': $error'}'
