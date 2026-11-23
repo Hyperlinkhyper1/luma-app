@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -10,7 +13,6 @@ import 'ai_usage_repository.dart';
 import 'ai_usage_scope.dart';
 import 'ai_usage_source.dart';
 import 'ai_usage_stats.dart';
-import 'data/ai_usage_database.dart';
 import 'effort_breakdown_section.dart';
 
 /// How many models get their own pie slice / legend row before the rest are
@@ -65,39 +67,95 @@ class _AiUsageDashboardTabState extends State<AiUsageDashboardTab> {
   AiUsageSortMetric _projectSort = AiUsageSortMetric.tokens;
   AiUsageSortMetric _providerSort = AiUsageSortMetric.tokens;
   bool _combineByCompany = false;
-  Stream<List<AiUsageTurn>>? _turns;
-  (AiUsageRangePreset, DateTime?)? _turnsKey;
 
-  /// The drift query for the selected range, reused across rebuilds. The
-  /// repository notifies on every scan and sync step; a fresh query each time
-  /// re-read the whole table. Its end bound sits a year out so new turns
-  /// arrive through drift's own table updates, and the start is kept to the
-  /// minute so a rolling window still moves along.
-  Stream<List<AiUsageTurn>> _turnsFor(AiUsageRepository repo) {
+  AiUsageRepository? _repo;
+  StreamSubscription<void>? _changes;
+  Timer? _changeDebounce;
+
+  /// Snapshots already computed since the stored turns last changed, so
+  /// flipping back to a range or source seen before is instant. Each one
+  /// also ages out after a few minutes, so a rolling window ("Today", "7d")
+  /// still moves along when nothing new is written.
+  final Map<(AiUsageRangePreset, AiUsageSource?), (AiUsageDashboardSnapshot, DateTime)>
+      _cache = {};
+  static const Duration _cacheLifetime = Duration(minutes: 5);
+  AiUsageDashboardSnapshot? _shown;
+  (AiUsageRangePreset, AiUsageSource?)? _shownKey;
+  bool _loading = false;
+  Object? _loadError;
+  int _generation = 0;
+
+  /// Starts computing the selected range's snapshot on a worker isolate. The
+  /// previous snapshot stays on screen, under a thin progress bar, until the
+  /// new one lands; an answer for a selection the user has since moved past
+  /// is dropped. Callers that are not mid-build wrap this in setState.
+  void _load() {
+    final repo = _repo;
+    if (repo == null) return;
+    final key = (_preset, _sourceFilter);
     final now = DateTime.now();
-    final (start, _) = resolveAiUsageRange(_preset, now);
-    final key = (
-      _preset,
-      start == null
-          ? null
-          : DateTime(
-              start.year,
-              start.month,
-              start.day,
-              start.hour,
-              start.minute,
-            ),
-    );
-    if (_turns == null || key != _turnsKey) {
-      _turnsKey = key;
-      _turns = repo.watchRange(start, DateTime(now.year + 1));
+    final entry = _cache[key];
+    final cached =
+        entry != null && now.difference(entry.$2) < _cacheLifetime ? entry.$1 : null;
+    final generation = ++_generation;
+    if (cached != null) {
+      _shown = cached;
+      _shownKey = key;
+      _loading = false;
+      return;
     }
-    return _turns!;
+    _loading = true;
+    final (start, _) = resolveAiUsageRange(_preset, now);
+    repo.loadDashboard(start, source: _sourceFilter).then(
+      (snapshot) {
+        if (!mounted || generation != _generation) return;
+        setState(() {
+          _cache[key] = (snapshot, now);
+          _shown = snapshot;
+          _shownKey = key;
+          _loading = false;
+          _loadError = null;
+        });
+      },
+      onError: (Object error) {
+        if (!mounted || generation != _generation) return;
+        setState(() {
+          _loading = false;
+          _loadError = error;
+        });
+      },
+    );
+  }
+
+  void _onTurnsChanged() {
+    _changeDebounce?.cancel();
+    _changeDebounce = Timer(const Duration(milliseconds: 400), () {
+      if (!mounted) return;
+      setState(() {
+        _cache.clear();
+        _load();
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _changeDebounce?.cancel();
+    _changes?.cancel();
+    super.dispose();
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    final repo = AiUsageScope.of(context);
+    if (!identical(repo, _repo)) {
+      _repo = repo;
+      _changes?.cancel();
+      _changes = repo.turnsChanged.listen((_) => _onTurnsChanged());
+      _cache.clear();
+      _load();
+    }
     // The scope isn't reachable from initState, and the first scan has to
     // wait for it. Only ever kicked off once per page lifetime — the Rescan
     // button covers every case after that.
@@ -130,6 +188,43 @@ class _AiUsageDashboardTabState extends State<AiUsageDashboardTab> {
         _combineByCompany = result.combineByCompany;
       });
     }
+  }
+
+  Widget _buildBody(BuildContext context) {
+    final snapshot = _shown;
+    final key = _shownKey;
+    if (snapshot == null || key == null) {
+      if (_loadError != null) {
+        return Center(
+          child: LumaEmptyState(
+            icon: Icons.error_outline_rounded,
+            title: L.of(context).commonSomethingWentWrong,
+            subtitle: '$_loadError',
+            action: LumaGhostButton(
+              label: L.of(context).commonRetry,
+              icon: Icons.refresh_rounded,
+              onTap: () => setState(_load),
+            ),
+          ),
+        );
+      }
+      return const Center(
+        child: SizedBox(
+          width: 22,
+          height: 22,
+          child: CircularProgressIndicator(strokeWidth: 2.4),
+        ),
+      );
+    }
+    return _AiUsageBody(
+      snapshot: snapshot,
+      preset: key.$1,
+      selectedSource: key.$2,
+      modelSort: _modelSort,
+      projectSort: _projectSort,
+      providerSort: _providerSort,
+      combineByCompany: _combineByCompany,
+    );
   }
 
   @override
@@ -176,31 +271,32 @@ class _AiUsageDashboardTabState extends State<AiUsageDashboardTab> {
               _TopBar(
                 repo: repo,
                 preset: _preset,
-                onSelectPreset: (p) => setState(() => _preset = p),
+                onSelectPreset: (p) => setState(() {
+                  _preset = p;
+                  _load();
+                }),
                 onOpenSettings: _openSettings,
               ),
               const SizedBox(height: 10),
               _SourceFilterBar(
                 selected: _sourceFilter,
-                onSelect: (s) => setState(() => _sourceFilter = s),
+                onSelect: (s) => setState(() {
+                  _sourceFilter = s;
+                  _load();
+                }),
               ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: StreamData<List<AiUsageTurn>>(
-                  stream: _turnsFor(repo),
-                  builder: (context, turns) => _AiUsageBody(
-                    turns: _sourceFilter == null
-                        ? turns
-                        : turns.where((t) => t.source == _sourceFilter).toList(),
-                    preset: _preset,
-                    selectedSource: _sourceFilter,
-                    modelSort: _modelSort,
-                    projectSort: _projectSort,
-                    providerSort: _providerSort,
-                    combineByCompany: _combineByCompany,
-                  ),
-                ),
+              const SizedBox(height: 14),
+              SizedBox(
+                height: 2,
+                child: _loading && _shown != null
+                    ? LinearProgressIndicator(
+                        minHeight: 2,
+                        backgroundColor: Colors.transparent,
+                        color: context.luma.accent,
+                      )
+                    : null,
               ),
+              Expanded(child: _buildBody(context)),
             ],
           ),
         );
@@ -625,7 +721,7 @@ class _SourceFilterBar extends StatelessWidget {
 
 class _AiUsageBody extends StatelessWidget {
   const _AiUsageBody({
-    required this.turns,
+    required this.snapshot,
     required this.preset,
     this.selectedSource,
     this.modelSort = AiUsageSortMetric.tokens,
@@ -634,7 +730,7 @@ class _AiUsageBody extends StatelessWidget {
     this.combineByCompany = false,
   });
 
-  final List<AiUsageTurn> turns;
+  final AiUsageDashboardSnapshot snapshot;
   final AiUsageRangePreset preset;
 
   /// Which source the filter bar has narrowed to, or null for "All". Decides
@@ -651,17 +747,14 @@ class _AiUsageBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final luma = context.luma;
     final t = L.of(context);
-    // Antigravity turns whose model couldn't be detected are real usage
-    // (still counted in the stat tiles and daily/project charts below) but
-    // aren't worth a dedicated, uninformative "Unknown model" row here.
-    final displayTurns = turns
-        .where((t) => !(t.source == AiUsageSource.antigravity && t.model == 'Unknown model'))
-        .toList();
-    final modelTotals = aggregateByModel(displayTurns);
+    // Everything heavy was summed on a worker isolate; only the re-sorting
+    // to the chosen metrics happens here, on copies of a few dozen rows.
+    final modelTotals = [...snapshot.modelTotals];
     sortModelTotals(modelTotals, modelSort);
     final companyTotals = combineByCompany
-        ? aggregateByCompany(displayTurns, sort: modelSort)
-        : const <CompanyUsageTotal>[];
+        ? [...snapshot.companyTotals]
+        : <CompanyUsageTotal>[];
+    sortCompanyTotals(companyTotals, modelSort);
 
     if (modelTotals.isEmpty) {
       return LumaEmptyState(
@@ -673,14 +766,20 @@ class _AiUsageBody extends StatelessWidget {
       );
     }
 
-    final dayBuckets = aggregateByDay(turns);
-    final summary = totals(turns);
-    // One pass over every turn in range, kept here rather than repeated as
-    // both an emptiness check and the section's own input.
-    final effortTiers = aggregateByModelAndEffort(turns);
-    final projectTotals = aggregateByProject(turns);
+    final dayBuckets = snapshot.dayBuckets;
+    final now = DateTime.now();
+    final chartLastDay = DateTime(now.year, now.month, now.day);
+    final (rangeStart, _) = resolveAiUsageRange(preset, now);
+    final chartFirstDay = rangeStart != null
+        ? DateTime(rangeStart.year, rangeStart.month, rangeStart.day)
+        : dayBuckets.isEmpty
+            ? chartLastDay
+            : dayBuckets.first.day;
+    final summary = snapshot.summary;
+    final effortTiers = snapshot.effortTiers;
+    final projectTotals = [...snapshot.projectTotals];
     sortProjectTotals(projectTotals, projectSort);
-    final providerTotals = aggregateOpencodeByProvider(turns);
+    final providerTotals = [...snapshot.providerTotals];
     sortProviderTotals(providerTotals, providerSort);
     final colorByModel = <(AiUsageSource, String), Color>{
       for (var i = 0; i < modelTotals.length && i < _kTopModelLimit; i++)
@@ -734,7 +833,7 @@ class _AiUsageBody extends StatelessWidget {
               style: TextStyle(color: luma.textMuted, fontSize: 11),
             ),
           ],
-          if (turns.any((t) => t.source == AiUsageSource.antigravity)) ...[
+          if (snapshot.hasAntigravity) ...[
             const SizedBox(height: 10),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -757,7 +856,7 @@ class _AiUsageBody extends StatelessWidget {
             ),
           ],
           const SizedBox(height: 16),
-          _HighlightsSection(turns: turns),
+          _HighlightsSection(snapshot: snapshot),
           if (selectedSource == AiUsageSource.opencode) ...[
             const SizedBox(height: 16),
             LumaCard(
@@ -772,7 +871,7 @@ class _AiUsageBody extends StatelessWidget {
             builder: (context, constraints) {
               final pie = LumaCard(
                 child: SizedBox(
-                  height: 260,
+                  height: 300,
                   child: combineByCompany
                       ? _CompanyPieChart(
                           companyTotals: companyTotals,
@@ -786,15 +885,19 @@ class _AiUsageBody extends StatelessWidget {
               );
               final bars = LumaCard(
                 child: SizedBox(
-                  height: 260,
-                  child: dayBuckets.length <= 1
+                  height: 300,
+                  child: preset == AiUsageRangePreset.today
                       ? Center(
                           child: Text(
                             t.aiUsagePickWiderRange,
                             style: TextStyle(color: luma.textMuted, fontSize: 13),
                           ),
                         )
-                      : _DailyBarChart(dayBuckets: dayBuckets),
+                      : _UsageOverTimeChart(
+                          dayBuckets: dayBuckets,
+                          firstDay: chartFirstDay,
+                          lastDay: chartLastDay,
+                        ),
                 ),
               );
 
@@ -847,7 +950,7 @@ class _AiUsageBody extends StatelessWidget {
           LumaCard(
             child: SizedBox(
               height: 220,
-              child: _HourlyDistributionChart(hourly: aggregateByHour(turns)),
+              child: _HourlyDistributionChart(hourly: snapshot.hourly),
             ),
           ),
           const SizedBox(height: 16),
@@ -952,28 +1055,21 @@ String _formatDuration(L t, Duration d) {
 }
 
 class _HighlightsSection extends StatelessWidget {
-  const _HighlightsSection({required this.turns});
+  const _HighlightsSection({required this.snapshot});
 
-  final List<AiUsageTurn> turns;
+  final AiUsageDashboardSnapshot snapshot;
 
   @override
   Widget build(BuildContext context) {
     final t = L.of(context);
-    final sessions = aggregateBySession(turns);
-    if (sessions.isEmpty) return const SizedBox.shrink();
-
-    SessionUsageTotal? longest;
-    SessionUsageTotal? priciest;
-    for (final s in sessions) {
-      if (longest == null || s.duration > longest.duration) longest = s;
-      if (priciest == null || s.cost > priciest.cost) priciest = s;
-    }
-    final streak = longestActiveDayStreak(turns);
+    final longest = snapshot.longestSession;
+    final priciest = snapshot.priciestSession;
+    if (longest == null) return const SizedBox.shrink();
+    final streak = snapshot.streak;
     final dateFmt = DateFormat('MMM d', t.localeName);
 
     final cards = <_HighlightCard>[
-      if (longest != null)
-        _HighlightCard(
+      _HighlightCard(
           icon: Icons.timer_outlined,
           color: _kInputColor,
           label: t.aiUsageLongestSession,
@@ -1328,163 +1424,645 @@ class _CompanyPieChartState extends State<_CompanyPieChart> {
   }
 }
 
-// ─── Bar chart: input/output/cache read/cache creation per day ─────────────
+// ─── Usage over time: stacked tokens (or cost) per day / week / month ──────
 
-class _DailyBarChart extends StatelessWidget {
-  const _DailyBarChart({required this.dayBuckets});
+enum _TimeBucket { day, week, month }
+
+enum _UsageSeries { input, output, cacheWrite, cacheRead }
+
+/// One bar of the usage-over-time chart: a day, a Monday-started week or a
+/// calendar month. Every bucket between the first and last day exists, so
+/// the x axis is real time and quiet stretches show as gaps.
+class _UsagePoint {
+  _UsagePoint(this.start, this.end);
+
+  final DateTime start;
+
+  /// The last calendar day this bucket covers.
+  final DateTime end;
+  int input = 0;
+  int output = 0;
+  int cacheWrite = 0;
+  int cacheRead = 0;
+  double cost = 0;
+
+  int tokens(_UsageSeries series) => switch (series) {
+        _UsageSeries.input => input,
+        _UsageSeries.output => output,
+        _UsageSeries.cacheWrite => cacheWrite,
+        _UsageSeries.cacheRead => cacheRead,
+      };
+}
+
+DateTime _bucketStart(DateTime day, _TimeBucket bucket) => switch (bucket) {
+      _TimeBucket.day => DateTime(day.year, day.month, day.day),
+      _TimeBucket.week => DateTime(day.year, day.month, day.day - (day.weekday - 1)),
+      _TimeBucket.month => DateTime(day.year, day.month),
+    };
+
+DateTime _nextBucket(DateTime start, _TimeBucket bucket) => switch (bucket) {
+      _TimeBucket.day => DateTime(start.year, start.month, start.day + 1),
+      _TimeBucket.week => DateTime(start.year, start.month, start.day + 7),
+      _TimeBucket.month => DateTime(start.year, start.month + 1),
+    };
+
+/// Folds [days] into continuous [bucket]-sized points spanning
+/// [firstDay]..[lastDay] inclusive.
+List<_UsagePoint> _bucketUsage(
+  List<AiDayUsageBucket> days,
+  DateTime firstDay,
+  DateTime lastDay,
+  _TimeBucket bucket,
+) {
+  final points = <_UsagePoint>[];
+  final byStart = <DateTime, _UsagePoint>{};
+  for (var s = _bucketStart(firstDay, bucket);
+      !s.isAfter(lastDay);
+      s = _nextBucket(s, bucket)) {
+    final next = _nextBucket(s, bucket);
+    final point = _UsagePoint(s, DateTime(next.year, next.month, next.day - 1));
+    points.add(point);
+    byStart[s] = point;
+  }
+  for (final d in days) {
+    final point = byStart[_bucketStart(d.day, bucket)];
+    if (point == null) continue;
+    point.input += d.inputTokens;
+    point.output += d.outputTokens;
+    point.cacheWrite += d.cacheCreationTokens;
+    point.cacheRead += d.cacheReadTokens;
+    point.cost += d.cost;
+  }
+  return points;
+}
+
+/// Day bars up to two months, week bars up to about a year, months beyond:
+/// enough bars to show a shape, few enough that each is wide enough to read
+/// and hover.
+_TimeBucket _autoBucket(int spanDays) => spanDays <= 62
+    ? _TimeBucket.day
+    : spanDays <= 400
+        ? _TimeBucket.week
+        : _TimeBucket.month;
+
+/// A round axis step (1, 2, 2.5 or 5 × 10ⁿ) giving about [ticks] gridlines
+/// up to [max].
+double _niceStep(double max, {int ticks = 4}) {
+  if (max <= 0) return 1;
+  final raw = max / ticks;
+  final magnitude = math.pow(10, (math.log(raw) / math.ln10).floor()).toDouble();
+  final norm = raw / magnitude;
+  final nice = norm <= 1
+      ? 1.0
+      : norm <= 2
+          ? 2.0
+          : norm <= 2.5
+              ? 2.5
+              : norm <= 5
+                  ? 5.0
+                  : 10.0;
+  return nice * magnitude;
+}
+
+String _trimZero(String s) =>
+    s.contains('.') ? s.replaceFirst(RegExp(r'\.?0+$'), '') : s;
+
+/// Axis-label token counts: "0", "250K", "1.5M", "2B". Shorter than
+/// [formatTokens], which keeps two decimals for the tables.
+String _compactTokens(double v) {
+  String scaled(double x) => _trimZero(x.toStringAsFixed(x >= 10 ? 0 : 1));
+  if (v >= 1e9) return '${scaled(v / 1e9)}B';
+  if (v >= 1e6) return '${scaled(v / 1e6)}M';
+  if (v >= 1e3) return '${scaled(v / 1e3)}K';
+  return v.round().toString();
+}
+
+String _compactCost(double v) {
+  if (v == 0) return '\$0';
+  if (v >= 10) return '\$${v.round()}';
+  if (v >= 1) return '\$${_trimZero(v.toStringAsFixed(1))}';
+  return '\$${_trimZero(v.toStringAsFixed(2))}';
+}
+
+/// Tokens (stacked by kind) or cost over the selected range, one bar per
+/// day, week or month. Cache reads start hidden: they are re-read context,
+/// usually tens of times everything else combined, and left in they flatten
+/// the other series into an invisible sliver. "Total tokens" leaves them out
+/// for the same reason; one click on the legend brings them back.
+class _UsageOverTimeChart extends StatefulWidget {
+  const _UsageOverTimeChart({
+    required this.dayBuckets,
+    required this.firstDay,
+    required this.lastDay,
+  });
 
   final List<AiDayUsageBucket> dayBuckets;
+  final DateTime firstDay;
+  final DateTime lastDay;
 
-  int _stackTotal(AiDayUsageBucket d) =>
-      d.inputTokens + d.outputTokens + d.cacheReadTokens + d.cacheCreationTokens;
+  @override
+  State<_UsageOverTimeChart> createState() => _UsageOverTimeChartState();
+}
+
+class _UsageOverTimeChartState extends State<_UsageOverTimeChart> {
+  /// The user's pick, or null to follow the range length.
+  _TimeBucket? _bucket;
+  bool _showCost = false;
+  final Set<_UsageSeries> _hidden = {_UsageSeries.cacheRead};
+
+  static const Map<_UsageSeries, Color> _seriesColor = {
+    _UsageSeries.input: _kInputColor,
+    _UsageSeries.output: _kOutputColor,
+    _UsageSeries.cacheWrite: _kCacheCreationColor,
+    _UsageSeries.cacheRead: _kCacheReadColor,
+  };
+
+  String _seriesLabel(L t, _UsageSeries s) => switch (s) {
+        _UsageSeries.input => t.aiUsageInput,
+        _UsageSeries.output => t.aiUsageOutput,
+        _UsageSeries.cacheWrite => t.aiUsageCacheWrite,
+        _UsageSeries.cacheRead => t.aiUsageCacheReads,
+      };
+
+  void _toggleSeries(_UsageSeries s) {
+    setState(() {
+      if (_hidden.contains(s)) {
+        _hidden.remove(s);
+      } else if (_hidden.length < _UsageSeries.values.length - 1) {
+        _hidden.add(s);
+      }
+    });
+  }
+
+  String _axisLabel(_UsagePoint p, _TimeBucket bucket, bool spansYears, String locale) =>
+      switch (bucket) {
+        _TimeBucket.month =>
+          DateFormat(spansYears ? "MMM ''yy" : 'MMM', locale).format(p.start),
+        _ => DateFormat('MMM d', locale).format(p.start),
+      };
+
+  String _tooltipTitle(_UsagePoint p, _TimeBucket bucket, String locale) {
+    switch (bucket) {
+      case _TimeBucket.day:
+        return DateFormat('EEE, MMM d', locale).format(p.start);
+      case _TimeBucket.week:
+        final from = DateFormat('MMM d', locale).format(p.start);
+        final to = DateFormat(
+          p.end.month == p.start.month ? 'd' : 'MMM d',
+          locale,
+        ).format(p.end);
+        return '$from – $to';
+      case _TimeBucket.month:
+        return DateFormat('MMMM yyyy', locale).format(p.start);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
     final t = L.of(context);
-    final maxStack = dayBuckets.map(_stackTotal).fold<int>(0, (a, b) => a > b ? a : b);
-    final topY = maxStack == 0 ? 1000.0 : maxStack * 1.15;
+    final locale = t.localeName;
+
+    final span = widget.lastDay.difference(widget.firstDay).inHours ~/ 24 + 1;
+    final bucket = _bucket ?? _autoBucket(span);
+    final points = _bucketUsage(widget.dayBuckets, widget.firstDay, widget.lastDay, bucket);
+    final visible = [
+      for (final s in _UsageSeries.values)
+        if (!_hidden.contains(s)) s,
+    ];
+
+    double valueOf(_UsagePoint p) => _showCost
+        ? p.cost
+        : visible.fold<int>(0, (a, s) => a + p.tokens(s)).toDouble();
+    final values = [for (final p in points) valueOf(p)];
+    final maxValue = values.fold<double>(0, math.max);
+    final step = _niceStep(maxValue);
+    final topY = maxValue <= 0 ? step : (maxValue / step).ceil() * step;
+    final average =
+        values.isEmpty ? 0.0 : values.fold<double>(0, (a, b) => a + b) / values.length;
+    final formatAxis = _showCost ? _compactCost : _compactTokens;
+    final spansYears = widget.firstDay.year != widget.lastDay.year;
+
+    final header = Wrap(
+      spacing: 10,
+      runSpacing: 8,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      alignment: WrapAlignment.spaceBetween,
+      children: [
+        Text(
+          t.aiUsageChartTitle,
+          style: TextStyle(color: luma.textPrimary, fontSize: 14, fontWeight: FontWeight.w700),
+        ),
+        Wrap(
+          spacing: 8,
+          runSpacing: 6,
+          children: [
+            _MiniToggle(
+              labels: [t.aiUsageTokens, t.aiUsageCost],
+              selected: _showCost ? 1 : 0,
+              onSelect: (i) => setState(() => _showCost = i == 1),
+            ),
+            _MiniToggle(
+              labels: [t.aiUsageChartDay, t.aiUsageChartWeek, t.aiUsageChartMonth],
+              selected: bucket.index,
+              onSelect: (i) => setState(() => _bucket = _TimeBucket.values[i]),
+            ),
+          ],
+        ),
+      ],
+    );
+
+    final legend = Row(
+      children: [
+        Expanded(
+          child: Wrap(
+            spacing: 6,
+            runSpacing: 4,
+            children: _showCost
+                ? [_SeriesChip(color: luma.accent, label: t.aiUsageCost, on: true)]
+                : [
+                    for (final s in _UsageSeries.values)
+                      _SeriesChip(
+                        color: _seriesColor[s]!,
+                        label: _seriesLabel(t, s),
+                        on: !_hidden.contains(s),
+                        tooltip: t.aiUsageChartToggleSeries,
+                        onTap: () => _toggleSeries(s),
+                      ),
+                  ],
+          ),
+        ),
+        if (average > 0) ...[
+          const SizedBox(width: 8),
+          SizedBox(
+            width: 14,
+            child: CustomPaint(
+              size: const Size(14, 1),
+              painter: _DashPainter(luma.textMuted),
+            ),
+          ),
+          const SizedBox(width: 5),
+          Text(
+            t.aiUsageChartAverage(formatAxis(average)),
+            style: TextStyle(
+              color: luma.textSecondary,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ],
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const _UsageCategoryLegend(),
-        const SizedBox(height: 10),
+        header,
+        const SizedBox(height: 8),
+        legend,
+        const SizedBox(height: 12),
         Expanded(
-          child: BarChart(
-            BarChartData(
-              maxY: topY,
-              minY: 0,
-              barTouchData: BarTouchData(
-                touchTooltipData: BarTouchTooltipData(
-                  getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                    final d = dayBuckets[groupIndex];
-                    return BarTooltipItem(
-                      t.aiUsageTooltipDay(
-                        DateFormat('MMM d', t.localeName).format(d.day),
-                        formatTokens(d.inputTokens),
-                        formatTokens(d.outputTokens),
-                        formatTokens(d.cacheReadTokens),
-                        formatTokens(d.cacheCreationTokens),
-                        formatCost(d.cost),
+          child: points.isEmpty || maxValue <= 0
+              ? Center(
+                  child: Text(
+                    t.aiUsageChartNoData,
+                    style: TextStyle(color: luma.textMuted, fontSize: 13),
+                  ),
+                )
+              : LayoutBuilder(
+                  builder: (context, constraints) {
+                    const leftReserved = 44.0;
+                    final plotWidth = math.max(1.0, constraints.maxWidth - leftReserved);
+                    final slot = plotWidth / points.length;
+                    final barWidth = (slot * 0.68).clamp(1.5, 28.0);
+                    final maxLabels = math.max(2, (plotWidth / 64).floor());
+                    final labelEvery = math.max(1, (points.length / maxLabels).ceil());
+                    final radius = Radius.circular(math.min(4.0, barWidth / 2));
+
+                    return BarChart(
+                      BarChartData(
+                        alignment: BarChartAlignment.spaceAround,
+                        maxY: topY,
+                        minY: 0,
+                        barTouchData: BarTouchData(
+                          touchTooltipData: BarTouchTooltipData(
+                            fitInsideHorizontally: true,
+                            fitInsideVertically: true,
+                            maxContentWidth: 220,
+                            tooltipRoundedRadius: 8,
+                            tooltipPadding:
+                                const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            tooltipBorder: BorderSide(color: luma.border),
+                            getTooltipColor: (_) => luma.surface,
+                            getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                              final p = points[groupIndex];
+                              final row = TextStyle(color: luma.textSecondary, fontSize: 11.5);
+                              final strong = TextStyle(
+                                color: luma.textPrimary,
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w700,
+                              );
+                              return BarTooltipItem(
+                                _tooltipTitle(p, bucket, locale),
+                                TextStyle(
+                                  color: luma.textPrimary,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                                textAlign: TextAlign.left,
+                                children: [
+                                  for (final s in _UsageSeries.values.reversed) ...[
+                                    TextSpan(
+                                      text: '\n${_seriesLabel(t, s)}  ',
+                                      style: row.copyWith(
+                                        color: _hidden.contains(s)
+                                            ? luma.textMuted
+                                            : _seriesColor[s],
+                                      ),
+                                    ),
+                                    TextSpan(text: formatTokens(p.tokens(s)), style: strong),
+                                  ],
+                                  TextSpan(text: '\n${t.aiUsageEstCost}  ', style: row),
+                                  TextSpan(text: formatCost(p.cost), style: strong),
+                                ],
+                              );
+                            },
+                          ),
+                        ),
+                        extraLinesData: average > 0
+                            ? ExtraLinesData(
+                                horizontalLines: [
+                                  HorizontalLine(
+                                    y: average,
+                                    color: luma.textMuted.withValues(alpha: 0.7),
+                                    strokeWidth: 1,
+                                    dashArray: const [4, 4],
+                                  ),
+                                ],
+                              )
+                            : null,
+                        titlesData: FlTitlesData(
+                          bottomTitles: AxisTitles(
+                            sideTitles: SideTitles(
+                              showTitles: true,
+                              reservedSize: 24,
+                              interval: 1,
+                              getTitlesWidget: (value, meta) {
+                                final idx = value.toInt();
+                                if (idx < 0 ||
+                                    idx >= points.length ||
+                                    value != idx.toDouble() ||
+                                    (points.length - 1 - idx) % labelEvery != 0) {
+                                  return const SizedBox.shrink();
+                                }
+                                return Padding(
+                                  padding: const EdgeInsets.only(top: 6),
+                                  child: Text(
+                                    _axisLabel(points[idx], bucket, spansYears, locale),
+                                    maxLines: 1,
+                                    softWrap: false,
+                                    overflow: TextOverflow.visible,
+                                    style: TextStyle(color: luma.textMuted, fontSize: 10),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                          leftTitles: AxisTitles(
+                            sideTitles: SideTitles(
+                              showTitles: true,
+                              reservedSize: leftReserved,
+                              interval: step,
+                              getTitlesWidget: (value, meta) {
+                                final ticks = value / step;
+                                if ((ticks - ticks.round()).abs() > 1e-6) {
+                                  return const SizedBox.shrink();
+                                }
+                                return Padding(
+                                  padding: const EdgeInsets.only(right: 6),
+                                  child: Text(
+                                    formatAxis(value),
+                                    textAlign: TextAlign.right,
+                                    style: TextStyle(color: luma.textMuted, fontSize: 10),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                          rightTitles:
+                              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                        ),
+                        gridData: FlGridData(
+                          show: true,
+                          drawVerticalLine: false,
+                          horizontalInterval: step,
+                          getDrawingHorizontalLine: (_) => FlLine(
+                            color: luma.border.withValues(alpha: 0.5),
+                            strokeWidth: 1,
+                          ),
+                        ),
+                        borderData: FlBorderData(
+                          show: true,
+                          border: Border(bottom: BorderSide(color: luma.border)),
+                        ),
+                        barGroups: [
+                          for (var i = 0; i < points.length; i++)
+                            _barGroup(i, points[i], visible, barWidth, radius, luma),
+                        ],
                       ),
-                      TextStyle(color: luma.textPrimary, fontSize: 12),
+                      duration: Duration.zero,
                     );
                   },
                 ),
-              ),
-              titlesData: FlTitlesData(
-                bottomTitles: AxisTitles(
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    reservedSize: 28,
-                    interval: (dayBuckets.length / 8).ceilToDouble().clamp(1, 999),
-                    getTitlesWidget: (value, meta) {
-                      final idx = value.toInt();
-                      if (idx < 0 || idx >= dayBuckets.length || value != idx.toDouble()) {
-                        return const SizedBox();
-                      }
-                      return Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: Text(
-                          DateFormat('M/d', t.localeName).format(dayBuckets[idx].day),
-                          style: TextStyle(color: luma.textMuted, fontSize: 10),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                leftTitles: AxisTitles(
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    reservedSize: 46,
-                    getTitlesWidget: (value, meta) => Text(
-                      formatTokens(value.round()),
-                      style: TextStyle(color: luma.textMuted, fontSize: 10),
-                    ),
-                  ),
-                ),
-                topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-              ),
-              gridData: FlGridData(
-                show: true,
-                drawVerticalLine: false,
-                getDrawingHorizontalLine: (_) =>
-                    FlLine(color: luma.border.withValues(alpha: 0.5), strokeWidth: 1),
-              ),
-              borderData: FlBorderData(show: false),
-              barGroups: [
-                for (var i = 0; i < dayBuckets.length; i++) _dayBarGroup(i, dayBuckets[i]),
-              ],
-            ),
-          ),
         ),
       ],
     );
   }
 
-  BarChartGroupData _dayBarGroup(int index, AiDayUsageBucket d) {
+  BarChartGroupData _barGroup(
+    int index,
+    _UsagePoint p,
+    List<_UsageSeries> visible,
+    double width,
+    Radius radius,
+    LumaPalette luma,
+  ) {
+    if (_showCost) {
+      return BarChartGroupData(
+        x: index,
+        barRods: [
+          BarChartRodData(
+            toY: p.cost,
+            color: luma.accent,
+            width: width,
+            borderRadius: BorderRadius.vertical(top: radius),
+          ),
+        ],
+      );
+    }
     var y = 0.0;
-    final segments = <(int tokens, Color color)>[
-      (d.inputTokens, _kInputColor),
-      (d.outputTokens, _kOutputColor),
-      (d.cacheReadTokens, _kCacheReadColor),
-      (d.cacheCreationTokens, _kCacheCreationColor),
-    ];
-    final stackItems = <BarChartRodStackItem>[];
-    for (final (tokens, color) in segments) {
+    final stack = <BarChartRodStackItem>[];
+    for (final s in visible) {
+      final tokens = p.tokens(s);
       if (tokens <= 0) continue;
-      final fromY = y;
-      y += tokens.toDouble();
-      stackItems.add(BarChartRodStackItem(fromY, y, color));
+      final from = y;
+      y += tokens;
+      stack.add(BarChartRodStackItem(from, y, _seriesColor[s]!));
     }
     return BarChartGroupData(
       x: index,
       barRods: [
         BarChartRodData(
           toY: y,
-          rodStackItems: stackItems,
-          width: 16,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+          rodStackItems: stack,
+          color: Colors.transparent,
+          width: width,
+          borderRadius: BorderRadius.vertical(top: radius),
         ),
       ],
     );
   }
 }
 
-/// Always-visible 4-color legend for the daily stacked chart (and shared by
-/// nothing else — the project breakdown has its own, input/output-only,
-/// legend).
-class _UsageCategoryLegend extends StatelessWidget {
-  const _UsageCategoryLegend();
+/// The legend's sample of the chart's dashed average line.
+class _DashPainter extends CustomPainter {
+  const _DashPainter(this.color);
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1;
+    final y = size.height / 2;
+    for (var x = 0.0; x < size.width; x += 8) {
+      canvas.drawLine(Offset(x, y), Offset(math.min(x + 4, size.width), y), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_DashPainter oldDelegate) => oldDelegate.color != color;
+}
+
+/// A compact segmented switch for chart options: small enough to sit in a
+/// card header, unlike the page-level [LumaSegmentedTabs].
+class _MiniToggle extends StatelessWidget {
+  const _MiniToggle({
+    required this.labels,
+    required this.selected,
+    required this.onSelect,
+  });
+
+  final List<String> labels;
+  final int selected;
+  final ValueChanged<int> onSelect;
 
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
-    final t = L.of(context);
-    Widget dot(Color color, String label) => Row(
+    return Container(
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: luma.border),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (var i = 0; i < labels.length; i++)
+            MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => onSelect(i),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 120),
+                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: i == selected ? luma.accentSubtle : Colors.transparent,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    labels[i],
+                    style: TextStyle(
+                      color: i == selected ? luma.accent : luma.textSecondary,
+                      fontSize: 11.5,
+                      fontWeight: i == selected ? FontWeight.w700 : FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A legend entry that doubles as a show/hide switch for its series.
+class _SeriesChip extends StatelessWidget {
+  const _SeriesChip({
+    required this.color,
+    required this.label,
+    required this.on,
+    this.tooltip,
+    this.onTap,
+  });
+
+  final Color color;
+  final String label;
+  final bool on;
+  final String? tooltip;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    Widget chip = AnimatedOpacity(
+      duration: const Duration(milliseconds: 120),
+      opacity: on ? 1 : 0.45,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+        child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
               width: 9,
               height: 9,
-              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+              decoration: BoxDecoration(
+                color: on ? color : Colors.transparent,
+                shape: BoxShape.circle,
+                border: Border.all(color: color, width: 1.5),
+              ),
             ),
-            const SizedBox(width: 5),
-            Text(label, style: TextStyle(color: luma.textSecondary, fontSize: 11)),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                color: luma.textSecondary,
+                fontSize: 11,
+                decoration: on ? null : TextDecoration.lineThrough,
+                decorationColor: luma.textMuted,
+              ),
+            ),
           ],
-        );
-    return Wrap(
-      spacing: 14,
-      runSpacing: 6,
-      children: [
-        dot(_kInputColor, t.aiUsageInput),
-        dot(_kOutputColor, t.aiUsageOutput),
-        dot(_kCacheReadColor, t.aiUsageCacheReads),
-        dot(_kCacheCreationColor, t.aiUsageCacheWrite),
-      ],
+        ),
+      ),
     );
+    if (onTap != null) {
+      chip = MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: onTap,
+          child: chip,
+        ),
+      );
+    }
+    if (tooltip != null) chip = Tooltip(message: tooltip!, child: chip);
+    return chip;
   }
 }
 

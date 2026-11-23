@@ -95,6 +95,14 @@ IconData pluginIconFor(String? name) {
       return Icons.menu_book_rounded;
     case 'view_in_ar':
       return Icons.view_in_ar_rounded;
+    case 'terminal':
+      return Icons.terminal_rounded;
+    case 'brush':
+      return Icons.brush_rounded;
+    case 'map':
+      return Icons.map_rounded;
+    case 'lightbulb':
+      return Icons.lightbulb_rounded;
     default:
       return Icons.extension_rounded;
   }

@@ -11873,6 +11873,29 @@ class LFr extends L {
   String get aiUsageCacheWrite => 'Écriture du cache';
 
   @override
+  String get aiUsageChartTitle => 'Utilisation dans le temps';
+
+  @override
+  String get aiUsageChartDay => 'Jour';
+
+  @override
+  String get aiUsageChartWeek => 'Semaine';
+
+  @override
+  String get aiUsageChartMonth => 'Mois';
+
+  @override
+  String aiUsageChartAverage(String value) {
+    return 'moy. $value';
+  }
+
+  @override
+  String get aiUsageChartToggleSeries => 'Cliquez pour afficher ou masquer';
+
+  @override
+  String get aiUsageChartNoData => 'Aucune utilisation sur cette période';
+
+  @override
   String get aiUsageAvgHourly => 'Répartition horaire moyenne';
 
   @override

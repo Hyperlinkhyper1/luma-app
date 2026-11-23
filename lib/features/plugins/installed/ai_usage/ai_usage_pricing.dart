@@ -98,6 +98,12 @@ AiPricingRates _freebuffPricingFor(String model) {
   return freebuffProviderPricingFor(provider);
 }
 
+// Resolved answers per (source, model). The tables are constant, a range
+// holds a few dozen distinct models, and every aggregation asks once per
+// turn, so the substring matching below runs once per model, not per turn.
+final Map<(AiUsageSource, String?), bool> _billableCache = {};
+final Map<(AiUsageSource, String?), AiPricingRates?> _pricingCache = {};
+
 /// Whether [model] is a recognized, priced model for [source]. Anything else
 /// is grouped as "Other" in the UI, with cost shown as n/a. For Antigravity,
 /// "recognized" means its detected model matched a known Gemini or Claude
@@ -111,7 +117,10 @@ AiPricingRates _freebuffPricingFor(String model) {
 /// prices, deliberately, rather than only the ones this app knows exactly.
 /// The only way an OpenCode turn reads as unbillable is a stored model
 /// string with no `providerID` prefix at all.
-bool isBillableModel(AiUsageSource source, String? model) => switch (source) {
+bool isBillableModel(AiUsageSource source, String? model) =>
+    _billableCache.putIfAbsent((source, model), () => _resolveBillable(source, model));
+
+bool _resolveBillable(AiUsageSource source, String? model) => switch (source) {
       AiUsageSource.claudeCode => isAnthropicBillableModel(model),
       AiUsageSource.codexCli => isOpenAiBillableModel(model),
       AiUsageSource.antigravity => _antigravityPricingFor(model) != null,
@@ -123,7 +132,10 @@ bool isBillableModel(AiUsageSource source, String? model) => switch (source) {
     };
 
 /// Resolves [model]'s pricing rates for [source], or null if unrecognized.
-AiPricingRates? pricingFor(AiUsageSource source, String? model) => switch (source) {
+AiPricingRates? pricingFor(AiUsageSource source, String? model) =>
+    _pricingCache.putIfAbsent((source, model), () => _resolvePricing(source, model));
+
+AiPricingRates? _resolvePricing(AiUsageSource source, String? model) => switch (source) {
       AiUsageSource.claudeCode => anthropicPricingFor(model),
       AiUsageSource.codexCli => openAiPricingFor(model),
       AiUsageSource.antigravity => _antigravityPricingFor(model),

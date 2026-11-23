@@ -19183,6 +19183,48 @@ abstract class L {
   /// **'Cache write'**
   String get aiUsageCacheWrite;
 
+  /// No description provided for @aiUsageChartTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Usage over time'**
+  String get aiUsageChartTitle;
+
+  /// No description provided for @aiUsageChartDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Day'**
+  String get aiUsageChartDay;
+
+  /// No description provided for @aiUsageChartWeek.
+  ///
+  /// In en, this message translates to:
+  /// **'Week'**
+  String get aiUsageChartWeek;
+
+  /// No description provided for @aiUsageChartMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'Month'**
+  String get aiUsageChartMonth;
+
+  /// No description provided for @aiUsageChartAverage.
+  ///
+  /// In en, this message translates to:
+  /// **'avg {value}'**
+  String aiUsageChartAverage(String value);
+
+  /// No description provided for @aiUsageChartToggleSeries.
+  ///
+  /// In en, this message translates to:
+  /// **'Click to show or hide'**
+  String get aiUsageChartToggleSeries;
+
+  /// No description provided for @aiUsageChartNoData.
+  ///
+  /// In en, this message translates to:
+  /// **'No usage in this range'**
+  String get aiUsageChartNoData;
+
   /// No description provided for @aiUsageAvgHourly.
   ///
   /// In en, this message translates to:

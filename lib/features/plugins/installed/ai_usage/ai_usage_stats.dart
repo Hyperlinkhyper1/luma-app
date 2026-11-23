@@ -214,6 +214,44 @@ class AiUsageTotals {
   final bool hasUnbillable;
 }
 
+// Reading year/month/day/hour off a local DateTime, or building one, asks
+// the OS for the zone offset every time; on Windows that cost ~20us, which
+// across 100k turns was most of a dashboard load. Offsets only change on
+// the hour, so each UTC hour is looked up once, and each local day built once.
+final Map<int, int> _offsetMsByUtcHour = {};
+final Map<int, DateTime> _localDayByKey = {};
+
+int _wallClockMs(DateTime timestamp) {
+  final ms = timestamp.millisecondsSinceEpoch;
+  final hour = ms ~/ Duration.millisecondsPerHour;
+  final offset = _offsetMsByUtcHour.putIfAbsent(
+    hour,
+    () => DateTime.fromMillisecondsSinceEpoch(hour * Duration.millisecondsPerHour)
+        .timeZoneOffset
+        .inMilliseconds,
+  );
+  return ms + offset;
+}
+
+/// Local midnight of the calendar day [timestamp] falls on; the same value as
+/// `DateTime(local.year, local.month, local.day)`, without the per-call
+/// zone lookups.
+DateTime localDayOf(DateTime timestamp) {
+  final key = _wallClockMs(timestamp) ~/ Duration.millisecondsPerDay;
+  return _localDayByKey.putIfAbsent(key, () {
+    final wall = DateTime.fromMillisecondsSinceEpoch(
+      key * Duration.millisecondsPerDay,
+      isUtc: true,
+    );
+    return DateTime(wall.year, wall.month, wall.day);
+  });
+}
+
+/// Local hour of day (0-23) of [timestamp].
+int localHourOf(DateTime timestamp) =>
+    (_wallClockMs(timestamp) % Duration.millisecondsPerDay) ~/
+    Duration.millisecondsPerHour;
+
 int _totalTokensFor(AiUsageTurn t) =>
     t.inputTokens + t.outputTokens + t.cacheCreationTokens;
 
@@ -465,8 +503,7 @@ List<AiDayUsageBucket> aggregateByDay(Iterable<AiUsageTurn> turns) {
   final costByDay = <DateTime, double>{};
 
   for (final t in turns) {
-    final local = t.timestamp.toLocal();
-    final day = DateTime(local.year, local.month, local.day);
+    final day = localDayOf(t.timestamp);
     inputByDay.update(
       day,
       (v) => v + t.inputTokens,
@@ -568,8 +605,7 @@ List<SessionUsageTotal> aggregateBySession(Iterable<AiUsageTurn> turns) {
 ) {
   final activeDays = <DateTime>{};
   for (final t in turns) {
-    final local = t.timestamp.toLocal();
-    activeDays.add(DateTime(local.year, local.month, local.day));
+    activeDays.add(localDayOf(t.timestamp));
   }
   if (activeDays.isEmpty) return (days: 0, start: null, end: null);
 
@@ -611,10 +647,10 @@ List<AiHourlyUsageBucket> aggregateByHour(Iterable<AiUsageTurn> turns) {
   final days = <DateTime>{};
 
   for (final t in turns) {
-    final local = t.timestamp.toLocal();
-    turnsByHour[local.hour]++;
-    tokensByHour[local.hour] += _totalTokensFor(t);
-    days.add(DateTime(local.year, local.month, local.day));
+    final hour = localHourOf(t.timestamp);
+    turnsByHour[hour]++;
+    tokensByHour[hour] += _totalTokensFor(t);
+    days.add(localDayOf(t.timestamp));
   }
 
   final dayCount = days.isEmpty ? 1 : days.length;
@@ -648,7 +684,12 @@ enum AiUsageSortMetric {
 /// company" view. Single-vendor tools map straight from their source;
 /// mixed-vendor ones (Antigravity's prose model names, opencode's
 /// `<providerID>/<modelID>` strings) are resolved from the model itself.
-String companyForModel(AiUsageSource source, String model) {
+String companyForModel(AiUsageSource source, String model) =>
+    _companyByModel.putIfAbsent((source, model), () => _resolveCompany(source, model));
+
+final Map<(AiUsageSource, String), String> _companyByModel = {};
+
+String _resolveCompany(AiUsageSource source, String model) {
   switch (source) {
     case AiUsageSource.claudeCode:
       return 'Anthropic';
@@ -876,4 +917,71 @@ AiUsageTotals totals(Iterable<AiUsageTurn> turns) {
     cost: cost,
     hasUnbillable: hasUnbillable,
   );
+}
+
+/// Everything the Usage dashboard draws for one range, computed in one go
+/// from that range's turns. Built off the UI isolate (see
+/// `AiUsageRepository.loadDashboard`): "All" is 100k+ turns on a busy
+/// machine, and reading and summing them in `build` froze the page on every
+/// range switch. Lists come in their default (tokens-descending) order; the
+/// page re-sorts copies to the user's chosen metric.
+class AiUsageDashboardSnapshot {
+  const AiUsageDashboardSnapshot({
+    required this.summary,
+    required this.modelTotals,
+    required this.companyTotals,
+    required this.dayBuckets,
+    required this.effortTiers,
+    required this.projectTotals,
+    required this.providerTotals,
+    required this.hourly,
+    required this.longestSession,
+    required this.priciestSession,
+    required this.streak,
+    required this.hasAntigravity,
+  });
+
+  factory AiUsageDashboardSnapshot.fromTurns(List<AiUsageTurn> turns) {
+    // Antigravity turns whose model couldn't be detected are real usage
+    // (counted in the totals and charts) but not worth an uninformative
+    // "Unknown model" row in the model and company breakdowns.
+    final displayTurns = turns
+        .where((t) => !(t.source == AiUsageSource.antigravity && t.model == 'Unknown model'))
+        .toList();
+
+    SessionUsageTotal? longest;
+    SessionUsageTotal? priciest;
+    for (final s in aggregateBySession(turns)) {
+      if (longest == null || s.duration > longest.duration) longest = s;
+      if (priciest == null || s.cost > priciest.cost) priciest = s;
+    }
+
+    return AiUsageDashboardSnapshot(
+      summary: totals(turns),
+      modelTotals: aggregateByModel(displayTurns),
+      companyTotals: aggregateByCompany(displayTurns),
+      dayBuckets: aggregateByDay(turns),
+      effortTiers: aggregateByModelAndEffort(turns),
+      projectTotals: aggregateByProject(turns),
+      providerTotals: aggregateOpencodeByProvider(turns),
+      hourly: aggregateByHour(turns),
+      longestSession: longest,
+      priciestSession: priciest,
+      streak: longestActiveDayStreak(turns),
+      hasAntigravity: turns.any((t) => t.source == AiUsageSource.antigravity),
+    );
+  }
+
+  final AiUsageTotals summary;
+  final List<ModelUsageTotal> modelTotals;
+  final List<CompanyUsageTotal> companyTotals;
+  final List<AiDayUsageBucket> dayBuckets;
+  final List<ModelEffortUsageTotal> effortTiers;
+  final List<ProjectUsageTotal> projectTotals;
+  final List<ProviderUsageTotal> providerTotals;
+  final List<AiHourlyUsageBucket> hourly;
+  final SessionUsageTotal? longestSession;
+  final SessionUsageTotal? priciestSession;
+  final ({int days, DateTime? start, DateTime? end}) streak;
+  final bool hasAntigravity;
 }

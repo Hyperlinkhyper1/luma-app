@@ -8,7 +8,8 @@ const reset = document.querySelector('#reset');
 const animation = document.querySelector('#animation');
 
 const viewerRoot = new URL('./', location.href);
-const fileRoot = new URL('files/', viewerRoot);
+const modelFileRoot = new URL('files/', viewerRoot);
+const decoderRoot = new URL('vendor/examples/jsm/libs/draco/gltf/', viewerRoot);
 
 async function fetchFile(url) {
   const response = await fetch(url);
@@ -17,10 +18,9 @@ async function fetchFile(url) {
   throw new Error(detail);
 }
 
-function dataUrl(address) {
+function dataUrl(address, fileRoot = modelFileRoot) {
   if (address.startsWith('data:') || address.startsWith('blob:')) return address;
   const resolved = new URL(address, viewerRoot);
-  const decoderRoot = new URL('vendor/examples/jsm/libs/draco/gltf/', viewerRoot);
   if (resolved.href.startsWith(fileRoot.href) ||
       resolved.href.startsWith(decoderRoot.href)) return resolved.href;
   throw new Error();
@@ -35,12 +35,12 @@ function material(vertexColors = false) {
   });
 }
 
-async function loadObj(bytes, base, manager) {
-  const [{ OBJLoader }, { MTLLoader }] = await Promise.all([
-    import('./vendor/examples/jsm/loaders/OBJLoader.js'),
-    import('./vendor/examples/jsm/loaders/MTLLoader.js'),
-  ]);
+async function loadObj(bytes, base, manager, thumbnail) {
+  const { OBJLoader } = await import('./vendor/examples/jsm/loaders/OBJLoader.js');
   const source = new TextDecoder().decode(bytes);
+  const loader = new OBJLoader(manager);
+  if (thumbnail) return loader.parse(source);
+  const { MTLLoader } = await import('./vendor/examples/jsm/loaders/MTLLoader.js');
   const libraries = Array.from(source.matchAll(/^mtllib[ \t]+([^\r\n]+)$/gm),
     (match) => match[1].trim());
   const materials = (await Promise.all(libraries.map(async (name) => {
@@ -53,7 +53,6 @@ async function loadObj(bytes, base, manager) {
       return null;
     }
   }))).filter(Boolean);
-  const loader = new OBJLoader(manager);
   if (materials.length) {
     loader.setMaterials({
       create: (name) => materials.find((library) =>
@@ -63,7 +62,7 @@ async function loadObj(bytes, base, manager) {
   return loader.parse(source);
 }
 
-async function loadModel(format, url, manager) {
+async function loadModel(format, url, manager, thumbnail = false) {
   const data = await (await fetchFile(url)).arrayBuffer();
   const base = new URL('./', url).href;
   switch (format) {
@@ -77,10 +76,16 @@ async function loadModel(format, url, manager) {
       const draco = new DRACOLoader(manager)
         .setDecoderPath(new URL('vendor/examples/jsm/libs/draco/gltf/', viewerRoot).href);
       try {
-        const gltf = await new GLTFLoader(manager)
+        const loader = new GLTFLoader(manager)
           .setDRACOLoader(draco)
-          .setMeshoptDecoder(MeshoptDecoder)
-          .parseAsync(data, base);
+          .setMeshoptDecoder(MeshoptDecoder);
+        if (thumbnail) {
+          loader.register((parser) => {
+            parser.assignTexture = () => Promise.resolve();
+            return { name: 'luma_thumbnail' };
+          });
+        }
+        const gltf = await loader.parseAsync(data, base);
         gltf.scene.animations = gltf.animations;
         return gltf.scene;
       } finally {
@@ -88,13 +93,13 @@ async function loadModel(format, url, manager) {
       }
     }
     case 'obj':
-      return loadObj(data, base, manager);
+      return loadObj(data, base, manager, thumbnail);
     case 'fbx': {
-      const [{ FBXLoader }, { TGALoader }] = await Promise.all([
-        import('./vendor/examples/jsm/loaders/FBXLoader.js'),
-        import('./vendor/examples/jsm/loaders/TGALoader.js'),
-      ]);
-      manager.addHandler(/\.tga$/i, new TGALoader(manager));
+      const { FBXLoader } = await import('./vendor/examples/jsm/loaders/FBXLoader.js');
+      if (!thumbnail) {
+        const { TGALoader } = await import('./vendor/examples/jsm/loaders/TGALoader.js');
+        manager.addHandler(/\.tga$/i, new TGALoader(manager));
+      }
       return new FBXLoader(manager).parse(data, base);
     }
     case 'stl': {
@@ -122,6 +127,35 @@ async function loadModel(format, url, manager) {
   }
 }
 
+function frameModel(object) {
+  const box = new THREE.Box3().setFromObject(object);
+  const span = box.getSize(new THREE.Vector3()).length();
+  if (box.isEmpty() || !Number.isFinite(span)) throw new Error();
+
+  const scene = new THREE.Scene();
+  const group = new THREE.Group();
+  const center = box.getCenter(new THREE.Vector3());
+  const scale = span > 0 ? 6 / span : 1;
+  group.scale.setScalar(scale);
+  group.position.copy(center).multiplyScalar(-scale);
+  group.add(object);
+  scene.add(group);
+
+  scene.add(new THREE.HemisphereLight(0xe4eeff, 0x525666, 2.2));
+  const key = new THREE.DirectionalLight(0xffffff, 3.2);
+  key.position.set(6, 8, 4);
+  scene.add(key);
+  return { scene, floor: (box.min.y - center.y) * scale };
+}
+
+function fitCamera(camera) {
+  const halfVertical = THREE.MathUtils.degToRad(camera.fov / 2);
+  const halfHorizontal = Math.atan(Math.tan(halfVertical) * camera.aspect);
+  const distance = 3.25 / Math.sin(Math.min(halfVertical, halfHorizontal));
+  camera.position.set(1, 0.65, 1.15).setLength(distance);
+  camera.lookAt(0, 0, 0);
+}
+
 async function start(config) {
   status.textContent = config.loading;
   const manager = new THREE.LoadingManager();
@@ -135,28 +169,14 @@ async function start(config) {
   };
   manager.onLoad = () => render();
   const object = await loadModel(config.format, new URL(config.file, viewerRoot), manager);
-  const box = new THREE.Box3().setFromObject(object);
-  const span = box.getSize(new THREE.Vector3()).length();
-  if (box.isEmpty() || !Number.isFinite(span)) throw new Error();
+  const { scene, floor } = frameModel(object);
 
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   stage.append(renderer.domElement);
-  const scene = new THREE.Scene();
-  const group = new THREE.Group();
-  const center = box.getCenter(new THREE.Vector3());
-  const scale = span > 0 ? 6 / span : 1;
-  group.scale.setScalar(scale);
-  group.position.copy(center).multiplyScalar(-scale);
-  group.add(object);
-  scene.add(group);
-
   const grid = new THREE.GridHelper(16, 16, 0x526581, 0x354557);
-  grid.position.y = (box.min.y - center.y) * scale;
-  scene.add(grid, new THREE.HemisphereLight(0xe4eeff, 0x525666, 2.2));
-  const key = new THREE.DirectionalLight(0xffffff, 3.2);
-  key.position.set(6, 8, 4);
-  scene.add(key);
+  grid.position.y = floor;
+  scene.add(grid);
 
   const camera = new THREE.PerspectiveCamera(42, 1, 0.01, 350);
   const controls = new OrbitControls(camera, renderer.domElement);
@@ -171,10 +191,7 @@ async function start(config) {
     render();
   };
   const home = () => {
-    const halfVertical = THREE.MathUtils.degToRad(camera.fov / 2);
-    const halfHorizontal = Math.atan(Math.tan(halfVertical) * camera.aspect);
-    const distance = 3.25 / Math.sin(Math.min(halfVertical, halfHorizontal));
-    camera.position.set(1, 0.65, 1.15).setLength(distance);
+    fitCamera(camera);
     controls.target.set(0, 0, 0);
     controls.update();
     render();
@@ -212,9 +229,74 @@ async function start(config) {
   controlsBar.hidden = false;
 }
 
+function thumbnailMaterials(object, resources) {
+  object.traverse((node) => {
+    if (node.geometry) resources.add(node.geometry);
+    if (node.skeleton) resources.add(node.skeleton);
+    if (!node.material) return;
+    const simplify = (original) => {
+      resources.add(original);
+      for (const value of Object.values(original)) {
+        if (value?.isTexture) resources.add(value);
+      }
+      if (!node.isMesh) return original;
+      const preview = material(original.vertexColors);
+      if (original.color) preview.color.copy(original.color);
+      resources.add(preview);
+      return preview;
+    };
+    node.material = Array.isArray(node.material)
+      ? node.material.map(simplify)
+      : simplify(node.material);
+  });
+}
+
+async function renderThumbnails(config) {
+  const renderer = new THREE.WebGLRenderer({
+    antialias: true,
+    alpha: true,
+    preserveDrawingBuffer: true,
+  });
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.setSize(config.width, config.height, false);
+  const camera = new THREE.PerspectiveCamera(42, config.width / config.height, 0.01, 350);
+  fitCamera(camera);
+  try {
+    for (const [index, tile] of config.thumbnails.entries()) {
+      const resources = new Set();
+      const manager = new THREE.LoadingManager();
+      const fileRoot = new URL(`tiles/${index}/files/`, viewerRoot);
+      manager.setURLModifier((address) => {
+        if (tile.format !== 'fbx') return dataUrl(address, fileRoot);
+        if (address.startsWith('blob:')) URL.revokeObjectURL(address);
+        return 'data:,';
+      });
+      let image;
+      try {
+        const object = await loadModel(tile.format, new URL(tile.file, viewerRoot), manager, true);
+        thumbnailMaterials(object, resources);
+        const { scene } = frameModel(object);
+        renderer.render(scene, camera);
+        image = await new Promise((resolve) => renderer.domElement.toBlob(resolve));
+      } catch {
+        // A missing or unreadable model still has a clickable catalog tile.
+      } finally {
+        for (const resource of resources) resource.dispose();
+        renderer.renderLists.dispose();
+      }
+      const response = await fetch(tile.result, { method: 'POST', body: image });
+      if (!response.ok) break;
+    }
+  } finally {
+    renderer.dispose();
+    renderer.forceContextLoss();
+  }
+}
+
 const config = await (await fetch('config.json')).json();
 try {
-  await start(config);
+  if (config.thumbnails) await renderThumbnails(config);
+  else await start(config);
 } catch (error) {
   status.textContent = error.message
     ? `${config.error} ${error.message}`

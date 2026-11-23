@@ -47,7 +47,7 @@ Map<String, dynamic> _blob(String path, String sha, int size) => {
   'size': size,
 };
 
-http.Response _repositoryResponse(http.Request request) {
+http.Response _repositoryResponse(http.Request request, {int extraModels = 0}) {
   final path = request.url.pathSegments;
   expect(request.url.host, 'api.github.com');
   if (path.length == 3) return _json({'default_branch': 'main'});
@@ -67,6 +67,8 @@ http.Response _repositoryResponse(http.Request request) {
         _blob('other.glb', _textureSha, 3),
         _blob('readme.txt', _textureSha, 3),
         {..._blob('link.stl', _textureSha, 3), 'mode': '120000'},
+        for (var index = 0; index < extraModels; index++)
+          _blob('shapes/shape-$index.obj', _objSha, _obj.length),
       ],
     });
   }
@@ -95,7 +97,7 @@ void main() {
         theme: LumaTheme.dark,
         home: ModelViewerScope(
           repository: repository,
-          child: const ModelViewerPage(),
+          child: const TickerMode(enabled: false, child: ModelViewerPage()),
         ),
       ),
     );
@@ -109,6 +111,51 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('cat #1.OBJ'), findsOneWidget);
     expect(find.text('other.glb'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('pages the grid and searches models across all pages', (
+    tester,
+  ) async {
+    final repository = ModelViewerRepository(
+      client: MockClient(
+        (request) async => _repositoryResponse(request, extraModels: 9),
+      ),
+      secrets: _MemorySecrets(),
+    );
+    addTearDown(repository.dispose);
+    tester.view.physicalSize = const Size(1400, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('en'),
+        localizationsDelegates: L.localizationsDelegates,
+        supportedLocales: L.supportedLocales,
+        theme: LumaTheme.dark,
+        home: ModelViewerScope(
+          repository: repository,
+          child: const TickerMode(enabled: false, child: ModelViewerPage()),
+        ),
+      ),
+    );
+    await tester.enterText(find.byType(TextField).first, 'owner/repo');
+    await tester.tap(find.text('Load models'));
+    await tester.pumpAndSettle();
+    expect(find.text('shape-5.obj'), findsOneWidget);
+    expect(find.text('shape-6.obj'), findsNothing);
+
+    final strings = L.of(tester.element(find.byType(ModelViewerPage)));
+    await tester.tap(find.byTooltip(strings.commonNext));
+    await tester.pumpAndSettle();
+    expect(find.text('shape-5.obj'), findsNothing);
+    expect(find.text('shape-6.obj'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField).last, 'shape-0');
+    await tester.pumpAndSettle();
+    expect(find.text('shape-0.obj'), findsOneWidget);
+    expect(find.text('shape-6.obj'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -267,4 +314,57 @@ void main() {
       );
     },
   );
+
+  test('thumbnail batches serve one model at a time', () async {
+    final repository = ModelViewerRepository(
+      client: MockClient((request) async => _repositoryResponse(request)),
+      secrets: _MemorySecrets(),
+    );
+    addTearDown(repository.dispose);
+    final catalogue = await repository.scan('owner/repo');
+    final results = <String, List<int>?>{};
+    final server = await ModelPreviewServer.startThumbnails(
+      catalogue,
+      catalogue.models,
+      currentL,
+      (model, image) => results[model.path] = image,
+    );
+    addTearDown(server.close);
+    final client = IOClient(
+      HttpOverrides.runWithHttpOverrides(HttpClient.new, _LoopbackHttp()),
+    );
+    addTearDown(client.close);
+    final response = await client.get(server.url.resolve('config.json'));
+    final config = jsonDecode(response.body) as Map<String, dynamic>;
+    final tiles = config['thumbnails'] as List<dynamic>;
+    final first = server.url.resolve(tiles[0]['file'] as String);
+    final second = server.url.resolve(tiles[1]['file'] as String);
+    final firstResult = server.url.resolve(tiles[0]['result'] as String);
+    final secondResult = server.url.resolve(tiles[1]['result'] as String);
+
+    expect(first.pathSegments.skip(1), [
+      'tiles',
+      '0',
+      'files',
+      'models',
+      'cat #1.OBJ',
+    ]);
+    expect((await client.get(first)).body, _obj);
+    expect((await client.get(second)).statusCode, HttpStatus.notFound);
+    expect(
+      (await client.get(first.resolve('cat.png'))).statusCode,
+      HttpStatus.notFound,
+    );
+    expect(
+      (await client.post(firstResult, body: [1, 2, 3])).statusCode,
+      HttpStatus.noContent,
+    );
+    expect((await client.get(first)).statusCode, HttpStatus.notFound);
+    expect((await client.get(second)).body, 'abc');
+    expect((await client.post(secondResult)).statusCode, HttpStatus.noContent);
+    expect(results, {
+      _modelPath: [1, 2, 3],
+      'other.glb': null,
+    });
+  });
 }

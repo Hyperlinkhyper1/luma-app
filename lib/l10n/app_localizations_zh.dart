@@ -11145,6 +11145,29 @@ class LZh extends L {
   String get aiUsageCacheWrite => '缓存写入';
 
   @override
+  String get aiUsageChartTitle => '使用趋势';
+
+  @override
+  String get aiUsageChartDay => '日';
+
+  @override
+  String get aiUsageChartWeek => '周';
+
+  @override
+  String get aiUsageChartMonth => '月';
+
+  @override
+  String aiUsageChartAverage(String value) {
+    return '平均 $value';
+  }
+
+  @override
+  String get aiUsageChartToggleSeries => '点击显示或隐藏';
+
+  @override
+  String get aiUsageChartNoData => '此期间无使用记录';
+
+  @override
   String get aiUsageAvgHourly => '每小时平均分布';
 
   @override

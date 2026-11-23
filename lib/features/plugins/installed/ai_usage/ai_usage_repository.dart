@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import '../../../../storage/storage_guard.dart';
 import '../../../chat/providers/ai_client.dart';
 import 'ai_usage_source.dart';
+import 'ai_usage_stats.dart';
 import 'antigravity_scanner.dart';
 import 'claude_code_scanner.dart';
 import 'codex_cli_scanner.dart';
@@ -412,6 +413,54 @@ class AiUsageRepository extends ChangeNotifier {
       );
     }
     return query.watch();
+  }
+
+  /// Fires whenever stored turns change: the same signal [watchRange]
+  /// re-queries on, without loading a single row.
+  Stream<void> get turnsChanged => _db
+      .tableUpdates(TableUpdateQuery.onTable(_db.aiUsageTurns))
+      .map((_) {});
+
+  /// Reads every turn from [start] on (all of them when null), optionally
+  /// narrowed to one [source], and aggregates them into the dashboard
+  /// snapshot, all on a short-lived worker isolate. Only the small summary
+  /// crosses back, so even an all-time range never stalls a frame.
+  Future<AiUsageDashboardSnapshot> loadDashboard(
+    DateTime? start, {
+    AiUsageSource? source,
+  }) {
+    return _db.computeWithDatabase(
+      connect: AiUsageDatabase.new,
+      computation: _DashboardJob(start?.toUtc(), source).run,
+    );
+  }
+}
+
+/// The worker half of [AiUsageRepository.loadDashboard]. A plain object, so
+/// the closure sent to the isolate carries only these two fields and never
+/// the repository with its listeners.
+class _DashboardJob {
+  const _DashboardJob(this.startUtc, this.source);
+
+  final DateTime? startUtc;
+  final AiUsageSource? source;
+
+  Future<AiUsageDashboardSnapshot> run(AiUsageDatabase db) async {
+    final start = startUtc;
+    final only = source;
+    final query = db.select(db.aiUsageTurns)
+      ..orderBy([(t) => OrderingTerm.asc(t.timestamp)]);
+    if (start != null || only != null) {
+      query.where((t) {
+        Expression<bool> condition = const Constant(true);
+        if (start != null) {
+          condition = condition & t.timestamp.isBiggerOrEqualValue(start);
+        }
+        if (only != null) condition = condition & t.source.equalsValue(only);
+        return condition;
+      });
+    }
+    return AiUsageDashboardSnapshot.fromTurns(await query.get());
   }
 }
 

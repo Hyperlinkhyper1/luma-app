@@ -11758,6 +11758,29 @@ class LEn extends L {
   String get aiUsageCacheWrite => 'Cache write';
 
   @override
+  String get aiUsageChartTitle => 'Usage over time';
+
+  @override
+  String get aiUsageChartDay => 'Day';
+
+  @override
+  String get aiUsageChartWeek => 'Week';
+
+  @override
+  String get aiUsageChartMonth => 'Month';
+
+  @override
+  String aiUsageChartAverage(String value) {
+    return 'avg $value';
+  }
+
+  @override
+  String get aiUsageChartToggleSeries => 'Click to show or hide';
+
+  @override
+  String get aiUsageChartNoData => 'No usage in this range';
+
+  @override
   String get aiUsageAvgHourly => 'Average Hourly Distribution';
 
   @override

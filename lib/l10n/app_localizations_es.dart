@@ -11841,6 +11841,29 @@ class LEs extends L {
   String get aiUsageCacheWrite => 'Escritura de caché';
 
   @override
+  String get aiUsageChartTitle => 'Uso a lo largo del tiempo';
+
+  @override
+  String get aiUsageChartDay => 'Día';
+
+  @override
+  String get aiUsageChartWeek => 'Semana';
+
+  @override
+  String get aiUsageChartMonth => 'Mes';
+
+  @override
+  String aiUsageChartAverage(String value) {
+    return 'prom. $value';
+  }
+
+  @override
+  String get aiUsageChartToggleSeries => 'Haz clic para mostrar u ocultar';
+
+  @override
+  String get aiUsageChartNoData => 'Sin uso en este periodo';
+
+  @override
   String get aiUsageAvgHourly => 'Distribución horaria media';
 
   @override

@@ -1,4 +1,4 @@
-import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
@@ -6,6 +6,8 @@ import '../../../../app/widgets.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../../theme/luma_theme.dart';
 import 'model_preview.dart';
+import 'model_preview_server.dart';
+import 'model_thumbnail_batch.dart';
 import 'model_viewer_repository.dart';
 import 'model_viewer_scope.dart';
 import 'model_viewer_sign_in.dart';
@@ -17,15 +19,37 @@ class ModelViewerPage extends StatefulWidget {
   State<ModelViewerPage> createState() => _ModelViewerPageState();
 }
 
-class _ModelViewerPageState extends State<ModelViewerPage> {
+class _ModelViewerPageState extends State<ModelViewerPage>
+    with WidgetsBindingObserver {
+  static const _pageSize = 8;
+  static const _thumbnailCacheSize = 64;
+
   final _repoInput = TextEditingController();
   final _refInput = TextEditingController();
   final _search = TextEditingController();
+  final _thumbnails = <String, Uint8List?>{};
   ModelCatalogue? _catalogue;
   RepositoryModel? _selected;
+  int _page = 0;
+  bool _appVisible = true;
   bool _restored = false;
   bool _busy = false;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final visible =
+        state != AppLifecycleState.hidden &&
+        state != AppLifecycleState.paused &&
+        state != AppLifecycleState.detached;
+    if (visible != _appVisible) setState(() => _appVisible = visible);
+  }
 
   @override
   void didChangeDependencies() {
@@ -38,10 +62,25 @@ class _ModelViewerPageState extends State<ModelViewerPage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _clearThumbnails();
     _repoInput.dispose();
     _refInput.dispose();
     _search.dispose();
     super.dispose();
+  }
+
+  void _evictThumbnail(Uint8List? bytes) {
+    if (bytes != null) {
+      PaintingBinding.instance.imageCache.evict(MemoryImage(bytes));
+    }
+  }
+
+  void _clearThumbnails() {
+    for (final bytes in _thumbnails.values) {
+      _evictThumbnail(bytes);
+    }
+    _thumbnails.clear();
   }
 
   Future<void> _scan() async {
@@ -53,6 +92,8 @@ class _ModelViewerPageState extends State<ModelViewerPage> {
       _error = null;
       _catalogue = null;
       _selected = null;
+      _page = 0;
+      _clearThumbnails();
       _search.clear();
     });
     try {
@@ -91,6 +132,7 @@ class _ModelViewerPageState extends State<ModelViewerPage> {
     setState(() {
       _busy = true;
       _catalogue = null;
+      _clearThumbnails();
       _error = null;
     });
     try {
@@ -107,15 +149,13 @@ class _ModelViewerPageState extends State<ModelViewerPage> {
     final t = L.of(context);
     final repository = ModelViewerScope.of(context);
     final catalogue = _catalogue;
-    final models =
-        catalogue?.models
-            .where(
-              (model) => model.path.toLowerCase().contains(
-                _search.text.trim().toLowerCase(),
-              ),
-            )
-            .toList() ??
-        const <RepositoryModel>[];
+    final query = _search.text.trim().toLowerCase();
+    final allModels = catalogue?.models ?? const <RepositoryModel>[];
+    final models = query.isEmpty
+        ? allModels
+        : allModels
+              .where((model) => model.path.toLowerCase().contains(query))
+              .toList();
     final selected = _selected;
     if (catalogue != null && selected != null) {
       return _modelDetail(t, catalogue, selected, models);
@@ -162,7 +202,7 @@ class _ModelViewerPageState extends State<ModelViewerPage> {
           Expanded(
             child: _busy
                 ? const Center(child: CircularProgressIndicator())
-                : _catalogueBody(t, catalogue, models),
+                : _catalogueBody(t, catalogue, models, query),
           ),
         ],
       ),
@@ -232,6 +272,7 @@ class _ModelViewerPageState extends State<ModelViewerPage> {
     L t,
     ModelCatalogue? catalogue,
     List<RepositoryModel> models,
+    String query,
   ) {
     if (_error case final error?) {
       return LumaEmptyState(
@@ -248,6 +289,20 @@ class _ModelViewerPageState extends State<ModelViewerPage> {
         subtitle: t.modelViewerEmptyDescription,
       );
     }
+    final start = _page * _pageSize;
+    final pageModels = models.skip(start).take(_pageSize).toList();
+    final end = start + pageModels.length;
+    final thumbnailsVisible =
+        ModelThumbnailBatch.supported &&
+        _appVisible &&
+        TickerMode.valuesOf(context).enabled;
+    final pending = thumbnailsVisible
+        ? pageModels.where((model) {
+            return !_thumbnails.containsKey(model.path) &&
+                catalogue.sizeOf(model.path)! <=
+                    ModelPreviewServer.thumbnailFileBudget;
+          }).toList()
+        : const <RepositoryModel>[];
     return Column(
       children: [
         ListTile(
@@ -273,7 +328,7 @@ class _ModelViewerPageState extends State<ModelViewerPage> {
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
             child: TextField(
               controller: _search,
-              onChanged: (_) => setState(() {}),
+              onChanged: (_) => setState(() => _page = 0),
               decoration: InputDecoration(
                 hintText: t.modelViewerSearch,
                 prefixIcon: const Icon(Icons.search_rounded),
@@ -289,42 +344,153 @@ class _ModelViewerPageState extends State<ModelViewerPage> {
                       ? t.modelViewerNoModels
                       : t.modelViewerNoMatches,
                 )
-              : GridView.builder(
-                  key: PageStorageKey('${catalogue.slug}@${catalogue.ref}'),
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                    maxCrossAxisExtent: 355,
-                    mainAxisExtent: 92,
-                    mainAxisSpacing: 8,
-                    crossAxisSpacing: 8,
+              : Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 1380),
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final width = constraints.maxWidth;
+                        final columns = switch (width) {
+                          >= 1100 => 4,
+                          >= 760 => 3,
+                          >= 330 => 2,
+                          _ => 1,
+                        };
+                        return GridView.builder(
+                          key: PageStorageKey((
+                            catalogue.slug,
+                            catalogue.ref,
+                            query,
+                            _page,
+                          )),
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                          gridDelegate:
+                              SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: columns,
+                                mainAxisExtent:
+                                    (columns <= 2 ? 156 : 188) +
+                                    MediaQuery.textScalerOf(context).scale(30),
+                                mainAxisSpacing: 12,
+                                crossAxisSpacing: 12,
+                              ),
+                          itemCount: pageModels.length,
+                          itemBuilder: (context, index) =>
+                              _modelCard(pageModels[index]),
+                        );
+                      },
+                    ),
                   ),
-                  itemCount: models.length,
-                  itemBuilder: (context, index) => _modelCard(models[index]),
                 ),
         ),
+        if (models.length > _pageSize)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              IconButton(
+                tooltip: t.commonPrevious,
+                onPressed: _page == 0 ? null : () => setState(() => _page--),
+                icon: const Icon(Icons.chevron_left_rounded),
+              ),
+              Flexible(
+                child: Text(
+                  MaterialLocalizations.of(
+                    context,
+                  ).pageRowsInfoTitle(start + 1, end, models.length, false),
+                ),
+              ),
+              IconButton(
+                tooltip: t.commonNext,
+                onPressed: end == models.length
+                    ? null
+                    : () => setState(() => _page++),
+                icon: const Icon(Icons.chevron_right_rounded),
+              ),
+            ],
+          ),
+        if (pending.isNotEmpty)
+          ModelThumbnailBatch(
+            key: ValueKey((catalogue, query, _page)),
+            catalogue: catalogue,
+            models: pending,
+            onThumbnail: (model, image) {
+              if (!mounted || _catalogue != catalogue) return;
+              setState(() {
+                _thumbnails[model.path] = image;
+                if (_thumbnails.length > _thumbnailCacheSize) {
+                  _evictThumbnail(_thumbnails.remove(_thumbnails.keys.first));
+                }
+              });
+            },
+          ),
       ],
     );
   }
 
   Widget _modelCard(RepositoryModel model) {
+    final image = _thumbnails[model.path];
+    final placeholder = Center(
+      child: Icon(
+        Icons.view_in_ar_outlined,
+        color: context.luma.accent,
+        size: 32,
+      ),
+    );
+    final folderEnd = model.path.lastIndexOf('/');
+    final subtitle = folderEnd == -1
+        ? model.format.name.toUpperCase()
+        : model.path.substring(0, folderEnd);
     return LumaCard(
-      padding: EdgeInsets.zero,
+      padding: const EdgeInsets.all(1),
       child: Material(
         type: MaterialType.transparency,
-        child: ListTile(
-          shape: RoundedRectangleBorder(
-            borderRadius: context.lumaDecor.cardBorderRadius,
-          ),
-          leading: Icon(Icons.view_in_ar_outlined, color: context.luma.accent),
-          trailing: const Icon(Icons.chevron_right_rounded, size: 18),
+        shape: context.lumaDecor.cardShape(),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
           onTap: () => setState(() => _selected = model),
-          title: Text(model.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-          subtitle: Text(
-            model.path.contains('/')
-                ? model.path
-                : model.format.name.toUpperCase(),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: Ink(
+                  color: Color.lerp(
+                    context.luma.background,
+                    context.luma.surface,
+                    0.35,
+                  ),
+                  child: image == null
+                      ? placeholder
+                      : Image.memory(
+                          image,
+                          fit: BoxFit.contain,
+                          excludeFromSemantics: true,
+                          errorBuilder: (_, _, _) => placeholder,
+                        ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+                child: Tooltip(
+                  message: model.path,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        model.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                      Text(
+                        subtitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),

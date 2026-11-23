@@ -11832,6 +11832,29 @@ class LNl extends L {
   String get aiUsageCacheWrite => 'Cache-schrijven';
 
   @override
+  String get aiUsageChartTitle => 'Gebruik door de tijd';
+
+  @override
+  String get aiUsageChartDay => 'Dag';
+
+  @override
+  String get aiUsageChartWeek => 'Week';
+
+  @override
+  String get aiUsageChartMonth => 'Maand';
+
+  @override
+  String aiUsageChartAverage(String value) {
+    return 'gem. $value';
+  }
+
+  @override
+  String get aiUsageChartToggleSeries => 'Klik om te tonen of te verbergen';
+
+  @override
+  String get aiUsageChartNoData => 'Geen gebruik in deze periode';
+
+  @override
   String get aiUsageAvgHourly => 'Gemiddelde verdeling per uur';
 
   @override
