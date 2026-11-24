@@ -3,10 +3,19 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:luma/app/splash_screen.dart';
+import 'package:luma/l10n/app_localizations.dart';
 
 void main() {
   Widget splash(Future<void> bootstrap, VoidCallback onDone) => MaterialApp(
-    home: SplashScreen(bootstrap: bootstrap, onDone: onDone),
+    locale: const Locale('en'),
+    localizationsDelegates: L.localizationsDelegates,
+    supportedLocales: L.supportedLocales,
+    home: SplashScreen(
+      bootstrap: bootstrap,
+      onDone: onDone,
+      version: '1.0.0',
+      edition: 'Free edition',
+    ),
   );
 
   testWidgets(

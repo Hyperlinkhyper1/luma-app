@@ -2,24 +2,27 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:luma/features/plugins/installed/minecraft_launcher/logic/mod_install_flow.dart';
 import 'package:luma/features/plugins/installed/minecraft_launcher/logic/modrinth_api_client.dart';
 import 'package:luma/features/plugins/installed/minecraft_launcher/ui/modrinth_ui.dart';
+import 'package:flutter/widgets.dart';
+import 'package:luma/l10n/app_localizations.dart';
 
 ModrinthVersion _version({
   required String id,
   required String type,
   required DateTime published,
-}) =>
-    ModrinthVersion.fromJson({
-      'id': id,
-      'project_id': 'p',
-      'version_number': id,
-      'name': id,
-      'version_type': type,
-      'game_versions': ['1.20.1'],
-      'loaders': ['fabric'],
-      'files': const [],
-      'dependencies': const [],
-      'date_published': published.toIso8601String(),
-    });
+}) => ModrinthVersion.fromJson({
+  'id': id,
+  'project_id': 'p',
+  'version_number': id,
+  'name': id,
+  'version_type': type,
+  'game_versions': ['1.20.1'],
+  'loaders': ['fabric'],
+  'files': const [],
+  'dependencies': const [],
+  'date_published': published.toIso8601String(),
+});
+
+final _en = lookupL(const Locale('en'));
 
 void main() {
   group('search hit parsing', () {
@@ -119,13 +122,13 @@ void main() {
     });
 
     test('describes how long ago a project was updated', () {
-      expect(relativeTime(null), '');
+      expect(relativeTime(_en, null), '');
       expect(
-        relativeTime(DateTime.now().subtract(const Duration(days: 2))),
+        relativeTime(_en, DateTime.now().subtract(const Duration(days: 2))),
         '2 days ago',
       );
       expect(
-        relativeTime(DateTime.now().subtract(const Duration(minutes: 5))),
+        relativeTime(_en, DateTime.now().subtract(const Duration(minutes: 5))),
         '5m ago',
       );
     });

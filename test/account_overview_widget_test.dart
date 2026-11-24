@@ -12,6 +12,7 @@ import 'package:luma/features/plugins/installed/account_overview/youtube_scope.d
 import 'package:luma/features/plugins/installed/account_overview/spotify_models.dart';
 import 'package:luma/features/plugins/installed/account_overview/spotify_repository.dart';
 import 'package:luma/features/plugins/installed/account_overview/spotify_scope.dart';
+import 'package:luma/l10n/app_localizations.dart';
 import 'package:luma/theme/luma_theme.dart';
 
 /// The plugin under its scope, the way `main.dart` nests it.
@@ -24,28 +25,30 @@ Widget _app(
   McContentRepository mc,
   YoutubeRepository youtube, {
   Size? size,
-}) =>
-    MediaQuery(
-      data: MediaQueryData(size: size ?? const Size(1280, 800)),
-      child: MaterialApp(
-        theme: LumaTheme.dark,
-        home: AccountOverviewScope(
-          repository: repository,
-          // The shell reads every service's state to build its rail, so the
-          // other scopes are part of the harness even for GitHub-only tests.
-          child: McContentScope(
-            repository: mc,
-            child: YoutubeScope(
-              repository: youtube,
-              child: SpotifyScope(
-                repository: _spotify,
-                child: const Scaffold(body: AccountOverviewPage()),
-              ),
-            ),
+}) => MediaQuery(
+  data: MediaQueryData(size: size ?? const Size(1280, 800)),
+  child: MaterialApp(
+    theme: LumaTheme.dark,
+    locale: const Locale('en'),
+    localizationsDelegates: L.localizationsDelegates,
+    supportedLocales: L.supportedLocales,
+    home: AccountOverviewScope(
+      repository: repository,
+      // The shell reads every service's state to build its rail, so the
+      // other scopes are part of the harness even for GitHub-only tests.
+      child: McContentScope(
+        repository: mc,
+        child: YoutubeScope(
+          repository: youtube,
+          child: SpotifyScope(
+            repository: _spotify,
+            child: const Scaffold(body: AccountOverviewPage()),
           ),
         ),
       ),
-    );
+    ),
+  ),
+);
 
 /// Pumps the plugin with its startup read already finished.
 ///
@@ -86,6 +89,8 @@ Future<void> _pumpSeeded(
   await tester.pumpAndSettle();
 }
 
+final _en = lookupL(const Locale('en'));
+
 void main() {
   late AccountOverviewRepository repository;
 
@@ -109,31 +114,35 @@ void main() {
       // The rail is an accordion — only one service's sections show at a
       // time — so a section belonging to a folded-away service needs its
       // heading tapped open first.
-      if (find.text(section.label).evaluate().isEmpty) {
+      if (find.text(section.label(_en)).evaluate().isEmpty) {
         await tester.tap(find.text(section.service.label));
         await tester.pumpAndSettle();
       }
       expect(
-        find.text(section.label),
+        find.text(section.label(_en)),
         findsWidgets,
-        reason: '${section.label} should be reachable from the rail',
+        reason: '${section.label(_en)} should be reachable from the rail',
       );
     }
   });
 
   testWidgets('Spotify stats work without a GitHub connection', (tester) async {
-    _spotify.seedForTest(SpotifySnapshot(
-      displayName: 'Music Fan',
-      profileUrl: null,
-      followers: 12,
-      topArtists: const [SpotifyItem(name: 'Test Artist', subtitle: 'Indie')],
-      topTracks: const [SpotifyItem(name: 'Test Track', subtitle: 'Test Artist')],
-      recentTracks: const [],
-      savedTracks: 42,
-      playlists: 3,
-      fetchedAt: DateTime.now(),
-      timeRange: 'medium_term',
-    ));
+    _spotify.seedForTest(
+      SpotifySnapshot(
+        displayName: 'Music Fan',
+        profileUrl: null,
+        followers: 12,
+        topArtists: const [SpotifyItem(name: 'Test Artist', subtitle: 'Indie')],
+        topTracks: const [
+          SpotifyItem(name: 'Test Track', subtitle: 'Test Artist'),
+        ],
+        recentTracks: const [],
+        savedTracks: 42,
+        playlists: 3,
+        fetchedAt: DateTime.now(),
+        timeRange: 'medium_term',
+      ),
+    );
     await _pumpApp(tester, repository);
 
     await tester.tap(find.text('Spotify'));
@@ -155,8 +164,9 @@ void main() {
     expect(find.text('Test Track'), findsOneWidget);
   });
 
-  testWidgets('asks for a token before showing any account data',
-      (tester) async {
+  testWidgets('asks for a token before showing any account data', (
+    tester,
+  ) async {
     await _pumpApp(tester, repository);
 
     expect(find.text('Connect your GitHub account'), findsOneWidget);
@@ -166,12 +176,13 @@ void main() {
     expect(find.textContaining('luma server'), findsWidgets);
   });
 
-  testWidgets('rail items are disabled while no account is connected',
-      (tester) async {
+  testWidgets('rail items are disabled while no account is connected', (
+    tester,
+  ) async {
     await _pumpApp(tester, repository);
 
     final overview = find.ancestor(
-      of: find.text(AccountSection.repositories.label),
+      of: find.text(AccountSection.repositories.label(_en)),
       matching: find.byType(InkWell),
     );
     expect(tester.widget<InkWell>(overview.first).onTap, isNull);
@@ -181,23 +192,24 @@ void main() {
     await _pumpApp(tester, repository);
 
     expect(find.text('Collapse'), findsOneWidget);
-    expect(find.text(AccountSection.usage.label), findsOneWidget);
+    expect(find.text(AccountSection.usage.label(_en)), findsOneWidget);
 
     await tester.tap(find.text('Collapse'));
     await tester.pumpAndSettle();
 
     // Collapsed, the labels go but the destinations stay — as tooltips.
     expect(find.text('Collapse'), findsNothing);
-    expect(find.text(AccountSection.usage.label), findsNothing);
+    expect(find.text(AccountSection.usage.label(_en)), findsNothing);
     expect(find.byIcon(AccountSection.usage.icon), findsOneWidget);
 
     await tester.tap(find.byIcon(Icons.keyboard_double_arrow_right_rounded));
     await tester.pumpAndSettle();
-    expect(find.text(AccountSection.usage.label), findsOneWidget);
+    expect(find.text(AccountSection.usage.label(_en)), findsOneWidget);
   });
 
-  testWidgets('the connect dialog opens and names the scopes it needs',
-      (tester) async {
+  testWidgets('the connect dialog opens and names the scopes it needs', (
+    tester,
+  ) async {
     await _pumpApp(tester, repository);
 
     await tester.tap(find.text('Connect GitHub'));
@@ -235,8 +247,9 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('the usage meters draw a bar only with an allowance',
-        (tester) async {
+    testWidgets('the usage meters draw a bar only with an allowance', (
+      tester,
+    ) async {
       repository.seedForTest(
         _populated(),
         // Minutes have an allowance from GitHub itself; Copilot has none
@@ -245,7 +258,7 @@ void main() {
       );
       await _pumpSeeded(tester, repository);
 
-      await tester.tap(find.text(AccountSection.usage.label));
+      await tester.tap(find.text(AccountSection.usage.label(_en)));
       await tester.pumpAndSettle();
 
       expect(find.text('GitHub Copilot'), findsOneWidget);
@@ -260,8 +273,9 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('a recorded Copilot allowance turns the meter into a bar',
-        (tester) async {
+    testWidgets('a recorded Copilot allowance turns the meter into a bar', (
+      tester,
+    ) async {
       repository.seedForTest(
         _populated(),
         credentials: const GithubCredentials(
@@ -272,7 +286,7 @@ void main() {
       );
       await _pumpSeeded(tester, repository);
 
-      await tester.tap(find.text(AccountSection.usage.label));
+      await tester.tap(find.text(AccountSection.usage.label(_en)));
       await tester.pumpAndSettle();
 
       expect(find.textContaining('of 300 ai-credits included'), findsOneWidget);
@@ -288,16 +302,16 @@ void main() {
       for (final section in AccountSection.values) {
         // Accordion rail: fold the section's own service open first if it
         // is not the one currently expanded.
-        if (find.text(section.label).evaluate().isEmpty) {
+        if (find.text(section.label(_en)).evaluate().isEmpty) {
           await tester.tap(find.text(section.service.label));
           await tester.pumpAndSettle();
         }
-        await tester.tap(find.text(section.label).first);
+        await tester.tap(find.text(section.label(_en)).first);
         await tester.pumpAndSettle();
         expect(
           tester.takeException(),
           isNull,
-          reason: '${section.label} should render cleanly',
+          reason: '${section.label(_en)} should render cleanly',
         );
       }
     });
@@ -307,153 +321,153 @@ void main() {
 /// A snapshot with something in every section, so each tab has real content
 /// to lay out rather than an empty state.
 GithubSnapshot _populated() => GithubSnapshot(
-      profile: const GithubProfile(
-        login: 'octo',
-        name: 'Octo Cat',
-        avatarUrl: '',
-        bio: 'Builds things',
-        company: null,
-        location: 'Delft',
-        followers: 12,
-        following: 3,
-        publicRepos: 2,
-        privateRepos: 1,
-        createdAt: null,
-        planName: 'pro',
+  profile: const GithubProfile(
+    login: 'octo',
+    name: 'Octo Cat',
+    avatarUrl: '',
+    bio: 'Builds things',
+    company: null,
+    location: 'Delft',
+    followers: 12,
+    following: 3,
+    publicRepos: 2,
+    privateRepos: 1,
+    createdAt: null,
+    planName: 'pro',
+  ),
+  repos: [
+    GithubRepo(
+      name: 'luma',
+      fullName: 'octo/luma',
+      description: 'A utility app',
+      isPrivate: false,
+      isFork: false,
+      isArchived: false,
+      language: 'Dart',
+      stars: 12,
+      forks: 2,
+      watchers: 4,
+      openIssues: 3,
+      sizeKb: 4096,
+      pushedAt: DateTime(2026, 8, 20),
+      htmlUrl: 'https://github.com/octo/luma',
+      downloads: 1200,
+      releases: 4,
+    ),
+    GithubRepo(
+      name: 'tools',
+      fullName: 'octo/tools',
+      description: null,
+      isPrivate: true,
+      isFork: false,
+      isArchived: false,
+      language: 'Rust',
+      stars: 3,
+      forks: 0,
+      watchers: 1,
+      openIssues: 0,
+      sizeKb: 512,
+      pushedAt: DateTime(2026, 7, 2),
+      htmlUrl: 'https://github.com/octo/tools',
+    ),
+  ],
+  contributions: GithubContributions(
+    totalCommits: 842,
+    totalIssues: 6,
+    totalPullRequests: 21,
+    totalReviews: 4,
+    restricted: 30,
+    calendarTotal: 900,
+    days: [
+      for (var i = 0; i < 371; i++)
+        GithubContributionDay(
+          date: DateTime(2025, 9, 1).add(Duration(days: i)),
+          count: i % 5,
+        ),
+    ],
+  ),
+  issues: [
+    GithubIssue(
+      title: 'Crash on launch',
+      repo: 'octo/luma',
+      number: 4,
+      state: 'open',
+      isPullRequest: false,
+      isDraft: false,
+      merged: false,
+      updatedAt: DateTime(2026, 8, 30),
+      comments: 2,
+      htmlUrl: 'https://github.com/octo/luma/issues/4',
+    ),
+    GithubIssue(
+      title: 'Add the usage meters',
+      repo: 'octo/luma',
+      number: 5,
+      state: 'closed',
+      isPullRequest: true,
+      isDraft: false,
+      merged: true,
+      updatedAt: DateTime(2026, 8, 28),
+      comments: 0,
+      htmlUrl: 'https://github.com/octo/luma/pull/5',
+    ),
+  ],
+  issueTotals: const GithubIssueTotals(
+    openIssues: 3,
+    closedIssues: 18,
+    openPrs: 1,
+    mergedPrs: 27,
+  ),
+  runs: [
+    GithubWorkflowRun(
+      name: 'release',
+      repo: 'octo/luma',
+      status: 'completed',
+      conclusion: 'success',
+      branch: 'master',
+      event: 'push',
+      runNumber: 91,
+      startedAt: DateTime(2026, 8, 31, 10),
+      updatedAt: DateTime(2026, 8, 31, 10, 12),
+      htmlUrl: 'https://github.com/octo/luma/actions/runs/91',
+    ),
+    GithubWorkflowRun(
+      name: 'tests',
+      repo: 'octo/luma',
+      status: 'completed',
+      conclusion: 'failure',
+      branch: 'master',
+      event: 'push',
+      runNumber: 90,
+      startedAt: DateTime(2026, 8, 30, 9),
+      updatedAt: DateTime(2026, 8, 30, 9, 4),
+      htmlUrl: 'https://github.com/octo/luma/actions/runs/90',
+    ),
+  ],
+  billing: const GithubBilling(
+    available: true,
+    unavailableReason: null,
+    minutesUsed: 450,
+    minutesIncluded: 3000,
+    paidMinutesUsed: 0,
+    minutesBreakdown: {'UBUNTU': 300, 'WINDOWS': 150},
+    storageGbUsed: 1.75,
+    bandwidthGbUsed: 2,
+    bandwidthGbIncluded: 10,
+    daysLeftInCycle: 11,
+    privateStorageGbUsed: 1.75,
+    privateStorageReposCounted: 2,
+    privateStorageReposTotal: 2,
+    usageItems: [
+      GithubUsageItem(
+        product: 'Copilot AI Credits',
+        sku: 'AI Credit',
+        unitType: 'ai-credits',
+        quantity: 240,
+        netAmount: 0,
+        repository: null,
       ),
-      repos: [
-        GithubRepo(
-          name: 'luma',
-          fullName: 'octo/luma',
-          description: 'A utility app',
-          isPrivate: false,
-          isFork: false,
-          isArchived: false,
-          language: 'Dart',
-          stars: 12,
-          forks: 2,
-          watchers: 4,
-          openIssues: 3,
-          sizeKb: 4096,
-          pushedAt: DateTime(2026, 8, 20),
-          htmlUrl: 'https://github.com/octo/luma',
-          downloads: 1200,
-          releases: 4,
-        ),
-        GithubRepo(
-          name: 'tools',
-          fullName: 'octo/tools',
-          description: null,
-          isPrivate: true,
-          isFork: false,
-          isArchived: false,
-          language: 'Rust',
-          stars: 3,
-          forks: 0,
-          watchers: 1,
-          openIssues: 0,
-          sizeKb: 512,
-          pushedAt: DateTime(2026, 7, 2),
-          htmlUrl: 'https://github.com/octo/tools',
-        ),
-      ],
-      contributions: GithubContributions(
-        totalCommits: 842,
-        totalIssues: 6,
-        totalPullRequests: 21,
-        totalReviews: 4,
-        restricted: 30,
-        calendarTotal: 900,
-        days: [
-          for (var i = 0; i < 371; i++)
-            GithubContributionDay(
-              date: DateTime(2025, 9, 1).add(Duration(days: i)),
-              count: i % 5,
-            ),
-        ],
-      ),
-      issues: [
-        GithubIssue(
-          title: 'Crash on launch',
-          repo: 'octo/luma',
-          number: 4,
-          state: 'open',
-          isPullRequest: false,
-          isDraft: false,
-          merged: false,
-          updatedAt: DateTime(2026, 8, 30),
-          comments: 2,
-          htmlUrl: 'https://github.com/octo/luma/issues/4',
-        ),
-        GithubIssue(
-          title: 'Add the usage meters',
-          repo: 'octo/luma',
-          number: 5,
-          state: 'closed',
-          isPullRequest: true,
-          isDraft: false,
-          merged: true,
-          updatedAt: DateTime(2026, 8, 28),
-          comments: 0,
-          htmlUrl: 'https://github.com/octo/luma/pull/5',
-        ),
-      ],
-      issueTotals: const GithubIssueTotals(
-        openIssues: 3,
-        closedIssues: 18,
-        openPrs: 1,
-        mergedPrs: 27,
-      ),
-      runs: [
-        GithubWorkflowRun(
-          name: 'release',
-          repo: 'octo/luma',
-          status: 'completed',
-          conclusion: 'success',
-          branch: 'master',
-          event: 'push',
-          runNumber: 91,
-          startedAt: DateTime(2026, 8, 31, 10),
-          updatedAt: DateTime(2026, 8, 31, 10, 12),
-          htmlUrl: 'https://github.com/octo/luma/actions/runs/91',
-        ),
-        GithubWorkflowRun(
-          name: 'tests',
-          repo: 'octo/luma',
-          status: 'completed',
-          conclusion: 'failure',
-          branch: 'master',
-          event: 'push',
-          runNumber: 90,
-          startedAt: DateTime(2026, 8, 30, 9),
-          updatedAt: DateTime(2026, 8, 30, 9, 4),
-          htmlUrl: 'https://github.com/octo/luma/actions/runs/90',
-        ),
-      ],
-      billing: const GithubBilling(
-        available: true,
-        unavailableReason: null,
-        minutesUsed: 450,
-        minutesIncluded: 3000,
-        paidMinutesUsed: 0,
-        minutesBreakdown: {'UBUNTU': 300, 'WINDOWS': 150},
-        storageGbUsed: 1.75,
-        bandwidthGbUsed: 2,
-        bandwidthGbIncluded: 10,
-        daysLeftInCycle: 11,
-        privateStorageGbUsed: 1.75,
-        privateStorageReposCounted: 2,
-        privateStorageReposTotal: 2,
-        usageItems: [
-          GithubUsageItem(
-            product: 'Copilot AI Credits',
-            sku: 'AI Credit',
-            unitType: 'ai-credits',
-            quantity: 240,
-            netAmount: 0,
-            repository: null,
-          ),
-        ],
-      ),
-      fetchedAt: DateTime(2026, 9, 1),
-    );
+    ],
+  ),
+  fetchedAt: DateTime(2026, 9, 1),
+);

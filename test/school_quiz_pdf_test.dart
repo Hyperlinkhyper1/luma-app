@@ -5,6 +5,35 @@ import 'package:syncfusion_flutter_pdf/pdf.dart';
 import 'package:luma/features/plugins/installed/school/logic/quiz_bank.dart';
 import 'package:luma/features/plugins/installed/school/logic/quiz_export.dart';
 import 'package:luma/features/plugins/installed/school/logic/quiz_pdf.dart';
+import 'package:flutter/widgets.dart';
+import 'package:luma/l10n/app_localizations.dart';
+
+/// The PDF test reads Dutch text back out, so it builds the labels in Dutch
+/// rather than whatever language the test host runs in.
+QuizPdfLabels _dutchLabels() {
+  final t = lookupL(const Locale('nl'));
+  return QuizPdfLabels(
+    runningHeader: t.schoolQuizPdfRunningHeader('{section}'),
+    questions: t.schoolQuizPdfSectionQuestions,
+    answerSheet: t.schoolQuizPdfSectionAnswerSheet,
+    mixed: t.schoolQuizPdfMixed,
+    perSubject: t.schoolQuizPdfPerSubject,
+    questionTitle: t.schoolQuizPdfQuestionTitle('{number}', '{subject}'),
+    questionTitlePassage: t.schoolQuizPdfQuestionTitlePassage(
+      '{number}',
+      '{subject}',
+      '{passage}',
+    ),
+    passageHeading: t.schoolQuizPdfPassageHeading('{number}'),
+    pageOf: t.schoolQuizPdfPageOf('{page}', '{total}'),
+    nameDate: t.schoolQuizPdfNameDateLine,
+    instructions: t.schoolQuizPdfInstructions,
+    disclaimer: t.schoolQuizPdfDisclaimer,
+    answerBlank: t.schoolQuizPdfAnswerBlank,
+    answers: t.schoolQuizPdfAnswersHeading,
+    answersNote: t.schoolQuizPdfAnswersNote,
+  );
+}
 
 void main() {
   test('PDF renderer runs in an isolate', () async {
@@ -87,6 +116,8 @@ void main() {
       final reading = QuizBank.byId('lezen')!;
       final export = QuizExport(
         title: 'Oefentoets groep 8',
+        subtitle: '',
+        labels: _dutchLabels(),
         mixed: false,
         answers: true,
         explanations: true,

@@ -13,6 +13,7 @@ import 'package:luma/features/plugins/installed/account_overview/youtube_reposit
 import 'package:luma/features/plugins/installed/account_overview/youtube_scope.dart';
 import 'package:luma/features/plugins/installed/account_overview/spotify_repository.dart';
 import 'package:luma/features/plugins/installed/account_overview/spotify_scope.dart';
+import 'package:luma/l10n/app_localizations.dart';
 import 'package:luma/theme/luma_theme.dart';
 
 /// The plugin under every scope, the way `main.dart` nests them — the shell
@@ -22,23 +23,25 @@ Widget _app(
   AccountOverviewRepository github,
   McContentRepository mc,
   YoutubeRepository youtube,
-) =>
-    MaterialApp(
-      theme: LumaTheme.dark,
-      home: AccountOverviewScope(
-        repository: github,
-        child: McContentScope(
-          repository: mc,
-          child: YoutubeScope(
-            repository: youtube,
-            child: SpotifyScope(
-              repository: _spotify,
-              child: const Scaffold(body: AccountOverviewPage()),
-            ),
-          ),
+) => MaterialApp(
+  theme: LumaTheme.dark,
+  locale: const Locale('en'),
+  localizationsDelegates: L.localizationsDelegates,
+  supportedLocales: L.supportedLocales,
+  home: AccountOverviewScope(
+    repository: github,
+    child: McContentScope(
+      repository: mc,
+      child: YoutubeScope(
+        repository: youtube,
+        child: SpotifyScope(
+          repository: _spotify,
+          child: const Scaffold(body: AccountOverviewPage()),
         ),
       ),
-    );
+    ),
+  ),
+);
 
 McProject _project(
   McPlatform platform,
@@ -47,56 +50,66 @@ McProject _project(
   int followers = 0,
   int views = 0,
   bool approximate = false,
-}) =>
-    McProject(
-      platform: platform,
-      id: '$name-id',
-      slug: name.toLowerCase(),
-      name: name,
-      url: 'https://example.invalid/$name',
-      kind: 'mod',
-      downloads: downloads,
-      followers: followers,
-      views: views,
-      approximate: approximate,
-    );
+}) => McProject(
+  platform: platform,
+  id: '$name-id',
+  slug: name.toLowerCase(),
+  name: name,
+  url: 'https://example.invalid/$name',
+  kind: 'mod',
+  downloads: downloads,
+  followers: followers,
+  views: views,
+  approximate: approximate,
+);
 
 /// A snapshot with all three platforms reporting.
 McSnapshot _populated() => McSnapshot.empty
-    .withResult(McPlatformResult(
-      platform: McPlatform.curseforge,
-      state: McPlatformState.ok,
-      creator: const McCreator(platform: McPlatform.curseforge, handle: '77'),
-      projects: [_project(McPlatform.curseforge, 'Alloy', downloads: 120000)],
-      fetchedAt: DateTime(2026, 9, 1),
-    ))
-    .withResult(McPlatformResult(
-      platform: McPlatform.modrinth,
-      state: McPlatformState.ok,
-      creator: const McCreator(platform: McPlatform.modrinth, handle: 'octo'),
-      projects: [
-        _project(McPlatform.modrinth, 'Sodium', downloads: 30000, followers: 40),
-      ],
-      fetchedAt: DateTime(2026, 9, 1),
-    ))
-    .withResult(McPlatformResult(
-      platform: McPlatform.planetMinecraft,
-      state: McPlatformState.ok,
-      creator: const McCreator(
-        platform: McPlatform.planetMinecraft,
-        handle: 'octo',
+    .withResult(
+      McPlatformResult(
+        platform: McPlatform.curseforge,
+        state: McPlatformState.ok,
+        creator: const McCreator(platform: McPlatform.curseforge, handle: '77'),
+        projects: [_project(McPlatform.curseforge, 'Alloy', downloads: 120000)],
+        fetchedAt: DateTime(2026, 9, 1),
       ),
-      projects: [
-        _project(
-          McPlatform.planetMinecraft,
-          'Castle',
-          views: 1100,
-          followers: 166,
-          approximate: true,
+    )
+    .withResult(
+      McPlatformResult(
+        platform: McPlatform.modrinth,
+        state: McPlatformState.ok,
+        creator: const McCreator(platform: McPlatform.modrinth, handle: 'octo'),
+        projects: [
+          _project(
+            McPlatform.modrinth,
+            'Sodium',
+            downloads: 30000,
+            followers: 40,
+          ),
+        ],
+        fetchedAt: DateTime(2026, 9, 1),
+      ),
+    )
+    .withResult(
+      McPlatformResult(
+        platform: McPlatform.planetMinecraft,
+        state: McPlatformState.ok,
+        creator: const McCreator(
+          platform: McPlatform.planetMinecraft,
+          handle: 'octo',
         ),
-      ],
-      fetchedAt: DateTime(2026, 9, 1),
-    ))
+        projects: [
+          _project(
+            McPlatform.planetMinecraft,
+            'Castle',
+            views: 1100,
+            followers: 166,
+            approximate: true,
+          ),
+        ],
+        fetchedAt: DateTime(2026, 9, 1),
+      ),
+    )
     .withFetchedAt(DateTime(2026, 9, 1));
 
 /// Two weeks of history, so the trend charts have something to draw.
@@ -163,7 +176,7 @@ Future<void> _openMcContent(WidgetTester tester) async {
   // whenever GitHub (the default selection) is the one currently expanded.
   // Below 640px the rail also collapses to icons on its own, so the heading
   // has no label to tap there either — its icon still works.
-  if (find.text(AccountSection.mcContent.label).evaluate().isEmpty &&
+  if (find.text(AccountSection.mcContent.label(_en)).evaluate().isEmpty &&
       find.byIcon(AccountSection.mcContent.icon).evaluate().isEmpty) {
     final headingByLabel = find.text(AccountService.minecraft.label);
     await tester.tap(
@@ -173,7 +186,7 @@ Future<void> _openMcContent(WidgetTester tester) async {
     );
     await tester.pumpAndSettle();
   }
-  final byLabel = find.text(AccountSection.mcContent.label);
+  final byLabel = find.text(AccountSection.mcContent.label(_en));
   await tester.tap(
     byLabel.evaluate().isEmpty
         ? find.byIcon(AccountSection.mcContent.icon).first
@@ -197,6 +210,8 @@ Future<void> _openView(WidgetTester tester, String label) async {
   await tester.pumpAndSettle();
 }
 
+final _en = lookupL(const Locale('en'));
+
 void main() {
   late AccountOverviewRepository github;
   late McContentRepository mc;
@@ -214,13 +229,17 @@ void main() {
     _spotify.dispose();
   });
 
-  testWidgets('the sidebar groups GitHub and Minecraft separately',
-      (tester) async {
+  testWidgets('the sidebar groups GitHub and Minecraft separately', (
+    tester,
+  ) async {
     await _pump(tester, github, mc);
 
     for (final service in AccountService.values) {
-      expect(find.text(service.label), findsWidgets,
-          reason: '${service.label} should head its own group');
+      expect(
+        find.text(service.label),
+        findsWidgets,
+        reason: '${service.label} should head its own group',
+      );
     }
     // The rail is an accordion, so Minecraft's own section only shows once
     // its heading is opened — GitHub's group is the one expanded by default.
@@ -229,8 +248,7 @@ void main() {
     expect(find.text('MC Content'), findsWidgets);
   });
 
-  testWidgets('MC Content is reachable without a GitHub token',
-      (tester) async {
+  testWidgets('MC Content is reachable without a GitHub token', (tester) async {
     await _pump(tester, github, mc);
 
     // GitHub is not connected here; the Minecraft entry must still open, or
@@ -242,17 +260,15 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('the setup prompt states what each platform needs',
-      (tester) async {
+  testWidgets('the setup prompt states what each platform needs', (
+    tester,
+  ) async {
     await _pump(tester, github, mc);
     await _openMcContent(tester);
 
-    expect(find.textContaining('Modrinth — username only'), findsOneWidget);
-    expect(find.textContaining('CurseForge — API key required'), findsOneWidget);
-    expect(
-      find.textContaining('Planet Minecraft — username only'),
-      findsOneWidget,
-    );
+    expect(find.textContaining(_en.mcReqModrinthTitle), findsOneWidget);
+    expect(find.textContaining(_en.mcReqCurseforgeTitle), findsOneWidget);
+    expect(find.textContaining(_en.mcReqPmcTitle), findsOneWidget);
   });
 
   group('configured', () {
@@ -264,8 +280,7 @@ void main() {
       );
     });
 
-    testWidgets('combines CurseForge and Modrinth but not PMC',
-        (tester) async {
+    testWidgets('combines CurseForge and Modrinth but not PMC', (tester) async {
       await _pump(tester, github, mc);
       await _openMcContent(tester);
 
@@ -298,8 +313,9 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('filtering the projects view by platform narrows it',
-        (tester) async {
+    testWidgets('filtering the projects view by platform narrows it', (
+      tester,
+    ) async {
       await _pump(tester, github, mc);
       await _openMcContent(tester);
       await _openView(tester, 'Projects');
@@ -332,8 +348,9 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('every inner view renders without an exception',
-        (tester) async {
+    testWidgets('every inner view renders without an exception', (
+      tester,
+    ) async {
       await _pump(tester, github, mc);
       await _openMcContent(tester);
 
@@ -353,11 +370,13 @@ void main() {
 
   testWidgets('a platform that failed explains itself', (tester) async {
     mc.seedForTest(
-      McSnapshot.empty.withResult(const McPlatformResult(
-        platform: McPlatform.curseforge,
-        state: McPlatformState.failed,
-        message: 'CurseForge rejected the API key.',
-      )),
+      McSnapshot.empty.withResult(
+        const McPlatformResult(
+          platform: McPlatform.curseforge,
+          state: McPlatformState.failed,
+          message: 'CurseForge rejected the API key.',
+        ),
+      ),
       credentials: _configured,
     );
     await _pump(tester, github, mc);
@@ -367,19 +386,21 @@ void main() {
     expect(find.text('Unavailable'), findsWidgets);
   });
 
-  testWidgets('a chart with no history says so instead of drawing an empty axis',
-      (tester) async {
-    mc.seedForTest(
-      _populated(),
-      credentials: _configured,
-      history: McHistoryStore.inMemory(),
-    );
-    await _pump(tester, github, mc);
-    await _openMcContent(tester);
+  testWidgets(
+    'a chart with no history says so instead of drawing an empty axis',
+    (tester) async {
+      mc.seedForTest(
+        _populated(),
+        credentials: _configured,
+        history: McHistoryStore.inMemory(),
+      );
+      await _pump(tester, github, mc);
+      await _openMcContent(tester);
 
-    // CurseForge and Planet Minecraft publish no history at all, so a fresh
-    // install genuinely has nothing to draw and must say so.
-    expect(find.text('No history yet'), findsWidgets);
-    expect(tester.takeException(), isNull);
-  });
+      // CurseForge and Planet Minecraft publish no history at all, so a fresh
+      // install genuinely has nothing to draw and must say so.
+      expect(find.text('No history yet'), findsWidgets);
+      expect(tester.takeException(), isNull);
+    },
+  );
 }
