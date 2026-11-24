@@ -7,24 +7,35 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:luma/features/plugins/installed/ai_usage/assets/asset_studio.dart';
 import 'package:luma/features/plugins/installed/ai_usage/assets/assets_tab.dart';
 import 'package:luma/theme/luma_theme.dart';
+import 'package:luma/l10n/app_localizations.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test('every catalogue entry has a model file that defines its function', () async {
-    final assets = await loadStudioCatalog(rootBundle);
-    expect(assets, hasLength(24));
-    expect({for (final a in assets) a.id}, hasLength(assets.length));
-    for (final a in assets) {
-      final source = await rootBundle.loadString(
-        'assets/asset_studio/models/${a.functionName}.js',
-      );
-      expect(source, contains('function ${a.functionName}(g,w,d)'), reason: a.id);
-    }
-  });
+  test(
+    'every catalogue entry has a model file that defines its function',
+    () async {
+      final assets = await loadStudioCatalog(rootBundle);
+      expect(assets, hasLength(24));
+      expect({for (final a in assets) a.id}, hasLength(assets.length));
+      for (final a in assets) {
+        final source = await rootBundle.loadString(
+          'assets/asset_studio/models/${a.functionName}.js',
+        );
+        expect(
+          source,
+          contains('function ${a.functionName}(g,w,d)'),
+          reason: a.id,
+        );
+      }
+    },
+  );
 
   test('the downloaded studio is one self-contained file', () async {
-    final html = await buildAssetStudioHtml(rootBundle, assetId: 'jewelryStore');
+    final html = await buildAssetStudioHtml(
+      rootBundle,
+      assetId: 'jewelryStore',
+    );
     expect(html, isNot(contains('<!-- @')));
     expect(html, isNot(contains('<script src=')));
     expect(html, isNot(contains('<link rel="stylesheet"')));
@@ -39,21 +50,27 @@ void main() {
     expect(json['embed'], isFalse);
   });
 
-  test('the in-app copy is flagged as embedded and carries luma\'s theme', () async {
-    final html = await buildAssetStudioHtml(
-      rootBundle,
-      assetId: 'ticketMachine',
-      embed: true,
-      theme: 'dark',
-    );
-    expect(
-      html,
-      contains('"asset":"ticketMachine","embed":true,"theme":"dark"'),
-    );
-    // A downloaded copy has no app around it, so it follows the browser.
-    final saved = await buildAssetStudioHtml(rootBundle, assetId: 'ticketMachine');
-    expect(saved, contains('"theme":"auto"'));
-  });
+  test(
+    'the in-app copy is flagged as embedded and carries luma\'s theme',
+    () async {
+      final html = await buildAssetStudioHtml(
+        rootBundle,
+        assetId: 'ticketMachine',
+        embed: true,
+        theme: 'dark',
+      );
+      expect(
+        html,
+        contains('"asset":"ticketMachine","embed":true,"theme":"dark"'),
+      );
+      // A downloaded copy has no app around it, so it follows the browser.
+      final saved = await buildAssetStudioHtml(
+        rootBundle,
+        assetId: 'ticketMachine',
+      );
+      expect(saved, contains('"theme":"auto"'));
+    },
+  );
 
   test('every model has a baked thumbnail', () async {
     for (final a in await loadStudioCatalog(rootBundle)) {
@@ -89,6 +106,9 @@ void main() {
         // reopens on the studio instead of the gallery.
         await tester.pumpWidget(
           MaterialApp(
+            locale: const Locale('en'),
+            localizationsDelegates: L.localizationsDelegates,
+            supportedLocales: L.supportedLocales,
             theme: theme,
             home: Scaffold(body: AssetsTab(key: UniqueKey())),
           ),
@@ -120,8 +140,16 @@ void main() {
 
   test('footprints print without a trailing .0', () {
     const a = StudioAsset(
-      id: 'x', name: 'X', functionName: 'x', description: '', collectionCode: '',
-      category: 'interior', keywords: '', width: 8, depth: 6.5, price: 1,
+      id: 'x',
+      name: 'X',
+      functionName: 'x',
+      description: '',
+      collectionCode: '',
+      category: 'interior',
+      keywords: '',
+      width: 8,
+      depth: 6.5,
+      price: 1,
     );
     expect(a.footprint, '8 × 6.5 m');
   });

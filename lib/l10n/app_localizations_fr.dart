@@ -42303,4 +42303,221 @@ class LFr extends L {
   String modelViewerGithubError(int status) {
     return 'GitHub a renvoyé une erreur ($status).';
   }
+
+  @override
+  String get assistantPictureNoReferenceImages =>
+      'Ce modèle d\'image ne prend pas en charge les images de référence. Choisissez un autre modèle pour importer une image.';
+
+  @override
+  String get assistantFileNotOpened => 'Impossible d\'ouvrir ce fichier.';
+
+  @override
+  String get assistantMoveChat => 'Déplacer la discussion';
+
+  @override
+  String get assistantMainChats => 'Discussions principales';
+
+  @override
+  String get assistantCreateProjectFirst =>
+      'Créez d\'abord un projet depuis Projets.';
+
+  @override
+  String get assistantArtifactsTitle => 'Artefacts';
+
+  @override
+  String get assistantArtifactsLoadFailed =>
+      'Impossible de charger les artefacts.';
+
+  @override
+  String get assistantArtifactsEmpty =>
+      'Aucun artefact. Les fichiers et images générés apparaîtront ici.';
+
+  @override
+  String get assistantArtifactSaveCopy => 'Enregistrer une copie';
+
+  @override
+  String get assistantArtifactViewChat => 'Voir la discussion';
+
+  @override
+  String get assistantProjectsAll => 'Tous les projets';
+
+  @override
+  String get assistantProjectsNew => 'Nouveau projet';
+
+  @override
+  String get assistantProjectsLoadFailed =>
+      'Impossible de charger les projets.';
+
+  @override
+  String get assistantProjectsEmpty =>
+      'Créez votre premier projet pour disposer d’un espace de discussion dédié.';
+
+  @override
+  String get assistantProjectMemory => 'Mémoire du projet';
+
+  @override
+  String get assistantProjectEdit => 'Modifier le projet';
+
+  @override
+  String get assistantProjectMemoryHint =>
+      'Seules les discussions de ce projet peuvent utiliser cette mémoire. Le réglage de mémoire dans Personnaliser s’applique aussi ici.';
+
+  @override
+  String get assistantProjectNoChats =>
+      'Aucune discussion dans ce projet pour l’instant.';
+
+  @override
+  String get assistantProjectDelete => 'Supprimer le projet';
+
+  @override
+  String get assistantProjectDeleteMessage =>
+      'Le projet et sa mémoire seront supprimés. Ses discussions reviennent dans la liste principale ; les fichiers générés restent dans Artefacts.';
+
+  @override
+  String get assistantUploadFiles => 'Importer des fichiers';
+
+  @override
+  String get assistantUploadFilesHint => 'Texte, PDF et images compatibles';
+
+  @override
+  String get assistantRequiresOrbitOrNova => 'Nécessite Orbit ou Nova';
+
+  @override
+  String get assistantArtifactGeneration => 'Génération d’artefacts';
+
+  @override
+  String get aiWikiSearchCostTitle => 'Coût et performances';
+
+  @override
+  String get aiWikiSearchCostHint =>
+      'Score de recherche comparé au prix catalogue OpenRouter pour 1 M de jetons en entrée. Les prix peuvent provenir du cache. Survolez ou touchez un point pour voir le modèle.';
+
+  @override
+  String get aiWikiSearchNoPrices =>
+      'Aucun prix de modèle n’est disponible pour cette comparaison.';
+
+  @override
+  String get aiWikiSearchRetrievalScore => 'Score de recherche';
+
+  @override
+  String get aiWikiSearchCostAxis => 'Coût pour 1 M de jetons en entrée (USD)';
+
+  @override
+  String get aiWikiSearchPricesAndScores => 'Prix et scores des modèles';
+
+  @override
+  String get aiWikiSearchTitle => 'Test de recherche wiki';
+
+  @override
+  String get aiWikiSearchIntro =>
+      'Les modèles d’embedding classent des passages de référence fictifs parmi des leurres très proches. Le score est le rang réciproque moyen à 10 : un bon premier résultat vaut 100 %, les rangs inférieurs moins.';
+
+  @override
+  String get aiWikiSearchComparison => 'Comparaison des modèles d’embedding';
+
+  @override
+  String get aiWikiSearchConclusions => 'Conclusions par modèle';
+
+  @override
+  String get mapMakerHubTitle => 'Créateur de cartes';
+
+  @override
+  String get mapMakerHubSubtitle =>
+      'Créez vos propres réseaux de métro imaginaires, plans de ville et plans d’étage.';
+
+  @override
+  String get mapMakerHomePlannerSoon =>
+      'Le planificateur de logement arrive bientôt !';
+
+  @override
+  String get mapMakerHubSaves => 'Sauvegardes';
+
+  @override
+  String get mapMakerHubSavesHint =>
+      'Parcourez, modifiez et reprenez vos cartes, plans de lignes et plans enregistrés.';
+
+  @override
+  String get mapMakerComingSoon => 'Bientôt';
+
+  @override
+  String get mapMakerTransitNewLineTitle => 'Nouvelle ligne';
+
+  @override
+  String get mapMakerTransitLineColor => 'Couleur de la ligne';
+
+  @override
+  String get mapMakerTransitEditLine => 'Modifier la ligne';
+
+  @override
+  String get mapMakerTransitDeleteLine => 'Supprimer la ligne';
+
+  @override
+  String get mapMakerTransitFinishRiver => 'Terminer la rivière';
+
+  @override
+  String get mapMakerTransitLinesLabel => 'Lignes :';
+
+  @override
+  String get mapMakerTransitNewLine => 'Nouvelle ligne';
+
+  @override
+  String get mapMakerTransitWaterway => 'Voie d’eau';
+
+  @override
+  String get mapMakerTransitClosedShape => 'Forme fermée (lac / mer)';
+
+  @override
+  String get mapMakerTransitDeleteWaterway => 'Supprimer la voie d’eau';
+
+  @override
+  String get mapMakerTransitStationDetails => 'Détails de la station';
+
+  @override
+  String get mapMakerTransitStationType => 'Type de station';
+
+  @override
+  String get mapMakerTransitDeleteStop => 'Supprimer l’arrêt';
+
+  @override
+  String get monitorSimWindowsOnly =>
+      'La visionneuse de capture HDMI est disponible sous Windows.';
+
+  @override
+  String get monitorSimTitle => 'Simulation de moniteur';
+
+  @override
+  String get monitorSimSubtitle =>
+      'Affichez un autre ordinateur via un boîtier de capture HDMI.';
+
+  @override
+  String get monitorSimHowToConnect => 'Comment brancher';
+
+  @override
+  String get monitorSimSteps =>
+      '1. Branchez la sortie HDMI du PC sur un boîtier de capture HDMI USB.\n2. Branchez le boîtier sur cet ordinateur portable, puis sélectionnez-le ci-dessous.\n3. Lancez l’aperçu. S’il n’y a pas d’image, vérifiez que le PC est allumé et envoie un signal compatible.\n\nLa plupart des ports HDMI des ordinateurs portables sont des sorties et ne peuvent pas recevoir directement la vidéo du PC. Utilisez un clavier et une souris branchés sur le PC pour le contrôler.';
+
+  @override
+  String get steamCs2InventoryTitle => 'Inventaire CS2 Steam';
+
+  @override
+  String get steamCs2InventoryIntro =>
+      'Saisissez l’URL de votre profil Steam ou votre Steam ID à 17 chiffres pour importer vos skins CS2, autocollants, caisses et tout ce que vend le marché. Aucun mot de passe Steam ni clé API n’est nécessaire.';
+
+  @override
+  String get steamCs2InventoryPublic =>
+      'Votre profil et votre inventaire Steam doivent être publics pour que luma puisse les lire.';
+
+  @override
+  String get steamCs2InventoryPrivacy =>
+      'Ouvrir les paramètres de confidentialité Steam';
+
+  @override
+  String get steamCs2InventoryRefreshNote =>
+      'Tant que CS2 Market est ouvert, luma vérifie votre inventaire toutes les six heures. Les objets vendus ou échangés sont retirés à la vérification suivante. La déconnexion conserve les objets importés.';
+
+  @override
+  String get steamCs2Disconnect => 'Déconnecter';
+
+  @override
+  String get steamCs2RefreshInventory => 'Actualiser l’inventaire';
 }

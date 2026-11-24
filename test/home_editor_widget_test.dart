@@ -182,6 +182,9 @@ void main() {
     var layout = initial;
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('en'),
+        localizationsDelegates: L.localizationsDelegates,
+        supportedLocales: L.supportedLocales,
         theme: LumaTheme.light,
         home: MediaQuery(
           data: MediaQueryData(

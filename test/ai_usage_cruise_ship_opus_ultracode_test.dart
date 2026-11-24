@@ -13,10 +13,14 @@ import 'package:luma/features/plugins/installed/ai_usage/tests/hero_tile.dart';
 import 'package:luma/features/plugins/installed/ai_usage/tests/test_view_prefs.dart';
 import 'package:luma/features/plugins/installed/ai_usage/tests/tests_tab.dart';
 import 'package:luma/theme/luma_theme.dart';
+import 'package:luma/l10n/app_localizations.dart';
 
 Widget _app(AiBenchmarkRepository repository) => AiBenchmarkScope(
   repository: repository,
   child: MaterialApp(
+    locale: const Locale('en'),
+    localizationsDelegates: L.localizationsDelegates,
+    supportedLocales: L.supportedLocales,
     theme: LumaTheme.dark,
     home: const Scaffold(body: TestsTab()),
   ),
@@ -97,5 +101,6 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
     },
     skip: !Platform.isWindows,
+    variant: TargetPlatformVariant.only(TargetPlatform.windows),
   );
 }

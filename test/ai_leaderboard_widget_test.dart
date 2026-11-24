@@ -8,6 +8,7 @@ import 'package:luma/features/plugins/installed/ai_usage/leaderboard/ai_model_de
 import 'package:luma/features/plugins/installed/ai_usage/open_source/open_source_tab.dart';
 import 'package:luma/theme/luma_theme.dart';
 import 'package:luma/theme/theme_style.dart';
+import 'package:luma/l10n/app_localizations.dart';
 
 const _catalog = AiCatalog(
   models: [
@@ -58,14 +59,17 @@ const _catalog = AiCatalog(
 );
 
 Widget _wrap(Widget child, {AiCatalog catalog = _catalog}) => MaterialApp(
-      theme: LumaTheme.from(Brightness.dark, null, LumaThemeStyle.standard),
-      home: Scaffold(
-        body: AiCatalogScope(
-          repository: AiCatalogRepository.withCatalog(catalog),
-          child: child,
-        ),
-      ),
-    );
+  locale: const Locale('en'),
+  localizationsDelegates: L.localizationsDelegates,
+  supportedLocales: L.supportedLocales,
+  theme: LumaTheme.from(Brightness.dark, null, LumaThemeStyle.standard),
+  home: Scaffold(
+    body: AiCatalogScope(
+      repository: AiCatalogRepository.withCatalog(catalog),
+      child: child,
+    ),
+  ),
+);
 
 /// The plugin renders in a desktop pane; the default 800x600 test window is
 /// narrower than any real one, so the wide table would sit half off-screen and
@@ -79,8 +83,7 @@ void _desktopSurface(WidgetTester tester) {
 
 void main() {
   group('leaderboard table', () {
-    testWidgets('renders a row per model, best rating first',
-        (tester) async {
+    testWidgets('renders a row per model, best rating first', (tester) async {
       _desktopSurface(tester);
       await tester.pumpWidget(_wrap(const AiLeaderboardTab()));
       await tester.pumpAndSettle();
@@ -90,20 +93,21 @@ void main() {
       expect(find.text('Qwen3 8B'), findsOneWidget);
       expect(find.text('3 models'), findsOneWidget);
 
-      // The three rating columns and the arena column are all present.
-      // Reasoning has no column of its own — it stays on the model detail
-      // page and the graph/compare metric pickers, but not this table.
+      // One rating column (the overall intelligence index) and the arena
+      // column. Reasoning, coding and agent scores have no column of their
+      // own — they stay on the model detail page, not this table.
       expect(find.text('63.1'), findsOneWidget);
-      expect(find.text('78.0'), findsOneWidget);
-      expect(find.text('59.2'), findsOneWidget);
+      expect(find.text('78.0'), findsNothing);
+      expect(find.text('59.2'), findsNothing);
       expect(find.text('1344'), findsOneWidget);
       // The Params column, using the open-weight models' parameter counts.
       expect(find.text('1.0T'), findsOneWidget);
       expect(find.text('8.0B'), findsOneWidget);
     });
 
-    testWidgets('shows the average price and the context window',
-        (tester) async {
+    testWidgets('shows the average price and the context window', (
+      tester,
+    ) async {
       _desktopSurface(tester);
       await tester.pumpWidget(_wrap(const AiLeaderboardTab()));
       await tester.pumpAndSettle();
@@ -149,14 +153,14 @@ void main() {
       expect(find.text('Claude Opus 5'), findsNothing);
     });
 
-    testWidgets('clicking a column header re-sorts, and again reverses it',
-        (tester) async {
+    testWidgets('clicking a column header re-sorts, and again reverses it', (
+      tester,
+    ) async {
       _desktopSurface(tester);
       await tester.pumpWidget(_wrap(const AiLeaderboardTab()));
       await tester.pumpAndSettle();
 
-      Offset firstRowCentre() =>
-          tester.getCenter(find.text('Claude Opus 5'));
+      Offset firstRowCentre() => tester.getCenter(find.text('Claude Opus 5'));
       final topBefore = firstRowCentre().dy;
 
       // Price ascending puts the cheapest first, so Opus (the dearest of the
@@ -170,8 +174,9 @@ void main() {
       expect(firstRowCentre().dy, topBefore);
     });
 
-    testWidgets('renders at a narrow window without overflowing',
-        (tester) async {
+    testWidgets('renders at a narrow window without overflowing', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(900, 1400);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -186,36 +191,40 @@ void main() {
     });
 
     testWidgets(
-        'a wide pane fills with extra column width instead of leaving it blank',
-        (tester) async {
-      tester.view.physicalSize = const Size(2000, 900);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
+      'a wide pane fills with extra column width instead of leaving it blank',
+      (tester) async {
+        tester.view.physicalSize = const Size(2000, 900);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
 
-      await tester.pumpWidget(_wrap(const AiLeaderboardTab()));
-      await tester.pumpAndSettle();
+        await tester.pumpWidget(_wrap(const AiLeaderboardTab()));
+        await tester.pumpAndSettle();
 
-      SizedBox headerBoxFor(String label) => tester.widget<SizedBox>(find
-          .ancestor(of: find.text(label), matching: find.byType(SizedBox))
-          .first);
+        SizedBox headerBoxFor(String label) => tester.widget<SizedBox>(
+          find
+              .ancestor(of: find.text(label), matching: find.byType(SizedBox))
+              .first,
+        );
 
-      // The model column grows a little on a wide pane so long names still
-      // have room, but it's capped well short of swallowing the window.
-      final modelBox = headerBoxFor('MODEL');
-      expect(modelBox.width, greaterThan(220));
-      expect(modelBox.width, lessThan(400));
+        // The model column grows a little on a wide pane so long names still
+        // have room, but it's capped well short of swallowing the window.
+        final modelBox = headerBoxFor('MODEL');
+        expect(modelBox.width, greaterThan(220));
+        expect(modelBox.width, lessThan(400));
 
-      // The rest of the extra space goes to the data columns instead, so
-      // they read comfortably rather than staying pinned at their minimum.
-      final priceBox = headerBoxFor(r'PRICE $/M');
-      expect(priceBox.width, greaterThan(150));
-    });
+        // The rest of the extra space goes to the data columns instead, so
+        // they read comfortably rather than staying pinned at their minimum.
+        final priceBox = headerBoxFor(r'PRICE $/M');
+        expect(priceBox.width, greaterThan(150));
+      },
+    );
   });
 
   group('open source calculator', () {
-    testWidgets('sizes the selected model and judges each device',
-        (tester) async {
+    testWidgets('sizes the selected model and judges each device', (
+      tester,
+    ) async {
       _desktopSurface(tester);
       await tester.pumpWidget(_wrap(const OpenSourceTab()));
       await tester.pumpAndSettle();
@@ -231,8 +240,9 @@ void main() {
       expect(find.text('Won’t run'), findsWidgets);
     });
 
-    testWidgets('a small model runs comfortably on ordinary hardware',
-        (tester) async {
+    testWidgets('a small model runs comfortably on ordinary hardware', (
+      tester,
+    ) async {
       _desktopSurface(tester);
       await tester.pumpWidget(_wrap(const OpenSourceTab()));
       await tester.pumpAndSettle();
@@ -261,57 +271,63 @@ void main() {
 
   group('model detail page', () {
     testWidgets(
-        'the effort graph draws from intelligence alone when no tier has a '
-        'token count', (tester) async {
-      // Artificial Analysis doesn't publish a token count for every model it
-      // rates — the graph is the point here, not the token side-note, so it
-      // has to draw without that second dimension rather than staying blank.
-      const catalog = AiCatalog(
-        models: [
-          AiModel(
-            id: 'anthropic/claude-opus-5',
-            slug: 'claude-opus-5',
-            name: 'Claude Opus 5',
-            vendor: 'anthropic',
-            vendorName: 'Anthropic',
-            supportedEfforts: ['low', 'high', 'max'],
-            effortProfiles: [
-              AiEffortProfile(effort: 'low', intelligenceIndex: 50),
-              AiEffortProfile(effort: 'high', intelligenceIndex: 60),
-              AiEffortProfile(effort: 'max', intelligenceIndex: 65),
-            ],
+      'the effort graph draws from intelligence alone when no tier has a '
+      'token count',
+      (tester) async {
+        // Artificial Analysis doesn't publish a token count for every model it
+        // rates — the graph is the point here, not the token side-note, so it
+        // has to draw without that second dimension rather than staying blank.
+        const catalog = AiCatalog(
+          models: [
+            AiModel(
+              id: 'anthropic/claude-opus-5',
+              slug: 'claude-opus-5',
+              name: 'Claude Opus 5',
+              vendor: 'anthropic',
+              vendorName: 'Anthropic',
+              supportedEfforts: ['low', 'high', 'max'],
+              effortProfiles: [
+                AiEffortProfile(effort: 'low', intelligenceIndex: 50),
+                AiEffortProfile(effort: 'high', intelligenceIndex: 60),
+                AiEffortProfile(effort: 'max', intelligenceIndex: 65),
+              ],
+            ),
+          ],
+          news: [],
+          refreshedAt: null,
+        );
+
+        await tester.pumpWidget(
+          _wrap(
+            const AiModelDetailPage(modelId: 'anthropic/claude-opus-5'),
+            catalog: catalog,
           ),
-        ],
-        news: [],
-        refreshedAt: null,
-      );
+        );
+        await tester.pumpAndSettle();
 
-      await tester.pumpWidget(_wrap(
-        const AiModelDetailPage(modelId: 'anthropic/claude-opus-5'),
-        catalog: catalog,
-      ));
-      await tester.pumpAndSettle();
+        expect(find.text('EFFORT VS TOKENS USED'), findsOneWidget);
+        // fl_chart's axis builder runs more than once per label during layout,
+        // so these are findsWidgets rather than findsOneWidget.
+        expect(find.text('Low'), findsWidgets);
+        expect(find.text('High'), findsWidgets);
+        expect(find.text('Max'), findsWidgets);
+        // No tier carries a token count in this fixture, so the token-count
+        // row underneath the chart (formatted like "Low: 400 tok") has
+        // nothing to show — the section's fixed subtitle also mentions
+        // "tokens" in prose, so this matches the specific "<number> tok"
+        // shape rather than the word.
+        expect(
+          find.byWidgetPredicate(
+            (w) => w is Text && RegExp(r'[\d,]+ tok$').hasMatch(w.data ?? ''),
+          ),
+          findsNothing,
+        );
+      },
+    );
 
-      expect(find.text('EFFORT VS TOKENS USED'), findsOneWidget);
-      // fl_chart's axis builder runs more than once per label during layout,
-      // so these are findsWidgets rather than findsOneWidget.
-      expect(find.text('Low'), findsWidgets);
-      expect(find.text('High'), findsWidgets);
-      expect(find.text('Max'), findsWidgets);
-      // No tier carries a token count in this fixture, so the token-count
-      // row underneath the chart (formatted like "Low: 400 tok") has
-      // nothing to show — the section's fixed subtitle also mentions
-      // "tokens" in prose, so this matches the specific "<number> tok"
-      // shape rather than the word.
-      expect(
-        find.byWidgetPredicate((w) =>
-            w is Text && RegExp(r'[\d,]+ tok$').hasMatch(w.data ?? '')),
-        findsNothing,
-      );
-    });
-
-    testWidgets('shows token counts under the chart when they are known',
-        (tester) async {
+    testWidgets('shows token counts under the chart when they are known', (
+      tester,
+    ) async {
       const catalog = AiCatalog(
         models: [
           AiModel(
@@ -323,9 +339,15 @@ void main() {
             supportedEfforts: ['low', 'high'],
             effortProfiles: [
               AiEffortProfile(
-                  effort: 'low', intelligenceIndex: 50, medianOutputTokens: 400),
+                effort: 'low',
+                intelligenceIndex: 50,
+                medianOutputTokens: 400,
+              ),
               AiEffortProfile(
-                  effort: 'high', intelligenceIndex: 60, medianOutputTokens: 1200),
+                effort: 'high',
+                intelligenceIndex: 60,
+                medianOutputTokens: 1200,
+              ),
             ],
           ),
         ],
@@ -333,10 +355,12 @@ void main() {
         refreshedAt: null,
       );
 
-      await tester.pumpWidget(_wrap(
-        const AiModelDetailPage(modelId: 'anthropic/claude-opus-5'),
-        catalog: catalog,
-      ));
+      await tester.pumpWidget(
+        _wrap(
+          const AiModelDetailPage(modelId: 'anthropic/claude-opus-5'),
+          catalog: catalog,
+        ),
+      );
       await tester.pumpAndSettle();
 
       expect(find.textContaining('400 tok'), findsOneWidget);

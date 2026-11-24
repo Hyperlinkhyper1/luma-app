@@ -5,6 +5,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:luma/features/plugins/installed/steam_tools/data/steam_database.dart';
 import 'package:luma/features/plugins/installed/steam_tools/ui/steam_price_chart.dart';
 import 'package:luma/theme/luma_theme.dart';
+import 'package:luma/l10n/app_localizations.dart';
 
 SteamPricePoint _point(DateTime at, int cents, {int discount = 0}) =>
     SteamPricePoint(
@@ -23,22 +24,24 @@ Widget _card(
   int? lowestEverCents,
   DateTime? lowestEverAt,
   VoidCallback? onSignIn,
-}) =>
-    MaterialApp(
-      theme: LumaTheme.dark,
-      home: Scaffold(
-        body: SingleChildScrollView(
-          child: SteamPriceHistoryCard(
-            points: points,
-            fallbackCurrency: 'USD',
-            canFetchHistory: canFetchHistory,
-            lowestEverCents: lowestEverCents,
-            lowestEverAt: lowestEverAt,
-            onSignIn: onSignIn,
-          ),
-        ),
+}) => MaterialApp(
+  locale: const Locale('en'),
+  localizationsDelegates: L.localizationsDelegates,
+  supportedLocales: L.supportedLocales,
+  theme: LumaTheme.dark,
+  home: Scaffold(
+    body: SingleChildScrollView(
+      child: SteamPriceHistoryCard(
+        points: points,
+        fallbackCurrency: 'USD',
+        canFetchHistory: canFetchHistory,
+        lowestEverCents: lowestEverCents,
+        lowestEverAt: lowestEverAt,
+        onSignIn: onSignIn,
       ),
-    );
+    ),
+  ),
+);
 
 void main() {
   testWidgets('offers every range, longest first', (tester) async {
@@ -49,14 +52,13 @@ void main() {
     }
   });
 
-  testWidgets('asks for sign-in instead of showing an empty chart',
-      (tester) async {
+  testWidgets('asks for sign-in instead of showing an empty chart', (
+    tester,
+  ) async {
     var tapped = false;
-    await tester.pumpWidget(_card(
-      const [],
-      canFetchHistory: false,
-      onSignIn: () => tapped = true,
-    ));
+    await tester.pumpWidget(
+      _card(const [], canFetchHistory: false, onSignIn: () => tapped = true),
+    );
 
     expect(find.byType(LineChart), findsNothing);
     expect(find.textContaining('Sign in for price history'), findsOneWidget);
@@ -78,14 +80,17 @@ void main() {
     );
   });
 
-  testWidgets('draws the line and the range low/high once history exists',
-      (tester) async {
+  testWidgets('draws the line and the range low/high once history exists', (
+    tester,
+  ) async {
     final now = DateTime.now();
-    await tester.pumpWidget(_card([
-      _point(now.subtract(const Duration(days: 40)), 5999),
-      _point(now.subtract(const Duration(days: 20)), 2999, discount: 50),
-      _point(now.subtract(const Duration(days: 5)), 5999),
-    ]));
+    await tester.pumpWidget(
+      _card([
+        _point(now.subtract(const Duration(days: 40)), 5999),
+        _point(now.subtract(const Duration(days: 20)), 2999, discount: 50),
+        _point(now.subtract(const Duration(days: 5)), 5999),
+      ]),
+    );
     await tester.pumpAndSettle();
 
     expect(find.byType(LineChart), findsOneWidget);
@@ -95,14 +100,17 @@ void main() {
     expect(find.text('\$59.99'), findsOneWidget);
   });
 
-  testWidgets('shows the all-time low even when it is outside the window',
-      (tester) async {
+  testWidgets('shows the all-time low even when it is outside the window', (
+    tester,
+  ) async {
     final now = DateTime.now();
-    await tester.pumpWidget(_card(
-      [_point(now.subtract(const Duration(days: 5)), 5999)],
-      lowestEverCents: 1499,
-      lowestEverAt: DateTime(2023, 11, 20),
-    ));
+    await tester.pumpWidget(
+      _card(
+        [_point(now.subtract(const Duration(days: 5)), 5999)],
+        lowestEverCents: 1499,
+        lowestEverAt: DateTime(2023, 11, 20),
+      ),
+    );
     await tester.pumpAndSettle();
 
     // The window is flat at 59.99, but the number worth knowing is the 14.99
@@ -111,14 +119,17 @@ void main() {
     expect(find.text('\$14.99'), findsOneWidget);
   });
 
-  testWidgets('switching range redraws against the shorter window',
-      (tester) async {
+  testWidgets('switching range redraws against the shorter window', (
+    tester,
+  ) async {
     final now = DateTime.now();
-    await tester.pumpWidget(_card([
-      _point(now.subtract(const Duration(days: 40)), 5999),
-      _point(now.subtract(const Duration(days: 20)), 2999, discount: 50),
-      _point(now.subtract(const Duration(days: 10)), 4999),
-    ]));
+    await tester.pumpWidget(
+      _card([
+        _point(now.subtract(const Duration(days: 40)), 5999),
+        _point(now.subtract(const Duration(days: 20)), 2999, discount: 50),
+        _point(now.subtract(const Duration(days: 10)), 4999),
+      ]),
+    );
     await tester.pumpAndSettle();
 
     // The full year shows the 29.99 sale...
@@ -137,9 +148,9 @@ void main() {
   testWidgets('names the date the record starts when it is shorter than the '
       'range', (tester) async {
     final now = DateTime.now();
-    await tester.pumpWidget(_card([
-      _point(now.subtract(const Duration(days: 3)), 5999),
-    ]));
+    await tester.pumpWidget(
+      _card([_point(now.subtract(const Duration(days: 3)), 5999)]),
+    );
     await tester.pumpAndSettle();
 
     // Default range is 1Y against three days of record.
@@ -149,13 +160,16 @@ void main() {
     );
   });
 
-  testWidgets('credits the source when the record covers the whole range',
-      (tester) async {
+  testWidgets('credits the source when the record covers the whole range', (
+    tester,
+  ) async {
     final now = DateTime.now();
-    await tester.pumpWidget(_card([
-      _point(now.subtract(const Duration(days: 900)), 5999),
-      _point(now.subtract(const Duration(days: 30)), 2999, discount: 50),
-    ]));
+    await tester.pumpWidget(
+      _card([
+        _point(now.subtract(const Duration(days: 900)), 5999),
+        _point(now.subtract(const Duration(days: 30)), 2999, discount: 50),
+      ]),
+    );
     await tester.pumpAndSettle();
 
     expect(

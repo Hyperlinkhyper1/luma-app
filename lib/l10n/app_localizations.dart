@@ -68548,6 +68548,396 @@ abstract class L {
   /// In en, this message translates to:
   /// **'GitHub returned an error ({status}).'**
   String modelViewerGithubError(int status);
+
+  /// No description provided for @assistantPictureNoReferenceImages.
+  ///
+  /// In en, this message translates to:
+  /// **'This picture model does not support reference images. Choose another model to upload an image.'**
+  String get assistantPictureNoReferenceImages;
+
+  /// No description provided for @assistantFileNotOpened.
+  ///
+  /// In en, this message translates to:
+  /// **'This file could not be opened.'**
+  String get assistantFileNotOpened;
+
+  /// No description provided for @assistantMoveChat.
+  ///
+  /// In en, this message translates to:
+  /// **'Move chat'**
+  String get assistantMoveChat;
+
+  /// No description provided for @assistantMainChats.
+  ///
+  /// In en, this message translates to:
+  /// **'Main chats'**
+  String get assistantMainChats;
+
+  /// No description provided for @assistantCreateProjectFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a project from Projects first.'**
+  String get assistantCreateProjectFirst;
+
+  /// No description provided for @assistantArtifactsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Artifacts'**
+  String get assistantArtifactsTitle;
+
+  /// No description provided for @assistantArtifactsLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load artifacts.'**
+  String get assistantArtifactsLoadFailed;
+
+  /// No description provided for @assistantArtifactsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No artifacts found. Generated files and pictures will appear here.'**
+  String get assistantArtifactsEmpty;
+
+  /// No description provided for @assistantArtifactSaveCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Save a copy'**
+  String get assistantArtifactSaveCopy;
+
+  /// No description provided for @assistantArtifactViewChat.
+  ///
+  /// In en, this message translates to:
+  /// **'View chat'**
+  String get assistantArtifactViewChat;
+
+  /// No description provided for @assistantProjectsAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All projects'**
+  String get assistantProjectsAll;
+
+  /// No description provided for @assistantProjectsNew.
+  ///
+  /// In en, this message translates to:
+  /// **'New project'**
+  String get assistantProjectsNew;
+
+  /// No description provided for @assistantProjectsLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load projects.'**
+  String get assistantProjectsLoadFailed;
+
+  /// No description provided for @assistantProjectsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Create your first project to start a dedicated chat space.'**
+  String get assistantProjectsEmpty;
+
+  /// No description provided for @assistantProjectMemory.
+  ///
+  /// In en, this message translates to:
+  /// **'Project memory'**
+  String get assistantProjectMemory;
+
+  /// No description provided for @assistantProjectEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit project'**
+  String get assistantProjectEdit;
+
+  /// No description provided for @assistantProjectMemoryHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Only chats in this project can use this memory. The memory setting in Customize applies here too.'**
+  String get assistantProjectMemoryHint;
+
+  /// No description provided for @assistantProjectNoChats.
+  ///
+  /// In en, this message translates to:
+  /// **'No chats in this project yet.'**
+  String get assistantProjectNoChats;
+
+  /// No description provided for @assistantProjectDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete project'**
+  String get assistantProjectDelete;
+
+  /// No description provided for @assistantProjectDeleteMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'This removes the project and its memory. Its chats return to the main chat list; generated files stay in Artifacts.'**
+  String get assistantProjectDeleteMessage;
+
+  /// No description provided for @assistantUploadFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload files'**
+  String get assistantUploadFiles;
+
+  /// No description provided for @assistantUploadFilesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Text, PDF and supported images'**
+  String get assistantUploadFilesHint;
+
+  /// No description provided for @assistantRequiresOrbitOrNova.
+  ///
+  /// In en, this message translates to:
+  /// **'Requires Orbit or Nova'**
+  String get assistantRequiresOrbitOrNova;
+
+  /// No description provided for @assistantArtifactGeneration.
+  ///
+  /// In en, this message translates to:
+  /// **'Artifact generation'**
+  String get assistantArtifactGeneration;
+
+  /// No description provided for @aiWikiSearchCostTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Cost vs performance'**
+  String get aiWikiSearchCostTitle;
+
+  /// No description provided for @aiWikiSearchCostHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Retrieval score vs OpenRouter catalog price per 1M input tokens. Prices may be cached. Hover or tap a point for model details.'**
+  String get aiWikiSearchCostHint;
+
+  /// No description provided for @aiWikiSearchNoPrices.
+  ///
+  /// In en, this message translates to:
+  /// **'No model prices are available for this comparison.'**
+  String get aiWikiSearchNoPrices;
+
+  /// No description provided for @aiWikiSearchRetrievalScore.
+  ///
+  /// In en, this message translates to:
+  /// **'Retrieval score'**
+  String get aiWikiSearchRetrievalScore;
+
+  /// No description provided for @aiWikiSearchCostAxis.
+  ///
+  /// In en, this message translates to:
+  /// **'Cost per 1M input tokens (USD)'**
+  String get aiWikiSearchCostAxis;
+
+  /// No description provided for @aiWikiSearchPricesAndScores.
+  ///
+  /// In en, this message translates to:
+  /// **'Model prices and scores'**
+  String get aiWikiSearchPricesAndScores;
+
+  /// No description provided for @aiWikiSearchTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Wiki search test'**
+  String get aiWikiSearchTitle;
+
+  /// No description provided for @aiWikiSearchIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Embedding models rank fictional reference passages with closely related distractors. The score is mean reciprocal rank at 10: a correct first result earns 100%, lower ranks earn less.'**
+  String get aiWikiSearchIntro;
+
+  /// No description provided for @aiWikiSearchComparison.
+  ///
+  /// In en, this message translates to:
+  /// **'Embedding model comparison'**
+  String get aiWikiSearchComparison;
+
+  /// No description provided for @aiWikiSearchConclusions.
+  ///
+  /// In en, this message translates to:
+  /// **'Model conclusions'**
+  String get aiWikiSearchConclusions;
+
+  /// No description provided for @mapMakerHubTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Map Maker'**
+  String get mapMakerHubTitle;
+
+  /// No description provided for @mapMakerHubSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Create custom fantasy metro transit systems, urban grids, and floorplans.'**
+  String get mapMakerHubSubtitle;
+
+  /// No description provided for @mapMakerHomePlannerSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Home Planner is coming soon!'**
+  String get mapMakerHomePlannerSoon;
+
+  /// No description provided for @mapMakerHubSaves.
+  ///
+  /// In en, this message translates to:
+  /// **'Saves'**
+  String get mapMakerHubSaves;
+
+  /// No description provided for @mapMakerHubSavesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Browse, edit, and resume your saved maps, schematic routes, and blueprints.'**
+  String get mapMakerHubSavesHint;
+
+  /// No description provided for @mapMakerComingSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Coming soon'**
+  String get mapMakerComingSoon;
+
+  /// No description provided for @mapMakerTransitNewLineTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'New Transit Line'**
+  String get mapMakerTransitNewLineTitle;
+
+  /// No description provided for @mapMakerTransitLineColor.
+  ///
+  /// In en, this message translates to:
+  /// **'Line Color'**
+  String get mapMakerTransitLineColor;
+
+  /// No description provided for @mapMakerTransitEditLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Line'**
+  String get mapMakerTransitEditLine;
+
+  /// No description provided for @mapMakerTransitDeleteLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Line'**
+  String get mapMakerTransitDeleteLine;
+
+  /// No description provided for @mapMakerTransitFinishRiver.
+  ///
+  /// In en, this message translates to:
+  /// **'Finish River'**
+  String get mapMakerTransitFinishRiver;
+
+  /// No description provided for @mapMakerTransitLinesLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Lines:'**
+  String get mapMakerTransitLinesLabel;
+
+  /// No description provided for @mapMakerTransitNewLine.
+  ///
+  /// In en, this message translates to:
+  /// **'New Line'**
+  String get mapMakerTransitNewLine;
+
+  /// No description provided for @mapMakerTransitWaterway.
+  ///
+  /// In en, this message translates to:
+  /// **'Waterway'**
+  String get mapMakerTransitWaterway;
+
+  /// No description provided for @mapMakerTransitClosedShape.
+  ///
+  /// In en, this message translates to:
+  /// **'Closed shape (Lake / Sea)'**
+  String get mapMakerTransitClosedShape;
+
+  /// No description provided for @mapMakerTransitDeleteWaterway.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Waterway'**
+  String get mapMakerTransitDeleteWaterway;
+
+  /// No description provided for @mapMakerTransitStationDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Station Details'**
+  String get mapMakerTransitStationDetails;
+
+  /// No description provided for @mapMakerTransitStationType.
+  ///
+  /// In en, this message translates to:
+  /// **'Station Type'**
+  String get mapMakerTransitStationType;
+
+  /// No description provided for @mapMakerTransitDeleteStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Stop'**
+  String get mapMakerTransitDeleteStop;
+
+  /// No description provided for @monitorSimWindowsOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'The HDMI capture viewer is available on Windows.'**
+  String get monitorSimWindowsOnly;
+
+  /// No description provided for @monitorSimTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Monitor Simulation'**
+  String get monitorSimTitle;
+
+  /// No description provided for @monitorSimSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'View another computer through an HDMI capture device.'**
+  String get monitorSimSubtitle;
+
+  /// No description provided for @monitorSimHowToConnect.
+  ///
+  /// In en, this message translates to:
+  /// **'How to connect'**
+  String get monitorSimHowToConnect;
+
+  /// No description provided for @monitorSimSteps.
+  ///
+  /// In en, this message translates to:
+  /// **'1. Connect the PC’s HDMI output to a USB HDMI capture device.\n2. Plug the capture device into this laptop, then select it below.\n3. Start the preview. If there is no picture, check that the PC is on and sending a supported signal.\n\nMost laptop HDMI ports are outputs and cannot receive the PC’s video directly. Use a keyboard and mouse connected to the PC to control it.'**
+  String get monitorSimSteps;
+
+  /// No description provided for @steamCs2InventoryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Steam CS2 inventory'**
+  String get steamCs2InventoryTitle;
+
+  /// No description provided for @steamCs2InventoryIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your Steam profile URL or 17-digit Steam ID to import your CS2 skins, stickers, cases and everything else the market sells. No Steam password or API key is needed.'**
+  String get steamCs2InventoryIntro;
+
+  /// No description provided for @steamCs2InventoryPublic.
+  ///
+  /// In en, this message translates to:
+  /// **'Your Steam profile and inventory must be public for luma to read them.'**
+  String get steamCs2InventoryPublic;
+
+  /// No description provided for @steamCs2InventoryPrivacy.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Steam privacy settings'**
+  String get steamCs2InventoryPrivacy;
+
+  /// No description provided for @steamCs2InventoryRefreshNote.
+  ///
+  /// In en, this message translates to:
+  /// **'While CS2 Market is open, luma checks your inventory every six hours. Items you sell or trade away are removed when it next checks. Disconnecting keeps imported items.'**
+  String get steamCs2InventoryRefreshNote;
+
+  /// No description provided for @steamCs2Disconnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Disconnect'**
+  String get steamCs2Disconnect;
+
+  /// No description provided for @steamCs2RefreshInventory.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh inventory'**
+  String get steamCs2RefreshInventory;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

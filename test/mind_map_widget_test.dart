@@ -10,6 +10,7 @@ import 'package:luma/features/plugins/installed/mind_map/ui/mind_map_canvas.dart
 import 'package:luma/features/plugins/installed/mind_map/ui/mind_map_node_card.dart';
 import 'package:luma/storage/storage_guard.dart';
 import 'package:luma/theme/luma_theme.dart';
+import 'package:luma/l10n/app_localizations.dart';
 
 /// The canvas is meant to be driven entirely from the keyboard, so the flow
 /// people will actually use — select, Tab, type, Enter, type — is exercised
@@ -68,15 +69,14 @@ void main() {
       MediaQuery(
         data: MediaQueryData(size: size),
         child: MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: L.localizationsDelegates,
+          supportedLocales: L.supportedLocales,
           theme: LumaTheme.dark,
           home: Scaffold(
             body: MindMapScope(
               repository: repo,
-              child: MindMapCanvas(
-                map: map!,
-                repository: repo,
-                onClose: () {},
-              ),
+              child: MindMapCanvas(map: map!, repository: repo, onClose: () {}),
             ),
           ),
         ),
@@ -89,9 +89,9 @@ void main() {
   /// Finds text inside a node card, so the map's title in the toolbar is
   /// never mistaken for the node itself.
   Finder nodeLabelled(String label) => find.descendant(
-        of: find.byType(MindMapNodeCard),
-        matching: find.text(label),
-      );
+    of: find.byType(MindMapNodeCard),
+    matching: find.text(label),
+  );
 
   Future<void> selectNode(WidgetTester tester, String label) async {
     await tester.tap(nodeLabelled(label));
@@ -134,15 +134,17 @@ void main() {
     );
   });
 
-  mapTest('Tab adds a child and drops straight into typing it',
-      (tester) async {
+  mapTest('Tab adds a child and drops straight into typing it', (tester) async {
     final mapId = await pumpMap(tester);
     await selectNode(tester, 'Launch');
 
     await pressKey(tester, LogicalKeyboardKey.tab);
 
-    expect(find.byType(TextField), findsOneWidget,
-        reason: 'the new node is edited in place, not through a dialog');
+    expect(
+      find.byType(TextField),
+      findsOneWidget,
+      reason: 'the new node is edited in place, not through a dialog',
+    );
 
     await typeLabel(tester, 'Research');
     await pressKey(tester, LogicalKeyboardKey.escape);
@@ -153,8 +155,9 @@ void main() {
     expect(nodes.firstWhere((n) => n.label == 'Research').parentId, root.id);
   });
 
-  mapTest('Enter chains siblings so a list can be typed straight in',
-      (tester) async {
+  mapTest('Enter chains siblings so a list can be typed straight in', (
+    tester,
+  ) async {
     final mapId = await pumpMap(tester);
     await selectNode(tester, 'Launch');
 
@@ -171,8 +174,9 @@ void main() {
     expect(children.map((n) => n.label), ['Research', 'Design']);
   });
 
-  mapTest('a new node left blank is dropped rather than littering the map',
-      (tester) async {
+  mapTest('a new node left blank is dropped rather than littering the map', (
+    tester,
+  ) async {
     final mapId = await pumpMap(tester);
     await selectNode(tester, 'Launch');
 
@@ -210,12 +214,16 @@ void main() {
     await settle(tester);
 
     expect(nodeLabelled('Research'), findsOneWidget);
-    expect(nodeLabelled('Competitors'), findsOneWidget,
-        reason: 'the whole subtree comes back, not just the node');
+    expect(
+      nodeLabelled('Competitors'),
+      findsOneWidget,
+      reason: 'the whole subtree comes back, not just the node',
+    );
   });
 
-  mapTest('Space folds a branch away and the pill says what is hidden',
-      (tester) async {
+  mapTest('Space folds a branch away and the pill says what is hidden', (
+    tester,
+  ) async {
     await pumpMap(tester);
     await buildBranch(tester);
 
@@ -225,8 +233,11 @@ void main() {
     await pressKey(tester, LogicalKeyboardKey.space);
 
     expect(nodeLabelled('Competitors'), findsNothing);
-    expect(nodeLabelled('1'), findsOneWidget,
-        reason: 'the pill counts what it hid');
+    expect(
+      nodeLabelled('1'),
+      findsOneWidget,
+      reason: 'the pill counts what it hid',
+    );
   });
 
   mapTest('arrow keys walk the tree by what is on screen', (tester) async {
@@ -253,14 +264,18 @@ void main() {
     );
   });
 
-  mapTest('a phone-sized window swaps the key hints for a touch bar',
-      (tester) async {
+  mapTest('a phone-sized window swaps the key hints for a touch bar', (
+    tester,
+  ) async {
     await pumpMap(tester, size: const Size(400, 780));
     await selectNode(tester, 'Launch');
 
     expect(find.text('Child'), findsOneWidget);
     expect(find.text('Sibling'), findsOneWidget);
-    expect(find.text('child'), findsNothing,
-        reason: 'the keyboard hint strip is desktop-only');
+    expect(
+      find.text('child'),
+      findsNothing,
+      reason: 'the keyboard hint strip is desktop-only',
+    );
   });
 }

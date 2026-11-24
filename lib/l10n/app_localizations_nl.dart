@@ -42072,4 +42072,219 @@ class LNl extends L {
   String modelViewerGithubError(int status) {
     return 'GitHub gaf een fout terug ($status).';
   }
+
+  @override
+  String get assistantPictureNoReferenceImages =>
+      'Dit beeldmodel ondersteunt geen referentieafbeeldingen. Kies een ander model om een afbeelding te uploaden.';
+
+  @override
+  String get assistantFileNotOpened => 'Dit bestand kon niet worden geopend.';
+
+  @override
+  String get assistantMoveChat => 'Chat verplaatsen';
+
+  @override
+  String get assistantMainChats => 'Hoofdchats';
+
+  @override
+  String get assistantCreateProjectFirst =>
+      'Maak eerst een project aan via Projecten.';
+
+  @override
+  String get assistantArtifactsTitle => 'Artefacten';
+
+  @override
+  String get assistantArtifactsLoadFailed =>
+      'Artefacten konden niet worden geladen.';
+
+  @override
+  String get assistantArtifactsEmpty =>
+      'Geen artefacten gevonden. Gemaakte bestanden en afbeeldingen verschijnen hier.';
+
+  @override
+  String get assistantArtifactSaveCopy => 'Kopie opslaan';
+
+  @override
+  String get assistantArtifactViewChat => 'Chat bekijken';
+
+  @override
+  String get assistantProjectsAll => 'Alle projecten';
+
+  @override
+  String get assistantProjectsNew => 'Nieuw project';
+
+  @override
+  String get assistantProjectsLoadFailed =>
+      'Projecten konden niet worden geladen.';
+
+  @override
+  String get assistantProjectsEmpty =>
+      'Maak je eerste project aan voor een eigen chatruimte.';
+
+  @override
+  String get assistantProjectMemory => 'Projectgeheugen';
+
+  @override
+  String get assistantProjectEdit => 'Project bewerken';
+
+  @override
+  String get assistantProjectMemoryHint =>
+      'Alleen chats in dit project kunnen dit geheugen gebruiken. De geheugeninstelling in Aanpassen geldt hier ook.';
+
+  @override
+  String get assistantProjectNoChats => 'Nog geen chats in dit project.';
+
+  @override
+  String get assistantProjectDelete => 'Project verwijderen';
+
+  @override
+  String get assistantProjectDeleteMessage =>
+      'Hiermee verwijder je het project en het geheugen ervan. De chats gaan terug naar de hoofdlijst; gemaakte bestanden blijven in Artefacten.';
+
+  @override
+  String get assistantUploadFiles => 'Bestanden uploaden';
+
+  @override
+  String get assistantUploadFilesHint =>
+      'Tekst, pdf en ondersteunde afbeeldingen';
+
+  @override
+  String get assistantRequiresOrbitOrNova => 'Vereist Orbit of Nova';
+
+  @override
+  String get assistantArtifactGeneration => 'Artefacten maken';
+
+  @override
+  String get aiWikiSearchCostTitle => 'Kosten tegenover prestaties';
+
+  @override
+  String get aiWikiSearchCostHint =>
+      'Zoekscore tegenover de OpenRouter-catalogusprijs per 1M invoertokens. Prijzen kunnen uit de cache komen. Wijs een punt aan of tik erop voor modeldetails.';
+
+  @override
+  String get aiWikiSearchNoPrices =>
+      'Er zijn geen modelprijzen beschikbaar voor deze vergelijking.';
+
+  @override
+  String get aiWikiSearchRetrievalScore => 'Zoekscore';
+
+  @override
+  String get aiWikiSearchCostAxis => 'Kosten per 1M invoertokens (USD)';
+
+  @override
+  String get aiWikiSearchPricesAndScores => 'Modelprijzen en scores';
+
+  @override
+  String get aiWikiSearchTitle => 'Wiki-zoektest';
+
+  @override
+  String get aiWikiSearchIntro =>
+      'Embeddingmodellen rangschikken fictieve naslagteksten tussen sterk verwante afleiders. De score is de mean reciprocal rank bij 10: een juist eerste resultaat levert 100% op, lagere plaatsen minder.';
+
+  @override
+  String get aiWikiSearchComparison => 'Vergelijking van embeddingmodellen';
+
+  @override
+  String get aiWikiSearchConclusions => 'Conclusies per model';
+
+  @override
+  String get mapMakerHubTitle => 'Kaartenmaker';
+
+  @override
+  String get mapMakerHubSubtitle =>
+      'Maak eigen fantasie-metronetten, stadsplattegronden en plattegronden van gebouwen.';
+
+  @override
+  String get mapMakerHomePlannerSoon => 'Woningplanner komt binnenkort!';
+
+  @override
+  String get mapMakerHubSaves => 'Opgeslagen';
+
+  @override
+  String get mapMakerHubSavesHint =>
+      'Bekijk, bewerk en hervat je opgeslagen kaarten, lijnschema’s en bouwtekeningen.';
+
+  @override
+  String get mapMakerComingSoon => 'Binnenkort';
+
+  @override
+  String get mapMakerTransitNewLineTitle => 'Nieuwe lijn';
+
+  @override
+  String get mapMakerTransitLineColor => 'Lijnkleur';
+
+  @override
+  String get mapMakerTransitEditLine => 'Lijn bewerken';
+
+  @override
+  String get mapMakerTransitDeleteLine => 'Lijn verwijderen';
+
+  @override
+  String get mapMakerTransitFinishRiver => 'Rivier afronden';
+
+  @override
+  String get mapMakerTransitLinesLabel => 'Lijnen:';
+
+  @override
+  String get mapMakerTransitNewLine => 'Nieuwe lijn';
+
+  @override
+  String get mapMakerTransitWaterway => 'Waterweg';
+
+  @override
+  String get mapMakerTransitClosedShape => 'Gesloten vorm (meer / zee)';
+
+  @override
+  String get mapMakerTransitDeleteWaterway => 'Waterweg verwijderen';
+
+  @override
+  String get mapMakerTransitStationDetails => 'Stationsgegevens';
+
+  @override
+  String get mapMakerTransitStationType => 'Stationstype';
+
+  @override
+  String get mapMakerTransitDeleteStop => 'Halte verwijderen';
+
+  @override
+  String get monitorSimWindowsOnly =>
+      'De HDMI-capture-viewer is beschikbaar op Windows.';
+
+  @override
+  String get monitorSimTitle => 'Monitorsimulatie';
+
+  @override
+  String get monitorSimSubtitle =>
+      'Bekijk een andere computer via een HDMI-capturekaart.';
+
+  @override
+  String get monitorSimHowToConnect => 'Zo sluit je aan';
+
+  @override
+  String get monitorSimSteps =>
+      '1. Sluit de HDMI-uitgang van de pc aan op een USB-HDMI-capturekaart.\n2. Steek de capturekaart in deze laptop en kies hem hieronder.\n3. Start het voorbeeld. Zie je geen beeld, controleer dan of de pc aanstaat en een ondersteund signaal stuurt.\n\nDe meeste HDMI-poorten op laptops zijn uitgangen en kunnen het beeld van de pc niet rechtstreeks ontvangen. Bedien de pc met een toetsenbord en muis die op de pc zijn aangesloten.';
+
+  @override
+  String get steamCs2InventoryTitle => 'Steam CS2-inventaris';
+
+  @override
+  String get steamCs2InventoryIntro =>
+      'Vul je Steam-profiel-URL of 17-cijferige Steam-ID in om je CS2-skins, stickers, kisten en alles wat de markt verkoopt te importeren. Je Steam-wachtwoord of een API-sleutel is niet nodig.';
+
+  @override
+  String get steamCs2InventoryPublic =>
+      'Je Steam-profiel en inventaris moeten openbaar zijn zodat luma ze kan lezen.';
+
+  @override
+  String get steamCs2InventoryPrivacy => 'Steam-privacyinstellingen openen';
+
+  @override
+  String get steamCs2InventoryRefreshNote =>
+      'Zolang CS2 Market open is, controleert luma je inventaris elke zes uur. Items die je verkoopt of ruilt, verdwijnen bij de volgende controle. Loskoppelen bewaart geïmporteerde items.';
+
+  @override
+  String get steamCs2Disconnect => 'Loskoppelen';
+
+  @override
+  String get steamCs2RefreshInventory => 'Inventaris vernieuwen';
 }

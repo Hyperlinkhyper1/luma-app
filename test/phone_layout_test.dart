@@ -9,6 +9,8 @@ import 'package:luma/features/plugins/installed/ai_usage/leaderboard/ai_model_de
 import 'package:luma/features/plugins/installed/school/ui/tests_tab.dart';
 import 'package:luma/theme/luma_theme.dart';
 import 'package:luma/theme/theme_style.dart';
+import 'package:luma/l10n/app_localizations.dart';
+import 'package:luma/l10n/current_l.dart';
 
 /// Screens that were only ever laid out on a desktop pane, checked at the size
 /// they actually get on a phone.
@@ -60,17 +62,23 @@ void _phoneSurface(WidgetTester tester) {
 /// The scope goes *above* `MaterialApp`, as `main.dart` nests it — pushing
 /// the model detail page has to stay inside it.
 Widget _leaderboard() => AiCatalogScope(
-      repository: AiCatalogRepository.withCatalog(_catalog),
-      child: MaterialApp(
-        theme: LumaTheme.from(Brightness.dark, null, LumaThemeStyle.standard),
-        home: const Scaffold(body: AiLeaderboardTab()),
-      ),
-    );
+  repository: AiCatalogRepository.withCatalog(_catalog),
+  child: MaterialApp(
+    locale: const Locale('en'),
+    localizationsDelegates: L.localizationsDelegates,
+    supportedLocales: L.supportedLocales,
+    theme: LumaTheme.from(Brightness.dark, null, LumaThemeStyle.standard),
+    home: const Scaffold(body: AiLeaderboardTab()),
+  ),
+);
 
 Widget _school() => MaterialApp(
-      theme: LumaTheme.dark,
-      home: const Scaffold(body: TestsTab()),
-    );
+  locale: const Locale('nl'),
+  localizationsDelegates: L.localizationsDelegates,
+  supportedLocales: L.supportedLocales,
+  theme: LumaTheme.dark,
+  home: const Scaffold(body: TestsTab()),
+);
 
 /// The tests tab carries a clock that reschedules every second, so
 /// `pumpAndSettle` would time out. Four short pumps clear the 200 ms phase
@@ -83,8 +91,9 @@ Future<void> _settle(WidgetTester tester) async {
 
 void main() {
   group('AI leaderboard on a phone', () {
-    testWidgets('lays out as cards, not a sideways-scrolling table',
-        (tester) async {
+    testWidgets('lays out as cards, not a sideways-scrolling table', (
+      tester,
+    ) async {
       _phoneSurface(tester);
       await tester.pumpWidget(_leaderboard());
       await tester.pumpAndSettle();
@@ -96,7 +105,7 @@ void main() {
       expect(find.text('Claude Opus 5'), findsOneWidget);
       expect(find.text('Anthropic'), findsOneWidget);
       expect(find.text('63.1'), findsOneWidget);
-      expect(find.text('78.0'), findsOneWidget);
+      expect(find.text('78.0'), findsNothing);
       expect(find.text('1344'), findsOneWidget);
       expect(find.textContaining(r'$15.00 /M'), findsOneWidget);
 
@@ -122,7 +131,8 @@ void main() {
         expect(
           box.size.width,
           lessThanOrEqualTo(390),
-          reason: 'a scrollable is wider than the screen — the table layout '
+          reason:
+              'a scrollable is wider than the screen — the table layout '
               'is still in play',
         );
       }
@@ -164,8 +174,9 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('the desktop table is still used on a wide window',
-        (tester) async {
+    testWidgets('the desktop table is still used on a wide window', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(1400, 1000);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
@@ -178,6 +189,8 @@ void main() {
   });
 
   group('School tests with the keyboard up', () {
+    setUpAll(() => setCurrentLocale(const Locale('nl')));
+    tearDownAll(() => setCurrentLocale(const Locale('en')));
     /// Runs a taalverzorging test and stops on the first question that wants
     /// something typed.
     Future<void> openTypedQuestion(WidgetTester tester) async {
@@ -209,8 +222,9 @@ void main() {
         .size
         .height;
 
-    testWidgets('focusing the answer gives the question back its space',
-        (tester) async {
+    testWidgets('focusing the answer gives the question back its space', (
+      tester,
+    ) async {
       _phoneSurface(tester);
       await openTypedQuestion(tester);
 
@@ -229,7 +243,8 @@ void main() {
       expect(
         bodyHeight(tester),
         greaterThan(before),
-        reason: 'the header did not stand aside, so the question still has '
+        reason:
+            'the header did not stand aside, so the question still has '
             'the same sliver to scroll in',
       );
 

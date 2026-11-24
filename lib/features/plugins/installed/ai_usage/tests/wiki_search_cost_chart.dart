@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../../app/widgets.dart';
 import '../../../../../theme/luma_theme.dart';
+import 'package:luma/l10n/app_localizations.dart';
 
 /// Compares benchmark scores with the current catalog's input-token prices.
 class WikiSearchCostChart extends StatelessWidget {
@@ -25,7 +26,7 @@ class WikiSearchCostChart extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Cost vs performance',
+            L.of(context).aiWikiSearchCostTitle,
             style: TextStyle(
               color: luma.textPrimary,
               fontWeight: FontWeight.w600,
@@ -33,18 +34,18 @@ class WikiSearchCostChart extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'Retrieval score vs OpenRouter catalog price per 1M input tokens. Prices may be cached. Hover or tap a point for model details.',
+            L.of(context).aiWikiSearchCostHint,
             style: TextStyle(color: luma.textSecondary),
           ),
           const SizedBox(height: 20),
           if (priced.isEmpty)
             Text(
-              'No model prices are available for this comparison.',
+              L.of(context).aiWikiSearchNoPrices,
               style: TextStyle(color: luma.textSecondary),
             )
           else ...[
             Text(
-              'Retrieval score',
+              L.of(context).aiWikiSearchRetrievalScore,
               style: TextStyle(color: luma.textSecondary),
             ),
             const SizedBox(height: 8),
@@ -168,7 +169,7 @@ class WikiSearchCostChart extends StatelessWidget {
             const SizedBox(height: 8),
             Center(
               child: Text(
-                'Cost per 1M input tokens (USD)',
+                L.of(context).aiWikiSearchCostAxis,
                 style: TextStyle(color: luma.textSecondary),
               ),
             ),
@@ -184,7 +185,7 @@ class WikiSearchCostChart extends StatelessWidget {
             type: MaterialType.transparency,
             child: ExpansionTile(
               tilePadding: EdgeInsets.zero,
-              title: const Text('Model prices and scores'),
+              title: Text(L.of(context).aiWikiSearchPricesAndScores),
               children: [
                 for (final model in models)
                   Padding(

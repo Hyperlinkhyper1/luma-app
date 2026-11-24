@@ -11,6 +11,7 @@ import 'package:luma/features/plugins/installed/airline_tycoon/sim/iso.dart';
 import 'package:luma/features/plugins/installed/airline_tycoon/ui/hub_view.dart';
 import 'package:luma/storage/storage_guard.dart';
 import 'package:luma/theme/luma_theme.dart';
+import 'package:luma/l10n/app_localizations.dart';
 
 late AirportCatalog catalog;
 
@@ -69,6 +70,9 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('en'),
+        localizationsDelegates: L.localizationsDelegates,
+        supportedLocales: L.supportedLocales,
         theme: LumaTheme.dark,
         home: Scaffold(
           body: AirlineTycoonScope(
@@ -138,8 +142,9 @@ void main() {
       expect(find.text('1 800 m'), findsOneWidget);
     });
 
-    testWidgets('a stranded gate is called out in the capacity strip',
-        (tester) async {
+    testWidgets('a stranded gate is called out in the capacity strip', (
+      tester,
+    ) async {
       final repo = makeRepo();
       addTearDown(repo.dispose);
       repo.state.cashEur = 900000000;
@@ -152,8 +157,9 @@ void main() {
       expect(find.text('Not on a terminal'), findsOneWidget);
     });
 
-    testWidgets('picking a building and tapping the field builds it there',
-        (tester) async {
+    testWidgets('picking a building and tapping the field builds it there', (
+      tester,
+    ) async {
       // The end-to-end path the isometric projection exists to support:
       // palette selection, screen point, inverse projection, tile, placement.
       // If picking and drawing ever disagree, this lands on the wrong tile.
@@ -179,9 +185,7 @@ void main() {
         matching: find.byType(InteractiveViewer),
       );
       expect(viewer, findsOneWidget);
-      await tester.tapAt(
-        tester.getTopLeft(viewer) + camera.project(0.5, 0.5),
-      );
+      await tester.tapAt(tester.getTopLeft(viewer) + camera.project(0.5, 0.5));
       await tester.pump();
 
       expect(repo.state.buildings.length, buildingsBefore + 1);
@@ -203,8 +207,9 @@ void main() {
       expect(find.text('1 aircraft'), findsOneWidget);
     });
 
-    testWidgets('an empty fleet shows an empty state, not a blank list',
-        (tester) async {
+    testWidgets('an empty fleet shows an empty state, not a blank list', (
+      tester,
+    ) async {
       final repo = makeRepo();
       addTearDown(repo.dispose);
       repo.releaseAircraft(repo.state.fleet.single.id);
@@ -273,7 +278,8 @@ void main() {
         repo.state.fleet.single.id,
         repo.state.routes.single.id,
       );
-      repo.state.lastSeenEpochMs = DateTime.now().millisecondsSinceEpoch -
+      repo.state.lastSeenEpochMs =
+          DateTime.now().millisecondsSinceEpoch -
           days * AirlineTycoonRepository.offlineMsPerDay;
       repo.catchUpOnAwayTime();
     }
@@ -309,8 +315,9 @@ void main() {
       expect(find.textContaining('40 days went by'), findsOneWidget);
     });
 
-    testWidgets('keeps its only action reachable on a short screen',
-        (tester) async {
+    testWidgets('keeps its only action reachable on a short screen', (
+      tester,
+    ) async {
       // A capped report with events is the longest this sheet ever gets. On a
       // small phone that is taller than the screen, so the body has to scroll
       // with the button pinned — otherwise the only way out sits below the
@@ -323,8 +330,11 @@ void main() {
       await settle(tester);
 
       final button = tester.getRect(find.text('Back to work'));
-      expect(button.bottom, lessThanOrEqualTo(600),
-          reason: 'the dismiss button must be on screen');
+      expect(
+        button.bottom,
+        lessThanOrEqualTo(600),
+        reason: 'the dismiss button must be on screen',
+      );
 
       await tester.tap(find.text('Back to work'));
       await settle(tester);

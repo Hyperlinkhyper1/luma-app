@@ -4,6 +4,7 @@ import 'package:luma/features/plugins/installed/airline_tycoon/airline_game_stat
 import 'package:luma/features/plugins/installed/airline_tycoon/airline_tycoon_repository.dart';
 import 'package:luma/features/plugins/installed/airline_tycoon/ui/airport_game_view.dart';
 import 'package:luma/theme/luma_theme.dart';
+import 'package:luma/l10n/app_localizations.dart';
 
 class _AirportUiRepository extends AirlineTycoonRepository {
   _AirportUiRepository()
@@ -116,6 +117,9 @@ void main() {
     late AirportSceneBridge bridge;
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('en'),
+        localizationsDelegates: L.localizationsDelegates,
+        supportedLocales: L.supportedLocales,
         theme: LumaTheme.dark,
         home: Scaffold(
           body: AirportGameView(

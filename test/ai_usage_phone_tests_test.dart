@@ -294,8 +294,10 @@ void main() {
         );
         expect(
           File(sandboxed).readAsStringSync(),
-          startsWith('<!doctype html><meta charset="utf-8">'
-              '<meta http-equiv="Content-Security-Policy"'),
+          startsWith(
+            '<!doctype html><meta charset="utf-8">'
+            '<meta http-equiv="Content-Security-Policy"',
+          ),
         );
         expect(view.params.initialSettings?.javaScriptEnabled, isTrue);
         expect(

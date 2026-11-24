@@ -9,6 +9,7 @@ import 'package:luma/finance/finance_repository.dart';
 import 'package:luma/finance/finance_scope.dart';
 import 'package:luma/storage/storage_guard.dart';
 import 'package:luma/theme/luma_theme.dart';
+import 'package:luma/l10n/app_localizations.dart';
 
 /// Renders every Finance tab touched by budgets, goals, debts, the forecast,
 /// the subscription detector, reports and dividends — on a desktop window and
@@ -44,25 +45,36 @@ void main() {
     await repo.setCategoryBudgets({cats[0].id: 20000, cats[1].id: 5000});
 
     final potId = await repo.createPot(
-        name: 'Holiday', colorValue: 0xFF2196F3, iconCodepoint: 0xe0b0);
-    await repo.setPotGoal(potId,
-        goalCents: 150000, goalDate: DateTime(now.year + 1, now.month, 1));
+      name: 'Holiday',
+      colorValue: 0xFF2196F3,
+      iconCodepoint: 0xe0b0,
+    );
+    await repo.setPotGoal(
+      potId,
+      goalCents: 150000,
+      goalDate: DateTime(now.year + 1, now.month, 1),
+    );
     await repo.allocateToPot(potId, 40000);
 
     await repo.addTransaction(
-        kind: TxnKind.income, amountCents: 300000, date: now);
+      kind: TxnKind.income,
+      amountCents: 300000,
+      date: now,
+    );
     await repo.addTransaction(
-        kind: TxnKind.expense,
-        amountCents: 18000,
-        date: now,
-        categoryId: cats[0].id,
-        note: 'Groceries');
+      kind: TxnKind.expense,
+      amountCents: 18000,
+      date: now,
+      categoryId: cats[0].id,
+      note: 'Groceries',
+    );
     await repo.addTransaction(
-        kind: TxnKind.expense,
-        amountCents: 7000,
-        date: now,
-        categoryId: cats[1].id,
-        note: 'Night out');
+      kind: TxnKind.expense,
+      amountCents: 7000,
+      date: now,
+      categoryId: cats[1].id,
+      note: 'Night out',
+    );
     final merchant = (await repo.allMerchants()).first;
     for (var i = 0; i < 4; i++) {
       await repo.addTransaction(
@@ -73,42 +85,51 @@ void main() {
       );
     }
 
-    await repo.createRecurring(RecurringRulesCompanion.insert(
-      name: 'Rent',
-      kind: TxnKind.expense,
-      amountCents: 450000,
-      cadence: Cadence.monthly,
-      nextDue: now.add(const Duration(days: 5)),
-    ));
+    await repo.createRecurring(
+      RecurringRulesCompanion.insert(
+        name: 'Rent',
+        kind: TxnKind.expense,
+        amountCents: 450000,
+        cadence: Cadence.monthly,
+        nextDue: now.add(const Duration(days: 5)),
+      ),
+    );
 
-    final debtId = await repo.createDebt(DebtsCompanion.insert(
-      name: 'Student loan with a rather long name',
-      direction: DebtDirection.owe,
-      principalCents: 2500000,
-      interestBps: const Value(256),
-      monthlyPaymentCents: const Value(25000),
-      startDate: DateTime(2022),
-    ));
-    final debt = (await db.select(db.debts).get())
-        .firstWhere((d) => d.id == debtId);
+    final debtId = await repo.createDebt(
+      DebtsCompanion.insert(
+        name: 'Student loan with a rather long name',
+        direction: DebtDirection.owe,
+        principalCents: 2500000,
+        interestBps: const Value(256),
+        monthlyPaymentCents: const Value(25000),
+        startDate: DateTime(2022),
+      ),
+    );
+    final debt = (await db.select(db.debts).get()).firstWhere(
+      (d) => d.id == debtId,
+    );
     await repo.addDebtPayment(debt: debt, amountCents: 25000, date: now);
-    await repo.createDebt(DebtsCompanion.insert(
-      name: 'Sam',
-      direction: DebtDirection.owed,
-      principalCents: 4500,
-      startDate: now,
-    ));
+    await repo.createDebt(
+      DebtsCompanion.insert(
+        name: 'Sam',
+        direction: DebtDirection.owed,
+        principalCents: 4500,
+        startDate: now,
+      ),
+    );
 
-    await repo.upsertHolding(HoldingsCompanion.insert(
-      ticker: 'AAPL',
-      name: 'Apple Inc.',
-      shares: 3,
-      avgCostCents: 15000,
-      lastPriceCents: const Value(22000),
-      lastPriceAt: Value(now),
-      currency: const Value('USD'),
-      eurPerUnit: const Value(0.92),
-    ));
+    await repo.upsertHolding(
+      HoldingsCompanion.insert(
+        ticker: 'AAPL',
+        name: 'Apple Inc.',
+        shares: 3,
+        avgCostCents: 15000,
+        lastPriceCents: const Value(22000),
+        lastPriceAt: Value(now),
+        currency: const Value('USD'),
+        eurPerUnit: const Value(0.92),
+      ),
+    );
     final holding = (await db.select(db.holdings).get()).single;
     await repo.addDividend(holding: holding, amountCents: 120, date: now);
   }
@@ -122,12 +143,17 @@ void main() {
       addTearDown(tester.view.reset);
 
       await tester.runAsync(seed);
-      await tester.pumpWidget(MaterialApp(
-        theme: LumaTheme.dark,
-        home: Scaffold(
-          body: FinanceScope(repository: repo, child: const FinancePage()),
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: L.localizationsDelegates,
+          supportedLocales: L.supportedLocales,
+          theme: LumaTheme.dark,
+          home: Scaffold(
+            body: FinanceScope(repository: repo, child: const FinancePage()),
+          ),
         ),
-      ));
+      );
       await settle(tester);
 
       Future<void> open(String tab) async {
@@ -145,7 +171,10 @@ void main() {
         find.textContaining('% of '),
         200,
         scrollable: find
-            .ancestor(of: find.text('Budgets'), matching: find.byType(Scrollable))
+            .ancestor(
+              of: find.text('Budgets'),
+              matching: find.byType(Scrollable),
+            )
             .first,
       );
       expect(find.textContaining('% of '), findsWidgets);

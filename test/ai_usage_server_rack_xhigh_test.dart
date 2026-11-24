@@ -7,6 +7,7 @@ import 'package:luma/features/plugins/installed/ai_usage/tests/ai_benchmark_repo
 import 'package:luma/features/plugins/installed/ai_usage/tests/ai_benchmark_scope.dart';
 import 'package:luma/features/plugins/installed/ai_usage/tests/server_rack_test_page.dart';
 import 'package:luma/theme/luma_theme.dart';
+import 'package:luma/l10n/app_localizations.dart';
 
 const _scene = 'assets/ai_usage/server_rack_tests/sonnet_5_5_xhigh.html';
 
@@ -93,6 +94,9 @@ void main() {
       AiBenchmarkScope(
         repository: repository,
         child: MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: L.localizationsDelegates,
+          supportedLocales: L.supportedLocales,
           theme: LumaTheme.dark,
           home: const ServerRackTestPage(),
         ),

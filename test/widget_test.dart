@@ -4,33 +4,43 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:luma/app/window_title_bar.dart';
 import 'package:luma/features/converter/converter_page.dart';
 import 'package:luma/theme/luma_theme.dart';
+import 'package:luma/l10n/app_localizations.dart';
 
 void main() {
-  testWidgets('converter hub lists the four tools in the dark lavender palette',
-      (tester) async {
+  testWidgets(
+    'converter hub lists the four tools in the dark lavender palette',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: L.localizationsDelegates,
+          supportedLocales: L.supportedLocales,
+          theme: LumaTheme.light,
+          darkTheme: LumaTheme.dark,
+          themeMode: ThemeMode.dark,
+          home: const Scaffold(body: ConverterPage()),
+        ),
+      );
+
+      expect(find.text('Picture converter'), findsOneWidget);
+      expect(find.text('Audio converter'), findsOneWidget);
+      expect(find.text('Video converter'), findsOneWidget);
+      expect(find.text('Image downscaler'), findsOneWidget);
+      expect(find.text('Video downscaler'), findsOneWidget);
+
+      final context = tester.element(find.byType(ConverterPage));
+      expect(context.luma.background, LumaPalette.dark.background);
+    },
+  );
+
+  testWidgets('opening a tool from the hub shows its screen and back works', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       MaterialApp(
-        theme: LumaTheme.light,
-        darkTheme: LumaTheme.dark,
-        themeMode: ThemeMode.dark,
-        home: const Scaffold(body: ConverterPage()),
-      ),
-    );
-
-    expect(find.text('Picture converter'), findsOneWidget);
-    expect(find.text('Audio converter'), findsOneWidget);
-    expect(find.text('Video converter'), findsOneWidget);
-    expect(find.text('Image downscaler'), findsOneWidget);
-    expect(find.text('Video downscaler'), findsOneWidget);
-
-    final context = tester.element(find.byType(ConverterPage));
-    expect(context.luma.background, LumaPalette.dark.background);
-  });
-
-  testWidgets('opening a tool from the hub shows its screen and back works',
-      (tester) async {
-    await tester.pumpWidget(
-      MaterialApp(
+        locale: const Locale('en'),
+        localizationsDelegates: L.localizationsDelegates,
+        supportedLocales: L.supportedLocales,
         theme: LumaTheme.dark,
         home: const Scaffold(body: ConverterPage()),
       ),
@@ -51,6 +61,9 @@ void main() {
   testWidgets('title bar renders the active section title', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('en'),
+        localizationsDelegates: L.localizationsDelegates,
+        supportedLocales: L.supportedLocales,
         theme: LumaTheme.dark,
         home: Scaffold(
           body: WindowTitleBar(

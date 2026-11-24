@@ -4,10 +4,15 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:luma/features/plugins/installed/school/logic/quiz_bank.dart';
 import 'package:luma/features/plugins/installed/school/ui/tests_tab.dart';
 import 'package:luma/theme/luma_theme.dart';
+import 'package:luma/l10n/app_localizations.dart';
+import 'package:luma/l10n/current_l.dart';
 
 // The Tests tab holds no repository and touches no database, so it can be
 // pumped on its own — no scope, no storage guard.
 Widget _app() => MaterialApp(
+  locale: const Locale('nl'),
+  localizationsDelegates: L.localizationsDelegates,
+  supportedLocales: L.supportedLocales,
   theme: LumaTheme.dark,
   home: const Scaffold(body: TestsTab()),
 );
@@ -38,6 +43,8 @@ Future<void> _tapOption(WidgetTester tester, String label) async {
 // Every test widens the surface first: a phone-sized window would clip the
 // subject grid and the review list off the bottom.
 void main() {
+  setUpAll(() => setCurrentLocale(const Locale('nl')));
+  tearDownAll(() => setCurrentLocale(const Locale('en')));
   testWidgets('open spelling answers survive navigation on a phone', (
     tester,
   ) async {

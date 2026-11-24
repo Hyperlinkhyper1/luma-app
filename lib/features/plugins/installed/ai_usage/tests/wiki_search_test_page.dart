@@ -4,6 +4,7 @@ import '../../../../../app/widgets.dart';
 import '../../../../../theme/luma_theme.dart';
 import 'ai_benchmark_scope.dart';
 import 'wiki_search_cost_chart.dart';
+import 'package:luma/l10n/app_localizations.dart';
 
 class WikiSearchTestPage extends StatefulWidget {
   const WikiSearchTestPage({super.key});
@@ -31,7 +32,7 @@ class _WikiSearchTestPageState extends State<WikiSearchTestPage> {
     return Scaffold(
       backgroundColor: luma.background,
       appBar: AppBar(
-        title: const Text('Wiki search test'),
+        title: Text(L.of(context).aiWikiSearchTitle),
         actions: [
           IconButton(
             onPressed: repo.canRefresh ? repo.loadWikiSearch : null,
@@ -67,7 +68,7 @@ class _WikiSearchTestPageState extends State<WikiSearchTestPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Embedding models rank fictional reference passages with closely related distractors. The score is mean reciprocal rank at 10: a correct first result earns 100%, lower ranks earn less.',
+                  L.of(context).aiWikiSearchIntro,
                   style: TextStyle(color: luma.textSecondary),
                 ),
                 const SizedBox(height: 20),
@@ -91,7 +92,7 @@ class _WikiSearchTestPageState extends State<WikiSearchTestPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Embedding model comparison',
+                          L.of(context).aiWikiSearchComparison,
                           style: TextStyle(
                             color: luma.textPrimary,
                             fontWeight: FontWeight.w600,
@@ -146,7 +147,7 @@ class _WikiSearchTestPageState extends State<WikiSearchTestPage> {
                   ),
                   const SizedBox(height: 20),
                   Text(
-                    'Model conclusions',
+                    L.of(context).aiWikiSearchConclusions,
                     style: TextStyle(
                       color: luma.textPrimary,
                       fontWeight: FontWeight.w600,

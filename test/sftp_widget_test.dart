@@ -10,6 +10,7 @@ import 'package:luma/features/plugins/installed/sftp/sftp_transfer_queue.dart';
 import 'package:luma/settings/settings_controller.dart';
 import 'package:luma/settings/settings_scope.dart';
 import 'package:luma/theme/luma_theme.dart';
+import 'package:luma/l10n/app_localizations.dart';
 
 /// Loading settings does real async I/O, so it runs outside the widget
 /// tester's fake clock; with no path_provider on the host the controller
@@ -31,6 +32,9 @@ Future<void> _pumpPage(WidgetTester tester, String plan) async {
   final settings = await _settings(tester, plan);
   await tester.pumpWidget(
     MaterialApp(
+      locale: const Locale('en'),
+      localizationsDelegates: L.localizationsDelegates,
+      supportedLocales: L.supportedLocales,
       theme: LumaTheme.dark,
       home: SettingsScope(
         controller: settings,
@@ -71,6 +75,9 @@ Future<void> _pumpPane(
 }) async {
   await tester.pumpWidget(
     MaterialApp(
+      locale: const Locale('en'),
+      localizationsDelegates: L.localizationsDelegates,
+      supportedLocales: L.supportedLocales,
       theme: LumaTheme.dark,
       home: Scaffold(
         body: SftpFilePane(
@@ -99,26 +106,30 @@ Future<void> _pumpPane(
   await tester.pump();
 }
 
+final _en = lookupL(const Locale('en'));
+
 void main() {
   group('plan gate', () {
-    testWidgets('Core sees the upgrade prompt instead of the browser',
-        (tester) async {
+    testWidgets('Core sees the upgrade prompt instead of the browser', (
+      tester,
+    ) async {
       await _pumpPage(tester, 'core');
 
-      expect(find.text('SFTP is a Nova exclusive'), findsOneWidget);
+      expect(find.text(_en.sftpUpsellTitle), findsOneWidget);
       expect(find.text('Site Manager'), findsNothing);
     });
 
-    testWidgets('Orbit is also held back', (tester) async {
+    testWidgets('Orbit opens on the Site Manager too', (tester) async {
       await _pumpPage(tester, 'orbit');
 
-      expect(find.text('SFTP is a Nova exclusive'), findsOneWidget);
+      expect(find.text(_en.sftpUpsellTitle), findsNothing);
+      expect(find.text('Site Manager'), findsOneWidget);
     });
 
     testWidgets('Nova opens on the Site Manager', (tester) async {
       await _pumpPage(tester, 'nova');
 
-      expect(find.text('SFTP is a Nova exclusive'), findsNothing);
+      expect(find.text(_en.sftpUpsellTitle), findsNothing);
       expect(find.text('Site Manager'), findsOneWidget);
       expect(find.text('No servers yet'), findsOneWidget);
       expect(
@@ -129,8 +140,9 @@ void main() {
   });
 
   group('devices mode', () {
-    testWidgets('switching to My devices leaves the server browser',
-        (tester) async {
+    testWidgets('switching to My devices leaves the server browser', (
+      tester,
+    ) async {
       await _pumpPage(tester, 'nova');
 
       await tester.tap(find.text('My devices'));
@@ -159,8 +171,9 @@ void main() {
   });
 
   group('file pane', () {
-    testWidgets('lists entries with their size and permissions',
-        (tester) async {
+    testWidgets('lists entries with their size and permissions', (
+      tester,
+    ) async {
       await _pumpPane(tester, selection: {});
 
       expect(find.text('www'), findsOneWidget);
@@ -170,8 +183,9 @@ void main() {
       expect(find.text('2 items'), findsOneWidget);
     });
 
-    testWidgets('tapping a folder opens it, tapping a file selects it',
-        (tester) async {
+    testWidgets('tapping a folder opens it, tapping a file selects it', (
+      tester,
+    ) async {
       final opened = <String>[];
       final toggled = <String>[];
       await _pumpPane(
@@ -199,14 +213,18 @@ void main() {
   });
 
   group('queue panel', () {
-    testWidgets('shows what is moving, and clears when finished',
-        (tester) async {
+    testWidgets('shows what is moving, and clears when finished', (
+      tester,
+    ) async {
       final queue = SftpTransferQueue();
       addTearDown(queue.dispose);
       queue.enqueueUpload(File('notes.txt'), '/var/notes.txt', size: 4096);
 
       await tester.pumpWidget(
         MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: L.localizationsDelegates,
+          supportedLocales: L.supportedLocales,
           theme: LumaTheme.dark,
           home: Scaffold(
             body: SftpQueuePanel(
@@ -238,6 +256,9 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: L.localizationsDelegates,
+          supportedLocales: L.supportedLocales,
           theme: LumaTheme.dark,
           home: Scaffold(
             body: SftpQueuePanel(
@@ -250,8 +271,10 @@ void main() {
       );
       await tester.pump();
 
-      expect(find.textContaining('Drag files between the two sides'),
-          findsOneWidget);
+      expect(
+        find.textContaining('Drag files between the two sides'),
+        findsOneWidget,
+      );
       expect(find.text('Empty'), findsOneWidget);
     });
   });

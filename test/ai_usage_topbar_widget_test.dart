@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -15,6 +18,7 @@ import 'package:luma/features/plugins/installed/ai_usage/opencode_scanner.dart';
 import 'package:luma/storage/storage_guard.dart';
 import 'package:luma/theme/luma_theme.dart';
 import 'package:luma/theme/theme_style.dart';
+import 'package:luma/l10n/app_localizations.dart';
 
 /// `scheduleRefresh` starts a real `Timer` that eventually calls
 /// `path_provider`, unmocked here. Under flutter_test's FakeAsync clock that
@@ -30,12 +34,13 @@ class _NoScheduleStorageGuard extends StorageGuardService {
 /// a real scan under FakeAsync never settles. Only the Claude stub reports
 /// found, with one turn so the dashboard renders its body.
 class _FoundClaudeScanner extends ClaudeCodeScanner {
-  const _FoundClaudeScanner(this.db);
-  final AiUsageDatabase db;
+  const _FoundClaudeScanner();
 
   @override
   Future<ClaudeCodeScanResult> scan(AiUsageDatabase db) async {
-    await db.into(db.aiUsageTurns).insert(
+    await db
+        .into(db.aiUsageTurns)
+        .insert(
           AiUsageTurnsCompanion.insert(
             sessionId: 'sess-1',
             timestamp: DateTime.now().toUtc(),
@@ -98,42 +103,62 @@ void main() {
   // The scan consults the app-wide storage cap, which only main.dart sets.
   setUpAll(() => StorageGuardService.instance = _NoScheduleStorageGuard());
 
-  testWidgets('rescan and settings buttons are flush right in the top bar',
-      (tester) async {
+  testWidgets('rescan and settings buttons are flush right in the top bar', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(1652, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    final db = AiUsageDatabase(NativeDatabase.memory());
-    addTearDown(db.close);
+    // Scans and dashboard loads run on a worker isolate, which needs a
+    // database it can open from there: a file, not an in-memory one.
+    final dir = (await tester.runAsync(
+      () => Directory.systemTemp.createTemp('luma-topbar-'),
+    ))!;
+    final db = AiUsageDatabase(
+      NativeDatabase.createInBackground(File('${dir.path}/usage.sqlite')),
+    );
+    addTearDown(() => tester.runAsync(() => dir.delete(recursive: true)));
+    final repo = AiUsageRepository(
+      db,
+      claudeScanner: const _FoundClaudeScanner(),
+      codexScanner: const _UnavailableCodexScanner(),
+      antigravityScanner: const _UnavailableAntigravityScanner(),
+      opencodeScanner: const _UnavailableOpencodeScanner(),
+      freebuffScanner: const _UnavailableFreebuffScanner(),
+    );
+
+    /// Lets isolate work finish: real time for the worker, then a pump so
+    /// the continuations queued in the test's fake-async zone run too.
+    Future<void> settleReal(bool Function() done) async {
+      for (var i = 0; i < 100 && !done(); i++) {
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 20)),
+        );
+        await tester.pump();
+      }
+    }
 
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('en'),
+        localizationsDelegates: L.localizationsDelegates,
+        supportedLocales: L.supportedLocales,
         theme: LumaTheme.from(Brightness.dark, null, LumaThemeStyle.standard),
         home: Scaffold(
           body: AiUsageScope(
-            repository: AiUsageRepository(
-              db,
-              claudeScanner: _FoundClaudeScanner(db),
-              codexScanner: const _UnavailableCodexScanner(),
-              antigravityScanner: const _UnavailableAntigravityScanner(),
-              opencodeScanner: const _UnavailableOpencodeScanner(),
-              freebuffScanner: const _UnavailableFreebuffScanner(),
-            ),
+            repository: repo,
             child: const AiUsageDashboardTab(),
           ),
         ),
       ),
     );
     // First frame: loading spinner. The post-frame callback then kicks off
-    // the (stubbed) scan; a couple of microtask-friendly pumps later the
-    // dashboard body is up.
-    await tester.pump();
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 50));
-
+    // the (stubbed) scan and the dashboard load, both on a real isolate, so
+    // give them real time rather than fake-clock pumps.
     final gearFinder = find.byTooltip('Usage display settings');
+    await settleReal(() => gearFinder.evaluate().isNotEmpty);
     expect(gearFinder, findsOneWidget, reason: 'dashboard body should be up');
 
     // The page adds its own 24px trailing padding; the buttons must stop at
@@ -142,8 +167,9 @@ void main() {
     const trailingPadding = 24.0;
     final contentRight = pageRight - trailingPadding;
 
-    final gearRect =
-        tester.getRect(find.ancestor(of: gearFinder, matching: find.byType(IconButton)));
+    final gearRect = tester.getRect(
+      find.ancestor(of: gearFinder, matching: find.byType(IconButton)),
+    );
     expect(
       gearRect.right,
       moreOrLessEquals(contentRight, epsilon: 0.5),
@@ -153,9 +179,12 @@ void main() {
           'top bar Row is splitting flex width with the range tabs again',
     );
 
-    final refreshRect = tester.getRect(find
-        .ancestor(of: find.byTooltip('Rescan local AI usage logs'),
-            matching: find.byType(IconButton)));
+    final refreshRect = tester.getRect(
+      find.ancestor(
+        of: find.byTooltip('Rescan local AI usage logs'),
+        matching: find.byType(IconButton),
+      ),
+    );
     expect(
       refreshRect.right,
       moreOrLessEquals(gearRect.left, epsilon: 0.5),
@@ -163,5 +192,12 @@ void main() {
     );
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(const Duration(milliseconds: 1));
+    // Closing while a scan is still on the worker would wait forever, and
+    // the close itself also only completes with pumps.
+    await settleReal(() => !repo.scanning);
+    var closed = false;
+    unawaited(db.close().then((_) => closed = true));
+    await settleReal(() => closed);
+    repo.dispose();
   });
 }

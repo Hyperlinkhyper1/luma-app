@@ -237,10 +237,10 @@ class _ComposeModeButtonState extends State<ComposeModeButton> {
           dense: true,
           contentPadding: EdgeInsets.zero,
           leading: const Icon(Icons.attach_file_rounded, size: 18),
-          title: const Text('Upload files'),
+          title: Text(L.of(context).assistantUploadFiles),
           subtitle: widget.filesAllowed
-              ? const Text('Text, PDF and supported images')
-              : const Text('Requires Orbit or Nova'),
+              ? Text(L.of(context).assistantUploadFilesHint)
+              : Text(L.of(context).assistantRequiresOrbitOrNova),
         ),
       ),
       SubmenuButton(
@@ -279,7 +279,7 @@ class _ComposeModeButtonState extends State<ComposeModeButton> {
           dense: true,
           contentPadding: EdgeInsets.zero,
           leading: const Icon(Icons.description_outlined, size: 18),
-          title: const Text('Artifact generation'),
+          title: Text(L.of(context).assistantArtifactGeneration),
           subtitle: Text(
             widget.filesAllowed
                 ? 'Choose a file type'

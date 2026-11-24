@@ -172,6 +172,8 @@ void main() {
     });
     await tester.pumpAndSettle();
     expect(find.text('report.csv'), findsOneWidget);
+    await tester.tap(find.byTooltip('More'));
+    await tester.pumpAndSettle();
     expect(find.text('Save a copy'), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.runAsync(db.close);
@@ -212,8 +214,13 @@ void main() {
           matching: find.byType(SubmenuButton),
         ),
       );
-      expect(locked.menuChildren, isEmpty);
-      expect(find.text('Requires Orbit or Nova'), findsNWidgets(2));
+      // Pictures are on every plan; the file types stay behind Orbit.
+      expect(locked.menuChildren, hasLength(1));
+      expect(find.text('Requires Orbit or Nova'), findsOneWidget);
+      expect(
+        find.text('Pictures only · files need Orbit or Nova'),
+        findsOneWidget,
+      );
       await tester.tapAt(const Offset(310, 650));
       await tester.pumpAndSettle();
       await tester.pumpWidget(host(composer(true)));

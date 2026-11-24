@@ -13,6 +13,7 @@ import 'package:luma/features/plugins/installed/steam_tools/steam_scope.dart';
 import 'package:luma/features/plugins/installed/steam_tools/ui/steam_game_search_dialog.dart';
 import 'package:luma/storage/storage_guard.dart';
 import 'package:luma/theme/luma_theme.dart';
+import 'package:luma/l10n/app_localizations.dart';
 
 /// Covers the thing this dialog exists to prove: a game can be found and
 /// tracked through Steam's public store search alone, with no Steam account
@@ -50,12 +51,15 @@ void main() {
       });
 
   Widget app(SteamRepository repository, Widget child) => SteamScope(
-        repository: repository,
-        child: MaterialApp(
-          theme: LumaTheme.dark,
-          home: Scaffold(body: child),
-        ),
-      );
+    repository: repository,
+    child: MaterialApp(
+      locale: const Locale('en'),
+      localizationsDelegates: L.localizationsDelegates,
+      supportedLocales: L.supportedLocales,
+      theme: LumaTheme.dark,
+      home: Scaffold(body: child),
+    ),
+  );
 
   /// Every test here pumps a tree with a `StreamBuilder` over a drift query
   /// (`watchTrackedGames`). Drift schedules a zero-duration cleanup `Timer`
@@ -74,23 +78,22 @@ void main() {
   }
 
   testWidgets('shows a hint until something is typed', (tester) async {
-    final repository = SteamRepository(db, api: SteamApi(client: MockClient(
-      (_) async => http.Response('{}', 200),
-    )));
+    final repository = SteamRepository(
+      db,
+      api: SteamApi(client: MockClient((_) async => http.Response('{}', 200))),
+    );
 
     await tester.pumpWidget(app(repository, const SteamGameSearchDialog()));
     await tester.pumpAndSettle();
 
-    expect(
-      find.textContaining("Search by a game's name"),
-      findsOneWidget,
-    );
+    expect(find.textContaining("Search by a game's name"), findsOneWidget);
 
     await disposeAndFlush(tester);
   });
 
-  testWidgets('typing a query returns results after the debounce settles',
-      (tester) async {
+  testWidgets('typing a query returns results after the debounce settles', (
+    tester,
+  ) async {
     final repository = SteamRepository(
       db,
       api: SteamApi(
@@ -163,18 +166,24 @@ void main() {
   });
 
   testWidgets('Done closes the dialog', (tester) async {
-    final repository = SteamRepository(db, api: SteamApi(client: MockClient(
-      (_) async => http.Response('{}', 200),
-    )));
+    final repository = SteamRepository(
+      db,
+      api: SteamApi(client: MockClient((_) async => http.Response('{}', 200))),
+    );
 
-    await tester.pumpWidget(app(repository, Builder(
-      builder: (context) => Center(
-        child: TextButton(
-          onPressed: () => showSteamGameSearchDialog(context),
-          child: const Text('open'),
+    await tester.pumpWidget(
+      app(
+        repository,
+        Builder(
+          builder: (context) => Center(
+            child: TextButton(
+              onPressed: () => showSteamGameSearchDialog(context),
+              child: const Text('open'),
+            ),
+          ),
         ),
       ),
-    )));
+    );
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
     expect(find.byType(SteamGameSearchDialog), findsOneWidget);

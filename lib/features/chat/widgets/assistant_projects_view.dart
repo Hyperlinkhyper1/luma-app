@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../app/widgets.dart';
 import '../../../theme/luma_theme.dart';
 import '../data/chat_repository.dart';
+import 'package:luma/l10n/app_localizations.dart';
 
 class AssistantProjectsView extends StatelessWidget {
   const AssistantProjectsView({
@@ -34,7 +35,7 @@ class AssistantProjectsView extends StatelessWidget {
               child: TextButton.icon(
                 onPressed: () => onOpenProject(null),
                 icon: const Icon(Icons.arrow_back_rounded, size: 18),
-                label: const Text('All projects'),
+                label: Text(L.of(context).assistantProjectsAll),
               ),
             ),
           Wrap(
@@ -55,13 +56,13 @@ class AssistantProjectsView extends StatelessWidget {
                 FilledButton.icon(
                   onPressed: () => _edit(context),
                   icon: const Icon(Icons.add_rounded),
-                  label: const Text('New project'),
+                  label: Text(L.of(context).assistantProjectsNew),
                 ),
               if (project != null)
                 FilledButton.icon(
                   onPressed: () => onNewChat(project.id),
                   icon: const Icon(Icons.add_rounded),
-                  label: const Text('New chat'),
+                  label: Text(L.of(context).assistantNewChat),
                 ),
             ],
           ),
@@ -76,15 +77,14 @@ class AssistantProjectsView extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           if (project == null) ...[
-            if (snapshot.hasError) const Text('Could not load projects.'),
+            if (snapshot.hasError)
+              Text(L.of(context).assistantProjectsLoadFailed),
             if (snapshot.connectionState == ConnectionState.waiting)
               const LinearProgressIndicator(),
             if (projects.isEmpty && snapshot.hasData)
-              const Padding(
+              Padding(
                 padding: EdgeInsets.symmetric(vertical: 30),
-                child: Text(
-                  'Create your first project to start a dedicated chat space.',
-                ),
+                child: Text(L.of(context).assistantProjectsEmpty),
               ),
             for (final p in projects)
               Card(
@@ -113,14 +113,14 @@ class AssistantProjectsView extends StatelessWidget {
                       spacing: 12,
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        const Text(
-                          'Project memory',
+                        Text(
+                          L.of(context).assistantProjectMemory,
                           style: TextStyle(fontWeight: FontWeight.w600),
                         ),
                         TextButton.icon(
                           onPressed: () => _edit(context, project),
                           icon: const Icon(Icons.edit_outlined, size: 16),
-                          label: const Text('Edit project'),
+                          label: Text(L.of(context).assistantProjectEdit),
                         ),
                       ],
                     ),
@@ -132,8 +132,8 @@ class AssistantProjectsView extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 8),
-                    const Text(
-                      'Only chats in this project can use this memory. The memory setting in Customize applies here too.',
+                    Text(
+                      L.of(context).assistantProjectMemoryHint,
                       style: TextStyle(fontSize: 12),
                     ),
                   ],
@@ -141,8 +141,8 @@ class AssistantProjectsView extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 18),
-            const Text(
-              'Chats',
+            Text(
+              L.of(context).assistantChats,
               style: TextStyle(fontWeight: FontWeight.w600, fontSize: 17),
             ),
             StreamBuilder<List<ChatConversationRecord>>(
@@ -154,9 +154,9 @@ class AssistantProjectsView extends StatelessWidget {
                 return Column(
                   children: [
                     if (visible.isEmpty)
-                      const Padding(
+                      Padding(
                         padding: EdgeInsets.all(24),
-                        child: Text('No chats in this project yet.'),
+                        child: Text(L.of(context).assistantProjectNoChats),
                       ),
                     for (final chat in visible)
                       ListTile(
@@ -178,7 +178,7 @@ class AssistantProjectsView extends StatelessWidget {
               child: TextButton(
                 onPressed: () => _delete(context, project),
                 child: Text(
-                  'Delete project',
+                  L.of(context).assistantProjectDelete,
                   style: TextStyle(color: context.luma.danger),
                 ),
               ),
@@ -246,13 +246,13 @@ class AssistantProjectsView extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: Text(L.of(context).commonCancel),
           ),
           FilledButton(
             onPressed: () {
               if (form.currentState!.validate()) Navigator.pop(context, true);
             },
-            child: const Text('Save'),
+            child: Text(L.of(context).commonSave),
           ),
         ],
       ),
@@ -285,13 +285,11 @@ class AssistantProjectsView extends StatelessWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: Text('Delete ${project.name}?'),
-        content: const Text(
-          'This removes the project and its memory. Its chats return to the main chat list; generated files stay in Artifacts.',
-        ),
+        content: Text(L.of(context).assistantProjectDeleteMessage),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: Text(L.of(context).commonCancel),
           ),
           FilledButton(
             style: FilledButton.styleFrom(
@@ -299,7 +297,7 @@ class AssistantProjectsView extends StatelessWidget {
               foregroundColor: Colors.white,
             ),
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete'),
+            child: Text(L.of(context).commonDelete),
           ),
         ],
       ),

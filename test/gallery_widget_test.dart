@@ -20,6 +20,7 @@ import 'package:luma/features/plugins/installed/gallery/gallery_viewer_page.dart
 import 'package:luma/settings/settings_controller.dart';
 import 'package:luma/settings/settings_scope.dart';
 import 'package:luma/theme/luma_theme.dart';
+import 'package:luma/l10n/app_localizations.dart';
 
 /// A library with no device under it. Thumbnails are a real 2×2 JPEG so the
 /// tiles decode something rather than falling back to their placeholder.
@@ -116,8 +117,7 @@ class FakeAnalyser extends GalleryAnalyser {
   @override
   Future<bool> prepare({
     void Function(String label, double? progress)? onProgress,
-  }) async =>
-      true;
+  }) async => true;
 
   @override
   Future<GalleryCacheEntry> analyse({
@@ -144,27 +144,22 @@ GalleryItem _item({
   required String folder,
   GalleryMediaType type = GalleryMediaType.image,
   DateTime? takenAt,
-}) =>
-    GalleryItem(
-      id: '$folder/$name',
-      name: name,
-      type: type,
-      folder: folder,
-      takenAt: takenAt ?? DateTime(2026, 7, 31, 12),
-      width: 4000,
-      height: 3000,
-    );
+}) => GalleryItem(
+  id: '$folder/$name',
+  name: name,
+  type: type,
+  folder: folder,
+  takenAt: takenAt ?? DateTime(2026, 7, 31, 12),
+  width: 4000,
+  height: 3000,
+);
 
 /// A folder needs [minimumAlbumItems] pictures before it becomes an album, so
 /// the app folders here carry three apiece.
 final _library = [
   _item(name: 'IMG_1.jpg', folder: 'DCIM/Camera'),
   _item(name: 'IMG_2.jpg', folder: 'DCIM/Camera'),
-  _item(
-    name: 'VID_1.mp4',
-    folder: 'DCIM/Camera',
-    type: GalleryMediaType.video,
-  ),
+  _item(name: 'VID_1.mp4', folder: 'DCIM/Camera', type: GalleryMediaType.video),
   _item(name: 'Screenshot_1.png', folder: 'Pictures/Screenshots'),
   _item(name: 'IMG-WA0001.jpg', folder: 'WhatsApp/Media/WhatsApp Images'),
   _item(name: 'IMG-WA0002.jpg', folder: 'WhatsApp/Media/WhatsApp Images'),
@@ -199,10 +194,7 @@ Future<GalleryRepository> _pump(
 
   final settings = await _settings(tester, plan);
   final repository = GalleryRepository(
-    source: FakeGallerySource(
-      items: items ?? _library,
-      access: access,
-    ),
+    source: FakeGallerySource(items: items ?? _library, access: access),
     analyser: analyser,
   );
   addTearDown(repository.dispose);
@@ -214,6 +206,9 @@ Future<GalleryRepository> _pump(
 
   await tester.pumpWidget(
     MaterialApp(
+      locale: const Locale('en'),
+      localizationsDelegates: L.localizationsDelegates,
+      supportedLocales: L.supportedLocales,
       theme: LumaTheme.dark,
       home: SettingsScope(
         controller: settings,
@@ -251,16 +246,14 @@ Future<void> _back(WidgetTester tester) async {
 /// the sort-progress card — sits beyond a fixed test viewport's cache
 /// extent and isn't built until it's been scrolled into view at least once.
 Future<void> _scrollAlbumsScreen(WidgetTester tester) async {
-  await tester.drag(
-    find.byType(CustomScrollView).first,
-    const Offset(0, -600),
-  );
+  await tester.drag(find.byType(CustomScrollView).first, const Offset(0, -600));
   await tester.pumpAndSettle();
 }
 
 void main() {
-  testWidgets('the gallery opens on albums, not on a wall of photos',
-      (tester) async {
+  testWidgets('the gallery opens on albums, not on a wall of photos', (
+    tester,
+  ) async {
     await _pump(tester);
 
     expect(find.byType(GalleryAlbumCard), findsWidgets);
@@ -282,45 +275,51 @@ void main() {
     await _pump(tester);
 
     Finder subtitleOf(String label) => find.descendant(
-          of: find.ancestor(
-            of: find.text(label),
-            matching: find.byType(GalleryAlbumCard),
-          ),
-          matching: find.textContaining('item'),
-        );
+      of: find.ancestor(
+        of: find.text(label),
+        matching: find.byType(GalleryAlbumCard),
+      ),
+      matching: find.textContaining('item'),
+    );
 
     expect(tester.widget<Text>(subtitleOf('All')).data, '10 items');
     expect(tester.widget<Text>(subtitleOf('Pictures')).data, '2 items');
     expect(tester.widget<Text>(subtitleOf('Downloads')).data, '3 items');
   });
 
-  testWidgets('an album card shows its newest photo as the cover',
-      (tester) async {
-    final repository = await _pump(tester, items: [
-      _item(
-        name: 'old.jpg',
-        folder: 'Download',
-        takenAt: DateTime(2020, 1, 1),
-      ),
-      _item(
-        name: 'middle.jpg',
-        folder: 'Download',
-        takenAt: DateTime(2023, 1, 1),
-      ),
-      _item(
-        name: 'newest.jpg',
-        folder: 'Download',
-        takenAt: DateTime(2026, 5, 5),
-      ),
-    ]);
+  testWidgets('an album card shows its newest photo as the cover', (
+    tester,
+  ) async {
+    final repository = await _pump(
+      tester,
+      items: [
+        _item(
+          name: 'old.jpg',
+          folder: 'Download',
+          takenAt: DateTime(2020, 1, 1),
+        ),
+        _item(
+          name: 'middle.jpg',
+          folder: 'Download',
+          takenAt: DateTime(2023, 1, 1),
+        ),
+        _item(
+          name: 'newest.jpg',
+          folder: 'Download',
+          takenAt: DateTime(2026, 5, 5),
+        ),
+      ],
+    );
 
-    final downloads = repository.categories
-        .firstWhere((c) => c.label == 'Downloads');
+    final downloads = repository.categories.firstWhere(
+      (c) => c.label == 'Downloads',
+    );
     expect(downloads.cover?.name, 'newest.jpg');
   });
 
-  testWidgets('opening an album shows its photos under a date heading',
-      (tester) async {
+  testWidgets('opening an album shows its photos under a date heading', (
+    tester,
+  ) async {
     await _pump(tester);
 
     await _openAlbum(tester, 'All');
@@ -328,8 +327,9 @@ void main() {
     expect(find.text('July 31'), findsOneWidget);
   });
 
-  testWidgets('a library spanning years builds only the visible days',
-      (tester) async {
+  testWidgets('a library spanning years builds only the visible days', (
+    tester,
+  ) async {
     // The phone crash. An album used to be two slivers per day inside one
     // CustomScrollView; a sliver list is lazy in its children but never in
     // the list of slivers, so a camera roll covering a few years laid out —
@@ -363,9 +363,12 @@ void main() {
     // much of the album got built. Under the old layout all 600 existed.
     final headings = tester
         .widgetList<Text>(find.byType(Text))
-        .where((text) => (text.data ?? '').startsWith('July') ||
-            (text.data ?? '').startsWith('August') ||
-            (text.data ?? '').startsWith('June'))
+        .where(
+          (text) =>
+              (text.data ?? '').startsWith('July') ||
+              (text.data ?? '').startsWith('August') ||
+              (text.data ?? '').startsWith('June'),
+        )
         .length;
     expect(
       headings,
@@ -385,8 +388,9 @@ void main() {
     expect(find.byType(GalleryTile), findsNWidgets(3));
   });
 
-  testWidgets('backing out of an album returns to the albums screen',
-      (tester) async {
+  testWidgets('backing out of an album returns to the albums screen', (
+    tester,
+  ) async {
     await _pump(tester);
 
     await _openAlbum(tester, 'Screenshots');
@@ -398,23 +402,27 @@ void main() {
   });
 
   testWidgets('a video tile is badged with its length', (tester) async {
-    await _pump(tester, items: [
-      GalleryItem(
-        id: 'v',
-        name: 'VID.mp4',
-        type: GalleryMediaType.video,
-        folder: 'DCIM/Camera',
-        takenAt: DateTime(2026, 7, 31),
-        duration: const Duration(minutes: 4, seconds: 7),
-      ),
-    ]);
+    await _pump(
+      tester,
+      items: [
+        GalleryItem(
+          id: 'v',
+          name: 'VID.mp4',
+          type: GalleryMediaType.video,
+          folder: 'DCIM/Camera',
+          takenAt: DateTime(2026, 7, 31),
+          duration: const Duration(minutes: 4, seconds: 7),
+        ),
+      ],
+    );
     await _openAlbum(tester, 'Videos');
 
     expect(find.text('4:07'), findsOneWidget);
   });
 
-  testWidgets('People and Categories are offered, not given, below Nova',
-      (tester) async {
+  testWidgets('People and Categories are offered, not given, below Nova', (
+    tester,
+  ) async {
     await _pump(tester);
 
     expect(find.text('Nova'), findsOneWidget);
@@ -422,8 +430,9 @@ void main() {
     expect(find.textContaining('Nova extra'), findsOneWidget);
   });
 
-  testWidgets('Nova gets real People and Categories instead of the upsell',
-      (tester) async {
+  testWidgets('Nova gets real People and Categories instead of the upsell', (
+    tester,
+  ) async {
     await _pump(tester, plan: 'nova');
 
     expect(find.text('Nova'), findsNothing);
@@ -432,31 +441,35 @@ void main() {
     expect(find.text('Categories'), findsOneWidget);
   });
 
-  testWidgets('Memories is free on every plan, unlike People and Categories',
-      (tester) async {
+  testWidgets('Memories is free on every plan, unlike People and Categories', (
+    tester,
+  ) async {
     await _pump(tester);
     // Memories sits alongside the Nova-gated card, not behind it.
     expect(find.text('Memories'), findsOneWidget);
     expect(find.text('People & Categories'), findsOneWidget);
   });
 
-  testWidgets('a refused grant explains itself and offers a way back',
-      (tester) async {
+  testWidgets('a refused grant explains itself and offers a way back', (
+    tester,
+  ) async {
     await _pump(tester, access: GalleryAccess.denied);
 
     expect(find.byType(LumaEmptyState), findsOneWidget);
     expect(find.byType(GalleryAlbumCard), findsNothing);
   });
 
-  testWidgets('an empty library says so rather than showing a blank grid',
-      (tester) async {
+  testWidgets('an empty library says so rather than showing a blank grid', (
+    tester,
+  ) async {
     await _pump(tester, items: const []);
 
     expect(find.text('No photos or videos yet'), findsOneWidget);
   });
 
-  testWidgets('opening a big album does not ask for every thumbnail at once',
-      (tester) async {
+  testWidgets('opening a big album does not ask for every thumbnail at once', (
+    tester,
+  ) async {
     // The freeze this guards against: every tile asked for its picture the
     // moment it was built, so opening an album kicked off a screenful of
     // decodes in one frame — on desktop, one isolate each.
@@ -483,6 +496,9 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('en'),
+        localizationsDelegates: L.localizationsDelegates,
+        supportedLocales: L.supportedLocales,
         theme: LumaTheme.dark,
         home: SettingsScope(
           controller: settings,
@@ -507,8 +523,9 @@ void main() {
     expect(find.byType(GalleryTile), findsWidgets);
   });
 
-  testWidgets('two tiles wanting the same picture decode it once',
-      (tester) async {
+  testWidgets('two tiles wanting the same picture decode it once', (
+    tester,
+  ) async {
     final source = FakeGallerySource(items: _library);
     final repository = GalleryRepository(source: source);
     addTearDown(repository.dispose);
@@ -526,14 +543,18 @@ void main() {
     expect(source.startedThumbnails, 1);
   });
 
-  testWidgets('a finished pass reports what it managed instead of vanishing',
-      (tester) async {
+  testWidgets('a finished pass reports what it managed instead of vanishing', (
+    tester,
+  ) async {
     // The button disappearing with almost-empty albums behind it reads as a
     // bug. When there is nothing left to do, the card says what happened —
     // including how much it could not read, which on a cloud library is most
     // of it.
-    final repository =
-        await _pump(tester, plan: 'nova', analyser: FakeAnalyser());
+    final repository = await _pump(
+      tester,
+      plan: 'nova',
+      analyser: FakeAnalyser(),
+    );
 
     await tester.runAsync(() => repository.analyseSmart());
     await tester.pumpAndSettle();
@@ -547,26 +568,35 @@ void main() {
     expect(find.text('Look again'), findsOneWidget);
   });
 
-  testWidgets('photos that could not be read are counted as skipped, not done',
-      (tester) async {
-    // A fake analyser stands in for the real one — a fresh library never has
-    // its models on disk, and this is what that day-one shape looks like.
-    final repository =
-        await _pump(tester, plan: 'nova', analyser: FakeAnalyser());
-    await tester.runAsync(() => repository.analyseSmart());
-    await tester.pumpAndSettle();
+  testWidgets(
+    'photos that could not be read are counted as skipped, not done',
+    (tester) async {
+      // A fake analyser stands in for the real one — a fresh library never has
+      // its models on disk, and this is what that day-one shape looks like.
+      final repository = await _pump(
+        tester,
+        plan: 'nova',
+        analyser: FakeAnalyser(),
+      );
+      await tester.runAsync(() => repository.analyseSmart());
+      await tester.pumpAndSettle();
 
-    final photos = repository.items.where((i) => !i.isVideo).length;
-    expect(repository.skippedAnalysis + repository.examinedAnalysis, photos);
-    expect(repository.skippedAnalysis, greaterThan(0));
-    await _scrollAlbumsScreen(tester);
-    expect(find.textContaining('skipped'), findsOneWidget);
-  });
+      final photos = repository.items.where((i) => !i.isVideo).length;
+      expect(repository.skippedAnalysis + repository.examinedAnalysis, photos);
+      expect(repository.skippedAnalysis, greaterThan(0));
+      await _scrollAlbumsScreen(tester);
+      expect(find.textContaining('skipped'), findsOneWidget);
+    },
+  );
 
-  testWidgets('looking again clears the verdicts and starts over',
-      (tester) async {
-    final repository =
-        await _pump(tester, plan: 'nova', analyser: FakeAnalyser());
+  testWidgets('looking again clears the verdicts and starts over', (
+    tester,
+  ) async {
+    final repository = await _pump(
+      tester,
+      plan: 'nova',
+      analyser: FakeAnalyser(),
+    );
     await tester.runAsync(() => repository.analyseSmart());
     await tester.pumpAndSettle();
     expect(repository.pendingAnalysis, 0);
@@ -574,12 +604,15 @@ void main() {
     await tester.runAsync(() => repository.reanalyseAll());
     await tester.pumpAndSettle();
     // It ran again rather than finding nothing to do.
-    expect(repository.examinedAnalysis + repository.skippedAnalysis,
-        greaterThan(0));
+    expect(
+      repository.examinedAnalysis + repository.skippedAnalysis,
+      greaterThan(0),
+    );
   });
 
-  testWidgets('the albums grid lays out three-up on a narrow phone',
-      (tester) async {
+  testWidgets('the albums grid lays out three-up on a narrow phone', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(1080, 2220);
     tester.view.devicePixelRatio = 3;
     addTearDown(tester.view.reset);
@@ -593,30 +626,34 @@ void main() {
     expect(cards.length, greaterThanOrEqualTo(6));
 
     final width = tester.getSize(find.byType(GalleryAlbumCard).first).width;
-    final screen = tester.view.physicalSize.width / tester.view.devicePixelRatio;
+    final screen =
+        tester.view.physicalSize.width / tester.view.devicePixelRatio;
     expect(width * 3, lessThan(screen));
   });
 
-  testWidgets('long-pressing a photo starts a selection instead of opening it',
-      (tester) async {
-    await _pump(tester);
-    await _openAlbum(tester, 'Downloads');
+  testWidgets(
+    'long-pressing a photo starts a selection instead of opening it',
+    (tester) async {
+      await _pump(tester);
+      await _openAlbum(tester, 'Downloads');
 
-    await tester.longPress(find.byType(GalleryTile).first);
-    await tester.pumpAndSettle();
+      await tester.longPress(find.byType(GalleryTile).first);
+      await tester.pumpAndSettle();
 
-    expect(find.text('1 selected'), findsOneWidget);
-    expect(find.byType(GalleryViewerPage), findsNothing);
+      expect(find.text('1 selected'), findsOneWidget);
+      expect(find.byType(GalleryViewerPage), findsNothing);
 
-    // A plain tap adds to the selection rather than opening the viewer.
-    await tester.tap(find.byType(GalleryTile).at(1));
-    await tester.pumpAndSettle();
-    expect(find.text('2 selected'), findsOneWidget);
-    expect(find.byType(GalleryViewerPage), findsNothing);
-  });
+      // A plain tap adds to the selection rather than opening the viewer.
+      await tester.tap(find.byType(GalleryTile).at(1));
+      await tester.pumpAndSettle();
+      expect(find.text('2 selected'), findsOneWidget);
+      expect(find.byType(GalleryViewerPage), findsNothing);
+    },
+  );
 
-  testWidgets('a selection does not follow you into the next album',
-      (tester) async {
+  testWidgets('a selection does not follow you into the next album', (
+    tester,
+  ) async {
     await _pump(tester);
     await _openAlbum(tester, 'Downloads');
 
@@ -629,8 +666,9 @@ void main() {
     expect(find.textContaining('selected'), findsNothing);
   });
 
-  testWidgets('the map is reachable before any coordinates have been read',
-      (tester) async {
+  testWidgets('the map is reachable before any coordinates have been read', (
+    tester,
+  ) async {
     // Coordinates are only read once the map is opened, so "no pins yet" is
     // the normal state on a first visit — not a reason to disable the button.
     final repository = await _pump(tester);
@@ -645,8 +683,9 @@ void main() {
     expect(button.onPressed, isNotNull);
   });
 
-  testWidgets('a confined scan says so, and says how to undo it',
-      (tester) async {
+  testWidgets('a confined scan says so, and says how to undo it', (
+    tester,
+  ) async {
     final repository = await _pump(tester, items: _library);
     expect(find.textContaining('Only scanning'), findsNothing);
 

@@ -94,7 +94,10 @@ class _Cs2InventoryDialogState extends State<Cs2InventoryDialog> {
     super.dispose();
   }
 
-  Future<void> _run(Future<String?> Function() operation, String success) async {
+  Future<void> _run(
+    Future<String?> Function() operation,
+    String success,
+  ) async {
     setState(() {
       _busy = true;
       _error = null;
@@ -174,8 +177,10 @@ class _Cs2InventoryDialogState extends State<Cs2InventoryDialog> {
             Cs2SteamSessionStatus.otherAccount => l.steamCs2SessionOtherAccount,
             Cs2SteamSessionStatus.failed => l.steamCs2SessionFailed,
           };
-    final healthy = enabled &&
-        (status == Cs2SteamSessionStatus.active || status == Cs2SteamSessionStatus.off);
+    final healthy =
+        enabled &&
+        (status == Cs2SteamSessionStatus.active ||
+            status == Cs2SteamSessionStatus.off);
     return [
       const SizedBox(height: 12),
       Text(note, style: theme.textTheme.bodySmall),
@@ -204,7 +209,7 @@ class _Cs2InventoryDialogState extends State<Cs2InventoryDialog> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return AlertDialog(
-      title: const Text('Steam CS2 inventory'),
+      title: Text(L.of(context).steamCs2InventoryTitle),
       content: SizedBox(
         width: 480,
         child: SingleChildScrollView(
@@ -213,9 +218,7 @@ class _Cs2InventoryDialogState extends State<Cs2InventoryDialog> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Enter your Steam profile URL or 17-digit Steam ID to import '
-                'your CS2 skins, stickers, cases and everything else the '
-                'market sells. No Steam password or API key is needed.',
+                L.of(context).steamCs2InventoryIntro,
                 style: theme.textTheme.bodyMedium,
               ),
               const SizedBox(height: 16),
@@ -230,8 +233,7 @@ class _Cs2InventoryDialogState extends State<Cs2InventoryDialog> {
               ),
               const SizedBox(height: 12),
               Text(
-                'Your Steam profile and inventory must be public for luma '
-                'to read them.',
+                L.of(context).steamCs2InventoryPublic,
                 style: theme.textTheme.bodySmall,
               ),
               TextButton.icon(
@@ -240,7 +242,7 @@ class _Cs2InventoryDialogState extends State<Cs2InventoryDialog> {
                   mode: LaunchMode.externalApplication,
                 ),
                 icon: const Icon(Icons.open_in_new, size: 16),
-                label: const Text('Open Steam privacy settings'),
+                label: Text(L.of(context).steamCs2InventoryPrivacy),
               ),
               Text(
                 L.of(context).steamCs2PurchaseHistoryExplain,
@@ -257,9 +259,7 @@ class _Cs2InventoryDialogState extends State<Cs2InventoryDialog> {
               ],
               const SizedBox(height: 12),
               Text(
-                'While CS2 Market is open, luma checks your inventory every '
-                'six hours. Items you sell or trade away are removed when it '
-                'next checks. Disconnecting keeps imported items.',
+                L.of(context).steamCs2InventoryRefreshNote,
                 style: theme.textTheme.bodySmall,
               ),
               if (_connected && (widget.hiddenCount?.call() ?? 0) > 0) ...[
@@ -290,18 +290,18 @@ class _Cs2InventoryDialogState extends State<Cs2InventoryDialog> {
         if (_connected)
           TextButton(
             onPressed: _busy ? null : _disconnect,
-            child: const Text('Disconnect'),
+            child: Text(L.of(context).steamCs2Disconnect),
           ),
         if (_connected)
           TextButton(
             onPressed: _busy
                 ? null
                 : () => _run(widget.onRefresh, 'Inventory refreshed.'),
-            child: const Text('Refresh inventory'),
+            child: Text(L.of(context).steamCs2RefreshInventory),
           ),
         TextButton(
           onPressed: _busy ? null : () => Navigator.of(context).pop(),
-          child: const Text('Close'),
+          child: Text(L.of(context).commonClose),
         ),
         FilledButton(
           onPressed: _busy ? null : _connect,

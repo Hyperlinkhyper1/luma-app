@@ -274,11 +274,13 @@ class _ChatBodyState extends State<_ChatBody> {
     final ready = widget.syncService.serverReady;
     final readyChanged = ready != _serverReady;
     _serverReady = ready;
-    final serverBacked = _providerId == AiProviderId.google.name ||
+    final serverBacked =
+        _providerId == AiProviderId.google.name ||
         _providerId == AiProviderId.mistral.name;
     if (!serverBacked || _checking) return;
     final last = _lastCheck;
-    final due = last == null ||
+    final due =
+        last == null ||
         DateTime.now().difference(last) >= const Duration(seconds: 15);
     if (readyChanged || (ready && !_available && due)) _recheckKey();
   }
@@ -311,9 +313,8 @@ class _ChatBodyState extends State<_ChatBody> {
     }
   }
 
-  void _recheckKey() => setState(
-    () => _keyAvailableFuture = _trackCheck(_checkKeyAvailable()),
-  );
+  void _recheckKey() =>
+      setState(() => _keyAvailableFuture = _trackCheck(_checkKeyAvailable()));
 
   @override
   Widget build(BuildContext context) {
@@ -473,10 +474,8 @@ class _ChatLayoutState extends State<_ChatLayout> {
     if (!mounted) return;
     if (picture && !supportsImages) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'This picture model does not support reference images. Choose another model to upload an image.',
-          ),
+        SnackBar(
+          content: Text(L.of(context).assistantPictureNoReferenceImages),
         ),
       );
       return;
@@ -492,7 +491,7 @@ class _ChatLayoutState extends State<_ChatLayout> {
     if (picked == null || !mounted) return;
     if (picked.files.any((file) => file.path == null)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('This file could not be opened.')),
+        SnackBar(content: Text(L.of(context).assistantFileNotOpened)),
       );
       return;
     }
@@ -1676,11 +1675,11 @@ Future<void> _showConversationMenu(
       final selected = await showDialog<int>(
         context: context,
         builder: (context) => SimpleDialog(
-          title: const Text('Move chat'),
+          title: Text(L.of(context).assistantMoveChat),
           children: [
             SimpleDialogOption(
               onPressed: () => Navigator.pop(context, -1),
-              child: const Text('Main chats'),
+              child: Text(L.of(context).assistantMainChats),
             ),
             for (final project in projects)
               SimpleDialogOption(
@@ -1688,9 +1687,9 @@ Future<void> _showConversationMenu(
                 child: Text(project.name),
               ),
             if (projects.isEmpty)
-              const Padding(
+              Padding(
                 padding: EdgeInsets.all(20),
-                child: Text('Create a project from Projects first.'),
+                child: Text(L.of(context).assistantCreateProjectFirst),
               ),
           ],
         ),
@@ -2298,7 +2297,9 @@ class _ModelSelectorState extends State<_ModelSelector> {
               ),
             ),
             Text(
-              enabled ? '${formatPicturePercent(percent)}% weekly usage' : 'Unavailable',
+              enabled
+                  ? '${formatPicturePercent(percent)}% weekly usage'
+                  : 'Unavailable',
               style: TextStyle(color: luma.textMuted, fontSize: 10.5),
             ),
             const SizedBox(width: 8),

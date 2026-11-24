@@ -4,11 +4,20 @@ import 'package:luma/features/plugins/installed/school/logic/quiz_bank.dart';
 import 'package:luma/features/plugins/installed/school/ui/quiz_pdf_options.dart';
 import 'package:luma/features/plugins/installed/school/ui/tests_tab.dart';
 import 'package:luma/theme/luma_theme.dart';
+import 'package:luma/l10n/app_localizations.dart';
+import 'package:luma/l10n/current_l.dart';
+
+final _nl = lookupL(const Locale('nl'));
 
 void main() {
+  setUpAll(() => setCurrentLocale(const Locale('nl')));
+  tearDownAll(() => setCurrentLocale(const Locale('en')));
   testWidgets('PDF button opens the options screen', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('nl'),
+        localizationsDelegates: L.localizationsDelegates,
+        supportedLocales: L.supportedLocales,
         theme: LumaTheme.dark,
         home: const Scaffold(body: TestsTab()),
       ),
@@ -24,6 +33,9 @@ void main() {
     var saved = false;
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('nl'),
+        localizationsDelegates: L.localizationsDelegates,
+        supportedLocales: L.supportedLocales,
         theme: LumaTheme.dark,
         home: QuizPdfOptions(
           save: (bytes) async {
@@ -59,7 +71,13 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
-      MaterialApp(theme: LumaTheme.dark, home: const QuizPdfOptions()),
+      MaterialApp(
+        locale: const Locale('nl'),
+        localizationsDelegates: L.localizationsDelegates,
+        supportedLocales: L.supportedLocales,
+        theme: LumaTheme.dark,
+        home: const QuizPdfOptions(),
+      ),
     );
     await tester.tap(find.text('Aantal per vak'));
     await tester.pump();
@@ -71,7 +89,10 @@ void main() {
     await tester.ensureVisible(find.text('Gemengd'));
     await tester.tap(find.text('Gemengd'));
     await tester.pump();
-    expect(find.text('27 vragen · 3 vakken · gemengd'), findsOneWidget);
+    expect(
+      find.text(_nl.schoolPdfSummary(27, 3, _nl.schoolPdfOrderMixed)),
+      findsOneWidget,
+    );
     await tester.ensureVisible(find.byKey(const ValueKey('pdf-count-rekenen')));
     await tester.enterText(
       find.byKey(const ValueKey('pdf-count-rekenen')),

@@ -6,6 +6,7 @@ import 'package:open_file/open_file.dart';
 
 import '../../../theme/luma_theme.dart';
 import '../data/chat_repository.dart';
+import 'package:luma/l10n/app_localizations.dart';
 
 Future<void> openAssistantArtifact(BuildContext context, String path) async {
   String? error;
@@ -95,7 +96,7 @@ class _AssistantArtifactsViewState extends State<AssistantArtifactsView> {
                 padding: const EdgeInsets.fromLTRB(24, 48, 24, 40),
                 children: [
                   Text(
-                    'Artifacts',
+                    L.of(context).assistantArtifactsTitle,
                     style: TextStyle(
                       fontSize: 30,
                       fontFamily: 'Georgia',
@@ -107,39 +108,48 @@ class _AssistantArtifactsViewState extends State<AssistantArtifactsView> {
                   const SizedBox(height: 22),
                   Row(
                     children: [
-                      for (final filter in ['All', 'Images', 'Files'])
-                        Padding(
-                          padding: const EdgeInsets.only(right: 4),
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(8),
-                            onTap: () => setState(() => _filter = filter),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 7,
-                              ),
-                              decoration: BoxDecoration(
-                                color: _filter == filter
-                                    ? selectedFill
-                                    : Colors.transparent,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                filter,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: _filter == filter
-                                      ? FontWeight.w600
-                                      : FontWeight.w400,
-                                  color: _filter == filter
-                                      ? context.luma.textPrimary
-                                      : context.luma.textSecondary,
+                      Expanded(
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: [
+                              for (final filter in ['All', 'Images', 'Files'])
+                                Padding(
+                                  padding: const EdgeInsets.only(right: 4),
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(8),
+                                    onTap: () =>
+                                        setState(() => _filter = filter),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 7,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: _filter == filter
+                                            ? selectedFill
+                                            : Colors.transparent,
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        filter,
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: _filter == filter
+                                              ? FontWeight.w600
+                                              : FontWeight.w400,
+                                          color: _filter == filter
+                                              ? context.luma.textPrimary
+                                              : context.luma.textSecondary,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ),
+                            ],
                           ),
                         ),
-                      const Spacer(),
+                      ),
                       IconButton(
                         tooltip: 'Search',
                         icon: Icon(
@@ -171,13 +181,13 @@ class _AssistantArtifactsViewState extends State<AssistantArtifactsView> {
                     ),
                   const SizedBox(height: 28),
                   if (snapshot.hasError || indexed.hasError)
-                    const Text('Could not load artifacts.'),
+                    Text(L.of(context).assistantArtifactsLoadFailed),
                   if (!snapshot.hasData) const LinearProgressIndicator(),
                   if (snapshot.hasData && files.isEmpty)
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 30),
                       child: Text(
-                        'No artifacts found. Generated files and pictures will appear here.',
+                        L.of(context).assistantArtifactsEmpty,
                         style: TextStyle(color: context.luma.textMuted),
                       ),
                     ),
@@ -224,66 +234,78 @@ class _AssistantArtifactsViewState extends State<AssistantArtifactsView> {
       onTap: () => openAssistantArtifact(context, file.path),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 6),
-        child: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              clipBehavior: Clip.antiAlias,
-              decoration: BoxDecoration(
-                color: surface,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: border),
+        child: LayoutBuilder(
+          builder: (context, constraints) => Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                clipBehavior: Clip.antiAlias,
+                decoration: BoxDecoration(
+                  color: surface,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: border),
+                ),
+                child: canPreview
+                    ? Image.file(
+                        File(file.path),
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => fallbackIcon,
+                      )
+                    : fallbackIcon,
               ),
-              child: canPreview
-                  ? Image.file(
-                      File(file.path),
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => fallbackIcon,
-                    )
-                  : fallbackIcon,
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Text(
-                file.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
-                  color: context.luma.textPrimary,
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  file.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    color: context.luma.textPrimary,
+                  ),
                 ),
               ),
-            ),
-            Text(
-              'Created ${_monthNames[date.month - 1].substring(0, 3)} ${date.day}',
-              style: TextStyle(fontSize: 13, color: context.luma.textMuted),
-            ),
-            PopupMenuButton<String>(
-              tooltip: 'More',
-              icon: Icon(
-                Icons.more_vert_rounded,
-                size: 18,
-                color: context.luma.textSecondary,
+              if (constraints.maxWidth >= 360)
+                Text(
+                  'Created ${_monthNames[date.month - 1].substring(0, 3)} ${date.day}',
+                  style: TextStyle(fontSize: 13, color: context.luma.textMuted),
+                ),
+              PopupMenuButton<String>(
+                tooltip: 'More',
+                icon: Icon(
+                  Icons.more_vert_rounded,
+                  size: 18,
+                  color: context.luma.textSecondary,
+                ),
+                onSelected: (value) {
+                  if (value == 'open') {
+                    openAssistantArtifact(context, file.path);
+                  } else if (value == 'save') {
+                    _save(context, file);
+                  } else if (value == 'chat' && file.conversationId != null) {
+                    widget.onOpenChat(file.conversationId!);
+                  }
+                },
+                itemBuilder: (_) => [
+                  PopupMenuItem(
+                    value: 'open',
+                    child: Text(L.of(context).commonOpen),
+                  ),
+                  PopupMenuItem(
+                    value: 'save',
+                    child: Text(L.of(context).assistantArtifactSaveCopy),
+                  ),
+                  if (file.conversationId != null)
+                    PopupMenuItem(
+                      value: 'chat',
+                      child: Text(L.of(context).assistantArtifactViewChat),
+                    ),
+                ],
               ),
-              onSelected: (value) {
-                if (value == 'open') {
-                  openAssistantArtifact(context, file.path);
-                } else if (value == 'save') {
-                  _save(context, file);
-                } else if (value == 'chat' && file.conversationId != null) {
-                  widget.onOpenChat(file.conversationId!);
-                }
-              },
-              itemBuilder: (_) => [
-                const PopupMenuItem(value: 'open', child: Text('Open')),
-                const PopupMenuItem(value: 'save', child: Text('Save a copy')),
-                if (file.conversationId != null)
-                  const PopupMenuItem(value: 'chat', child: Text('View chat')),
-              ],
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

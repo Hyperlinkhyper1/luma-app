@@ -11,6 +11,7 @@ import 'package:luma/features/plugins/installed/ai_usage/tests/pc_test_page.dart
 import 'package:luma/features/plugins/installed/ai_usage/tests/test_view_prefs.dart';
 import 'package:luma/features/plugins/installed/ai_usage/tests/tests_tab.dart';
 import 'package:luma/theme/luma_theme.dart';
+import 'package:luma/l10n/app_localizations.dart';
 
 class _LoadingRepository extends AiBenchmarkRepository {
   _LoadingRepository() : super.withManifest(AiBenchmarkManifest.empty);
@@ -25,6 +26,9 @@ class _LoadingRepository extends AiBenchmarkRepository {
 Widget _app(AiBenchmarkRepository repository) => AiBenchmarkScope(
   repository: repository,
   child: MaterialApp(
+    locale: const Locale('en'),
+    localizationsDelegates: L.localizationsDelegates,
+    supportedLocales: L.supportedLocales,
     theme: LumaTheme.dark,
     home: const Scaffold(body: TestsTab()),
   ),

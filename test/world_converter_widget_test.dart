@@ -5,6 +5,7 @@ import 'package:luma/features/converter/tools/world_converter_view.dart';
 import 'package:luma/features/converter/world/world_conversion.dart';
 import 'package:luma/features/converter/world/world_converter_service.dart';
 import 'package:luma/theme/luma_theme.dart';
+import 'package:luma/l10n/app_localizations.dart';
 
 void main() {
   testWidgets('pasted quoted world path loads and displays scan warnings', (
@@ -13,6 +14,9 @@ void main() {
     final service = _WorldImportService();
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('en'),
+        localizationsDelegates: L.localizationsDelegates,
+        supportedLocales: L.supportedLocales,
         theme: LumaTheme.dark,
         home: Scaffold(
           body: WorldConverterView(onBack: () {}, service: service),
@@ -51,6 +55,9 @@ void main() {
   ) async {
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('en'),
+        localizationsDelegates: L.localizationsDelegates,
+        supportedLocales: L.supportedLocales,
         theme: LumaTheme.dark,
         home: Scaffold(body: WorldConverterView(onBack: () {})),
       ),
@@ -73,6 +80,9 @@ void main() {
       addTearDown(tester.view.resetDevicePixelRatio);
       await tester.pumpWidget(
         MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: L.localizationsDelegates,
+          supportedLocales: L.supportedLocales,
           theme: LumaTheme.dark,
           home: Scaffold(body: OtherToolsView(onBack: () {})),
         ),

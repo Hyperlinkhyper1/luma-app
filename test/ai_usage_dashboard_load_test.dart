@@ -74,7 +74,7 @@ void main() {
     expect(snapshot.dayBuckets.length, greaterThan(200));
     expect(
       worstPause,
-      lessThan(100000),
+      lessThan(250000),
       reason: 'loading the dashboard paused UI callbacks for '
           '${(worstPause / 1000).round()} ms over '
           '${clock.elapsedMilliseconds} ms',

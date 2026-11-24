@@ -7,6 +7,7 @@ import 'map_maker_geometry.dart';
 import 'map_maker_models.dart';
 import 'map_maker_store.dart';
 import 'transit_map_painter.dart';
+import 'package:luma/l10n/app_localizations.dart';
 
 class TransitMapEditorView extends StatefulWidget {
   const TransitMapEditorView({
@@ -288,15 +289,18 @@ class _TransitMapEditorViewState extends State<TransitMapEditorView> {
       text: 'Line ${_map.lines.length + 1}',
     );
 
-    int pickedColor = kTransitLinePalette[
-        _map.lines.length % kTransitLinePalette.length];
+    int pickedColor =
+        kTransitLinePalette[_map.lines.length % kTransitLinePalette.length];
 
     final created = await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDlgState) => AlertDialog(
           backgroundColor: luma.surface,
-          title: Text('New Transit Line', style: TextStyle(color: luma.textPrimary)),
+          title: Text(
+            L.of(context).mapMakerTransitNewLineTitle,
+            style: TextStyle(color: luma.textPrimary),
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -312,7 +316,7 @@ class _TransitMapEditorViewState extends State<TransitMapEditorView> {
               ),
               const SizedBox(height: 20),
               Text(
-                'Line Color',
+                L.of(context).mapMakerTransitLineColor,
                 style: TextStyle(
                   color: luma.textSecondary,
                   fontSize: 13,
@@ -342,7 +346,9 @@ class _TransitMapEditorViewState extends State<TransitMapEditorView> {
                           boxShadow: pickedColor == colorVal
                               ? [
                                   BoxShadow(
-                                    color: Color(colorVal).withValues(alpha: 0.6),
+                                    color: Color(
+                                      colorVal,
+                                    ).withValues(alpha: 0.6),
                                     blurRadius: 8,
                                   ),
                                 ]
@@ -357,12 +363,18 @@ class _TransitMapEditorViewState extends State<TransitMapEditorView> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(false),
-              child: Text('Cancel', style: TextStyle(color: luma.textSecondary)),
+              child: Text(
+                L.of(context).commonCancel,
+                style: TextStyle(color: luma.textSecondary),
+              ),
             ),
             FilledButton(
               style: FilledButton.styleFrom(backgroundColor: luma.accent),
               onPressed: () => Navigator.of(ctx).pop(true),
-              child: Text('Create', style: TextStyle(color: luma.onAccent)),
+              child: Text(
+                L.of(context).commonCreate,
+                style: TextStyle(color: luma.onAccent),
+              ),
             ),
           ],
         ),
@@ -393,7 +405,10 @@ class _TransitMapEditorViewState extends State<TransitMapEditorView> {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDlgState) => AlertDialog(
           backgroundColor: luma.surface,
-          title: Text('Edit Line', style: TextStyle(color: luma.textPrimary)),
+          title: Text(
+            L.of(context).mapMakerTransitEditLine,
+            style: TextStyle(color: luma.textPrimary),
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -408,7 +423,7 @@ class _TransitMapEditorViewState extends State<TransitMapEditorView> {
               ),
               const SizedBox(height: 20),
               Text(
-                'Line Color',
+                L.of(context).mapMakerTransitLineColor,
                 style: TextStyle(
                   color: luma.textSecondary,
                   fontSize: 13,
@@ -438,7 +453,9 @@ class _TransitMapEditorViewState extends State<TransitMapEditorView> {
                           boxShadow: pickedColor == colorVal
                               ? [
                                   BoxShadow(
-                                    color: Color(colorVal).withValues(alpha: 0.6),
+                                    color: Color(
+                                      colorVal,
+                                    ).withValues(alpha: 0.6),
                                     blurRadius: 8,
                                   ),
                                 ]
@@ -454,16 +471,25 @@ class _TransitMapEditorViewState extends State<TransitMapEditorView> {
             if (_map.lines.length > 1)
               TextButton(
                 onPressed: () => Navigator.of(ctx).pop('delete'),
-                child: Text('Delete Line', style: TextStyle(color: luma.danger)),
+                child: Text(
+                  L.of(context).mapMakerTransitDeleteLine,
+                  style: TextStyle(color: luma.danger),
+                ),
               ),
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(null),
-              child: Text('Cancel', style: TextStyle(color: luma.textSecondary)),
+              child: Text(
+                L.of(context).commonCancel,
+                style: TextStyle(color: luma.textSecondary),
+              ),
             ),
             FilledButton(
               style: FilledButton.styleFrom(backgroundColor: luma.accent),
               onPressed: () => Navigator.of(ctx).pop('save'),
-              child: Text('Save', style: TextStyle(color: luma.onAccent)),
+              child: Text(
+                L.of(context).commonSave,
+                style: TextStyle(color: luma.onAccent),
+              ),
             ),
           ],
         ),
@@ -580,8 +606,9 @@ class _TransitMapEditorViewState extends State<TransitMapEditorView> {
                             contentPadding: EdgeInsets.zero,
                           ),
                           onChanged: (val) {
-                            widget.save.title =
-                                val.trim().isEmpty ? 'Untitled Map' : val.trim();
+                            widget.save.title = val.trim().isEmpty
+                                ? 'Untitled Map'
+                                : val.trim();
                             _markDirty();
                           },
                         ),
@@ -628,7 +655,9 @@ class _TransitMapEditorViewState extends State<TransitMapEditorView> {
                 if (!_centeredOnce) {
                   _centeredOnce = true;
                   WidgetsBinding.instance.addPostFrameCallback((_) {
-                    _centerView(Size(constraints.maxWidth, constraints.maxHeight));
+                    _centerView(
+                      Size(constraints.maxWidth, constraints.maxHeight),
+                    );
                   });
                 }
 
@@ -636,8 +665,8 @@ class _TransitMapEditorViewState extends State<TransitMapEditorView> {
                   cursor: _tool == MapMakerTool.pan || _isSpacePressed
                       ? SystemMouseCursors.grab
                       : (_tool == MapMakerTool.delete
-                          ? SystemMouseCursors.forbidden
-                          : SystemMouseCursors.precise),
+                            ? SystemMouseCursors.forbidden
+                            : SystemMouseCursors.precise),
                   child: InteractiveViewer(
                     transformationController: _controller,
                     panEnabled: _tool == MapMakerTool.pan || _isSpacePressed,
@@ -815,8 +844,8 @@ class _TransitMapEditorViewState extends State<TransitMapEditorView> {
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child: const Text(
-                              'Finish River',
+                            child: Text(
+                              L.of(context).mapMakerTransitFinishRiver,
                               style: TextStyle(
                                 color: Color(0xFF0077C0),
                                 fontSize: 11,
@@ -871,9 +900,8 @@ class _TransitMapEditorViewState extends State<TransitMapEditorView> {
                         ),
                         const SizedBox(width: 12),
                         GestureDetector(
-                          onTap: () => setState(
-                            () => _connectingFromStationId = null,
-                          ),
+                          onTap: () =>
+                              setState(() => _connectingFromStationId = null),
                           child: Icon(
                             Icons.close_rounded,
                             color: luma.onAccent,
@@ -914,7 +942,7 @@ class _TransitMapEditorViewState extends State<TransitMapEditorView> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        'Lines:',
+                        L.of(context).mapMakerTransitLinesLabel,
                         style: TextStyle(
                           color: luma.textSecondary,
                           fontSize: 12,
@@ -926,7 +954,8 @@ class _TransitMapEditorViewState extends State<TransitMapEditorView> {
                         _LineChip(
                           line: line,
                           isSelected: line.id == _selectedLineId,
-                          onSelect: () => setState(() => _selectedLineId = line.id),
+                          onSelect: () =>
+                              setState(() => _selectedLineId = line.id),
                           onEdit: () => _editLineDialog(line),
                         ),
                         const SizedBox(width: 6),
@@ -949,10 +978,14 @@ class _TransitMapEditorViewState extends State<TransitMapEditorView> {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.add_rounded, size: 14, color: luma.accent),
+                              Icon(
+                                Icons.add_rounded,
+                                size: 14,
+                                color: luma.accent,
+                              ),
                               const SizedBox(width: 4),
                               Text(
-                                'New Line',
+                                L.of(context).mapMakerTransitNewLine,
                                 style: TextStyle(
                                   color: luma.accent,
                                   fontSize: 12,
@@ -1017,7 +1050,7 @@ class _TransitMapEditorViewState extends State<TransitMapEditorView> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            'Waterway',
+                            L.of(context).mapMakerTransitWaterway,
                             style: TextStyle(
                               color: luma.textPrimary,
                               fontSize: 15,
@@ -1028,7 +1061,8 @@ class _TransitMapEditorViewState extends State<TransitMapEditorView> {
                             icon: const Icon(Icons.close_rounded, size: 16),
                             padding: EdgeInsets.zero,
                             constraints: const BoxConstraints(),
-                            onPressed: () => setState(() => _selectedRiverId = null),
+                            onPressed: () =>
+                                setState(() => _selectedRiverId = null),
                           ),
                         ],
                       ),
@@ -1043,7 +1077,7 @@ class _TransitMapEditorViewState extends State<TransitMapEditorView> {
                             },
                           ),
                           Text(
-                            'Closed shape (Lake / Sea)',
+                            L.of(context).mapMakerTransitClosedShape,
                             style: TextStyle(
                               color: luma.textPrimary,
                               fontSize: 12,
@@ -1058,7 +1092,10 @@ class _TransitMapEditorViewState extends State<TransitMapEditorView> {
                           minimumSize: const Size.fromHeight(32),
                         ),
                         icon: const Icon(Icons.delete_rounded, size: 14),
-                        label: const Text('Delete Waterway', style: TextStyle(fontSize: 12)),
+                        label: Text(
+                          L.of(context).mapMakerTransitDeleteWaterway,
+                          style: TextStyle(fontSize: 12),
+                        ),
                         onPressed: () {
                           _map.removeRiver(selectedRiver.id);
                           setState(() => _selectedRiverId = null);
@@ -1163,10 +1200,7 @@ class _LineChip extends StatelessWidget {
             Container(
               width: 10,
               height: 10,
-              decoration: BoxDecoration(
-                color: color,
-                shape: BoxShape.circle,
-              ),
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
             ),
             const SizedBox(width: 6),
             Text(
@@ -1240,7 +1274,7 @@ class _StationInspectorCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Station Details',
+                L.of(context).mapMakerTransitStationDetails,
                 style: TextStyle(
                   color: luma.textPrimary,
                   fontSize: 15,
@@ -1274,7 +1308,7 @@ class _StationInspectorCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            'Station Type',
+            L.of(context).mapMakerTransitStationType,
             style: TextStyle(color: luma.textSecondary, fontSize: 11),
           ),
           const SizedBox(height: 6),
@@ -1325,7 +1359,10 @@ class _StationInspectorCard extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(vertical: 8),
                   ),
                   onPressed: onDelete,
-                  child: const Text('Delete Stop', style: TextStyle(fontSize: 12)),
+                  child: Text(
+                    L.of(context).mapMakerTransitDeleteStop,
+                    style: TextStyle(fontSize: 12),
+                  ),
                 ),
               ),
             ],

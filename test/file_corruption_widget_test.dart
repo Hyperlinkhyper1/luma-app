@@ -4,9 +4,15 @@ import 'package:luma/features/converter/tools/file_corruptor_view.dart';
 import 'package:luma/features/converter/tools/file_fixer_view.dart';
 import 'package:luma/features/converter/tools/other_tools_view.dart';
 import 'package:luma/theme/luma_theme.dart';
+import 'package:luma/l10n/app_localizations.dart';
 
-Widget _app(Widget child) =>
-    MaterialApp(theme: LumaTheme.dark, home: Scaffold(body: child));
+Widget _app(Widget child) => MaterialApp(
+  locale: const Locale('en'),
+  localizationsDelegates: L.localizationsDelegates,
+  supportedLocales: L.supportedLocales,
+  theme: LumaTheme.dark,
+  home: Scaffold(body: child),
+);
 
 void main() {
   testWidgets('the Other hub offers the corruptor and the fixer', (

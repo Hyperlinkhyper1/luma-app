@@ -41777,4 +41777,216 @@ class LEn extends L {
   String modelViewerGithubError(int status) {
     return 'GitHub returned an error ($status).';
   }
+
+  @override
+  String get assistantPictureNoReferenceImages =>
+      'This picture model does not support reference images. Choose another model to upload an image.';
+
+  @override
+  String get assistantFileNotOpened => 'This file could not be opened.';
+
+  @override
+  String get assistantMoveChat => 'Move chat';
+
+  @override
+  String get assistantMainChats => 'Main chats';
+
+  @override
+  String get assistantCreateProjectFirst =>
+      'Create a project from Projects first.';
+
+  @override
+  String get assistantArtifactsTitle => 'Artifacts';
+
+  @override
+  String get assistantArtifactsLoadFailed => 'Could not load artifacts.';
+
+  @override
+  String get assistantArtifactsEmpty =>
+      'No artifacts found. Generated files and pictures will appear here.';
+
+  @override
+  String get assistantArtifactSaveCopy => 'Save a copy';
+
+  @override
+  String get assistantArtifactViewChat => 'View chat';
+
+  @override
+  String get assistantProjectsAll => 'All projects';
+
+  @override
+  String get assistantProjectsNew => 'New project';
+
+  @override
+  String get assistantProjectsLoadFailed => 'Could not load projects.';
+
+  @override
+  String get assistantProjectsEmpty =>
+      'Create your first project to start a dedicated chat space.';
+
+  @override
+  String get assistantProjectMemory => 'Project memory';
+
+  @override
+  String get assistantProjectEdit => 'Edit project';
+
+  @override
+  String get assistantProjectMemoryHint =>
+      'Only chats in this project can use this memory. The memory setting in Customize applies here too.';
+
+  @override
+  String get assistantProjectNoChats => 'No chats in this project yet.';
+
+  @override
+  String get assistantProjectDelete => 'Delete project';
+
+  @override
+  String get assistantProjectDeleteMessage =>
+      'This removes the project and its memory. Its chats return to the main chat list; generated files stay in Artifacts.';
+
+  @override
+  String get assistantUploadFiles => 'Upload files';
+
+  @override
+  String get assistantUploadFilesHint => 'Text, PDF and supported images';
+
+  @override
+  String get assistantRequiresOrbitOrNova => 'Requires Orbit or Nova';
+
+  @override
+  String get assistantArtifactGeneration => 'Artifact generation';
+
+  @override
+  String get aiWikiSearchCostTitle => 'Cost vs performance';
+
+  @override
+  String get aiWikiSearchCostHint =>
+      'Retrieval score vs OpenRouter catalog price per 1M input tokens. Prices may be cached. Hover or tap a point for model details.';
+
+  @override
+  String get aiWikiSearchNoPrices =>
+      'No model prices are available for this comparison.';
+
+  @override
+  String get aiWikiSearchRetrievalScore => 'Retrieval score';
+
+  @override
+  String get aiWikiSearchCostAxis => 'Cost per 1M input tokens (USD)';
+
+  @override
+  String get aiWikiSearchPricesAndScores => 'Model prices and scores';
+
+  @override
+  String get aiWikiSearchTitle => 'Wiki search test';
+
+  @override
+  String get aiWikiSearchIntro =>
+      'Embedding models rank fictional reference passages with closely related distractors. The score is mean reciprocal rank at 10: a correct first result earns 100%, lower ranks earn less.';
+
+  @override
+  String get aiWikiSearchComparison => 'Embedding model comparison';
+
+  @override
+  String get aiWikiSearchConclusions => 'Model conclusions';
+
+  @override
+  String get mapMakerHubTitle => 'Map Maker';
+
+  @override
+  String get mapMakerHubSubtitle =>
+      'Create custom fantasy metro transit systems, urban grids, and floorplans.';
+
+  @override
+  String get mapMakerHomePlannerSoon => 'Home Planner is coming soon!';
+
+  @override
+  String get mapMakerHubSaves => 'Saves';
+
+  @override
+  String get mapMakerHubSavesHint =>
+      'Browse, edit, and resume your saved maps, schematic routes, and blueprints.';
+
+  @override
+  String get mapMakerComingSoon => 'Coming soon';
+
+  @override
+  String get mapMakerTransitNewLineTitle => 'New Transit Line';
+
+  @override
+  String get mapMakerTransitLineColor => 'Line Color';
+
+  @override
+  String get mapMakerTransitEditLine => 'Edit Line';
+
+  @override
+  String get mapMakerTransitDeleteLine => 'Delete Line';
+
+  @override
+  String get mapMakerTransitFinishRiver => 'Finish River';
+
+  @override
+  String get mapMakerTransitLinesLabel => 'Lines:';
+
+  @override
+  String get mapMakerTransitNewLine => 'New Line';
+
+  @override
+  String get mapMakerTransitWaterway => 'Waterway';
+
+  @override
+  String get mapMakerTransitClosedShape => 'Closed shape (Lake / Sea)';
+
+  @override
+  String get mapMakerTransitDeleteWaterway => 'Delete Waterway';
+
+  @override
+  String get mapMakerTransitStationDetails => 'Station Details';
+
+  @override
+  String get mapMakerTransitStationType => 'Station Type';
+
+  @override
+  String get mapMakerTransitDeleteStop => 'Delete Stop';
+
+  @override
+  String get monitorSimWindowsOnly =>
+      'The HDMI capture viewer is available on Windows.';
+
+  @override
+  String get monitorSimTitle => 'Monitor Simulation';
+
+  @override
+  String get monitorSimSubtitle =>
+      'View another computer through an HDMI capture device.';
+
+  @override
+  String get monitorSimHowToConnect => 'How to connect';
+
+  @override
+  String get monitorSimSteps =>
+      '1. Connect the PC’s HDMI output to a USB HDMI capture device.\n2. Plug the capture device into this laptop, then select it below.\n3. Start the preview. If there is no picture, check that the PC is on and sending a supported signal.\n\nMost laptop HDMI ports are outputs and cannot receive the PC’s video directly. Use a keyboard and mouse connected to the PC to control it.';
+
+  @override
+  String get steamCs2InventoryTitle => 'Steam CS2 inventory';
+
+  @override
+  String get steamCs2InventoryIntro =>
+      'Enter your Steam profile URL or 17-digit Steam ID to import your CS2 skins, stickers, cases and everything else the market sells. No Steam password or API key is needed.';
+
+  @override
+  String get steamCs2InventoryPublic =>
+      'Your Steam profile and inventory must be public for luma to read them.';
+
+  @override
+  String get steamCs2InventoryPrivacy => 'Open Steam privacy settings';
+
+  @override
+  String get steamCs2InventoryRefreshNote =>
+      'While CS2 Market is open, luma checks your inventory every six hours. Items you sell or trade away are removed when it next checks. Disconnecting keeps imported items.';
+
+  @override
+  String get steamCs2Disconnect => 'Disconnect';
+
+  @override
+  String get steamCs2RefreshInventory => 'Refresh inventory';
 }

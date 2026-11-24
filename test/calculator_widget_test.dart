@@ -5,11 +5,15 @@ import 'package:luma/features/plugins/installed/calculator/calculator_page.dart'
 import 'package:luma/features/plugins/installed/calculator/calculator_store.dart';
 import 'package:luma/storage/storage_guard.dart';
 import 'package:luma/theme/luma_theme.dart';
+import 'package:luma/l10n/app_localizations.dart';
 
 Widget _app() => MaterialApp(
-      theme: LumaTheme.dark,
-      home: const Scaffold(body: CalculatorPage()),
-    );
+  locale: const Locale('en'),
+  localizationsDelegates: L.localizationsDelegates,
+  supportedLocales: L.supportedLocales,
+  theme: LumaTheme.dark,
+  home: const Scaffold(body: CalculatorPage()),
+);
 
 /// Waits for the (singleton) store to finish its first load and empties it, so
 /// each test starts from the same place. Store setup touches real async I/O, so
@@ -43,13 +47,14 @@ Future<void> _tapKeys(WidgetTester tester, List<String> labels) async {
   }
 }
 
+final _en = lookupL(const Locale('en'));
+
 void main() {
   setUpAll(() {
     StorageGuardService.instance = StorageGuardService();
   });
 
-  testWidgets('adds up on the keypad and remembers the answer',
-      (tester) async {
+  testWidgets('adds up on the keypad and remembers the answer', (tester) async {
     final store = await _freshStore(tester);
     await tester.pumpWidget(_app());
     await tester.pump();
@@ -92,8 +97,9 @@ void main() {
     await _settleTimers(tester);
   });
 
-  testWidgets('a bad expression explains itself instead of crashing',
-      (tester) async {
+  testWidgets('a bad expression explains itself instead of crashing', (
+    tester,
+  ) async {
     await _freshStore(tester);
     await tester.pumpWidget(_app());
     await tester.pump();
@@ -131,8 +137,9 @@ void main() {
     await _settleTimers(tester);
   });
 
-  testWidgets('pressing = on a function of x asks for Plot instead',
-      (tester) async {
+  testWidgets('pressing = on a function of x asks for Plot instead', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(1280, 900);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -146,10 +153,7 @@ void main() {
 
     await _tapKeys(tester, ['x', '+', '1', '=']);
 
-    expect(
-      find.text('That has an x in it — press Plot to draw it.'),
-      findsOneWidget,
-    );
+    expect(find.text(_en.calcErrorHasX), findsOneWidget);
     expect(store.history, isEmpty);
 
     await _settleTimers(tester);

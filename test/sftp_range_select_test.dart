@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:luma/features/plugins/installed/sftp/sftp_file_pane.dart';
 import 'package:luma/theme/luma_theme.dart';
+import 'package:luma/l10n/app_localizations.dart';
 
 /// Shift+click range selection in the file panes, Explorer style: the range
 /// runs from the last plainly clicked row, replaces the selection, and adds
@@ -20,6 +21,9 @@ void main() {
   Future<void> pump(WidgetTester tester, {String path = '/'}) async {
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('en'),
+        localizationsDelegates: L.localizationsDelegates,
+        supportedLocales: L.supportedLocales,
         theme: LumaTheme.dark,
         home: Scaffold(
           body: StatefulBuilder(
@@ -75,8 +79,9 @@ void main() {
     opened = [];
   });
 
-  testWidgets('shift+click selects everything between the two rows',
-      (tester) async {
+  testWidgets('shift+click selects everything between the two rows', (
+    tester,
+  ) async {
     await pump(tester);
     await click(tester, 'IMG_2.jpg');
     await click(tester, 'IMG_5.jpg', shift: true);
@@ -84,18 +89,21 @@ void main() {
     expect(selection, {'/IMG_2.jpg', '/IMG_3.jpg', '/IMG_4.jpg', '/IMG_5.jpg'});
   });
 
-  testWidgets('works upwards, and a folder in the range is selected, not opened',
-      (tester) async {
-    await pump(tester);
-    await click(tester, 'IMG_3.jpg');
-    await click(tester, 'Holiday', shift: true);
+  testWidgets(
+    'works upwards, and a folder in the range is selected, not opened',
+    (tester) async {
+      await pump(tester);
+      await click(tester, 'IMG_3.jpg');
+      await click(tester, 'Holiday', shift: true);
 
-    expect(opened, isEmpty);
-    expect(selection, {'/Holiday', '/IMG_1.jpg', '/IMG_2.jpg', '/IMG_3.jpg'});
-  });
+      expect(opened, isEmpty);
+      expect(selection, {'/Holiday', '/IMG_1.jpg', '/IMG_2.jpg', '/IMG_3.jpg'});
+    },
+  );
 
-  testWidgets('a second shift+click redraws the range from the same anchor',
-      (tester) async {
+  testWidgets('a second shift+click redraws the range from the same anchor', (
+    tester,
+  ) async {
     await pump(tester);
     await click(tester, 'IMG_3.jpg');
     await click(tester, 'IMG_6.jpg', shift: true);
@@ -104,8 +112,9 @@ void main() {
     expect(selection, {'/IMG_1.jpg', '/IMG_2.jpg', '/IMG_3.jpg'});
   });
 
-  testWidgets('ctrl+shift+click adds the range to what was already selected',
-      (tester) async {
+  testWidgets('ctrl+shift+click adds the range to what was already selected', (
+    tester,
+  ) async {
     await pump(tester);
     await click(tester, 'IMG_1.jpg');
     await click(tester, 'IMG_4.jpg');
@@ -114,8 +123,9 @@ void main() {
     expect(selection, {'/IMG_1.jpg', '/IMG_4.jpg', '/IMG_5.jpg', '/IMG_6.jpg'});
   });
 
-  testWidgets('plain clicks still toggle, and folders still open',
-      (tester) async {
+  testWidgets('plain clicks still toggle, and folders still open', (
+    tester,
+  ) async {
     await pump(tester);
     await click(tester, 'IMG_2.jpg');
     await click(tester, 'IMG_2.jpg');

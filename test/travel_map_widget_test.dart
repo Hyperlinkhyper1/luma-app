@@ -8,6 +8,7 @@ import 'package:luma/settings/settings_scope.dart';
 import 'package:luma/theme/luma_theme.dart';
 
 import 'world_map_fixture.dart';
+import 'package:luma/l10n/app_localizations.dart';
 
 /// Two square countries — enough geometry to lay the map out without paying
 /// for the real outline.
@@ -33,12 +34,15 @@ Future<SettingsController> _settings(WidgetTester tester) async {
 }
 
 Widget _app(SettingsController settings, WorldMap map) => MaterialApp(
-      theme: LumaTheme.dark,
-      home: SettingsScope(
-        controller: settings,
-        child: FullscreenMapPage(map: map),
-      ),
-    );
+  locale: const Locale('en'),
+  localizationsDelegates: L.localizationsDelegates,
+  supportedLocales: L.supportedLocales,
+  theme: LumaTheme.dark,
+  home: SettingsScope(
+    controller: settings,
+    child: FullscreenMapPage(map: map),
+  ),
+);
 
 /// The map's drawing surface: the [InteractiveViewer] is laid out at exactly
 /// the size the world is painted at.
@@ -61,8 +65,10 @@ void main() {
     // allows, and as wide as that height's aspect ratio gives.
     expect(size.height, greaterThan(screen.height * 0.9));
     expect(size.width, greaterThan(screen.width * 0.85));
-    expect(size.width / size.height,
-        closeTo(MillerProjection.aspectRatio, 0.01));
+    expect(
+      size.width / size.height,
+      closeTo(MillerProjection.aspectRatio, 0.01),
+    );
   });
 
   testWidgets('the fullscreen map fills a portrait screen', (tester) async {
@@ -78,11 +84,15 @@ void main() {
     final size = _mapSize(tester);
     // Portrait is width-limited, so the map spans the full width.
     expect(size.width, closeTo(screen.width, 1));
-    expect(size.height, closeTo(screen.width / MillerProjection.aspectRatio, 1));
+    expect(
+      size.height,
+      closeTo(screen.width / MillerProjection.aspectRatio, 1),
+    );
   });
 
-  testWidgets('tapping the same country twice adds it then removes it',
-      (tester) async {
+  testWidgets('tapping the same country twice adds it then removes it', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(1784, 824);
     tester.view.devicePixelRatio = 2;
     addTearDown(tester.view.reset);

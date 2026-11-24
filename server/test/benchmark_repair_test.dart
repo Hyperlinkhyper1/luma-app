@@ -1113,10 +1113,10 @@ const s = "y";
         final message = (body['messages'] as List).single as Map;
         expect(message['content'], benchmarkPromptFor('pagoda'));
         expect(message['content'], pagoda['prompt']);
-        expect(message['content'], contains('144×128 cells'));
-        expect(message['content'], contains('bamboo forest'));
-        expect(message['content'], contains('three separate pools'));
-        expect(message['content'], contains('raked Zen garden'));
+        expect(message['content'], contains('160×130 voxels'));
+        expect(message['content'], contains('sea of clouds'));
+        expect(message['content'], contains('five-story pagoda'));
+        expect(message['content'], contains('Spring / Summer / Autumn / Winter'));
 
         Map result = {};
         final deadline = DateTime.now().add(const Duration(seconds: 5));

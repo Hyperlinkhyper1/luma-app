@@ -67,7 +67,7 @@ class MapMakerHubView extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Map Maker',
+                              L.of(context).mapMakerHubTitle,
                               style: TextStyle(
                                 color: luma.textPrimary,
                                 fontSize: 26,
@@ -77,7 +77,7 @@ class MapMakerHubView extends StatelessWidget {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              'Create custom fantasy metro transit systems, urban grids, and floorplans.',
+                              L.of(context).mapMakerHubSubtitle,
                               style: TextStyle(
                                 color: luma.textSecondary,
                                 fontSize: 14,
@@ -138,9 +138,9 @@ class MapMakerHubView extends StatelessWidget {
                                   isAvailable: false,
                                   onTap: () {
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
+                                      SnackBar(
                                         content: Text(
-                                          'Home Planner is coming soon!',
+                                          L.of(context).mapMakerHomePlannerSoon,
                                         ),
                                         duration: Duration(seconds: 2),
                                       ),
@@ -186,8 +186,10 @@ class MapMakerHubView extends StatelessWidget {
                           isAvailable: false,
                           onTap: () {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Home Planner is coming soon!'),
+                              SnackBar(
+                                content: Text(
+                                  L.of(context).mapMakerHomePlannerSoon,
+                                ),
                                 duration: Duration(seconds: 2),
                               ),
                             );
@@ -279,7 +281,7 @@ class _BigSavesButtonState extends State<_BigSavesButton> {
                       ),
                       const SizedBox(height: 20),
                       Text(
-                        'Saves',
+                        L.of(context).mapMakerHubSaves,
                         style: TextStyle(
                           color: luma.textPrimary,
                           fontSize: 24,
@@ -289,7 +291,7 @@ class _BigSavesButtonState extends State<_BigSavesButton> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Browse, edit, and resume your saved maps, schematic routes, and blueprints.',
+                        L.of(context).mapMakerHubSavesHint,
                         style: TextStyle(
                           color: luma.textSecondary,
                           fontSize: 14,
@@ -324,7 +326,7 @@ class _BigSavesButtonState extends State<_BigSavesButton> {
                       Row(
                         children: [
                           Text(
-                            'Open',
+                            L.of(context).commonOpen,
                             style: TextStyle(
                               color: luma.accent,
                               fontSize: 14,
@@ -451,7 +453,7 @@ class _PlannerActionTileState extends State<_PlannerActionTile> {
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
-                              'Coming soon',
+                              L.of(context).mapMakerComingSoon,
                               style: TextStyle(
                                 color: luma.textMuted,
                                 fontSize: 11,

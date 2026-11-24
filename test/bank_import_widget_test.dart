@@ -14,6 +14,7 @@ import 'package:luma/storage/storage_guard.dart';
 import 'package:luma/theme/luma_theme.dart';
 
 import 'support/bank_statements.dart';
+import 'package:luma/l10n/app_localizations.dart';
 
 void main() {
   late AppDatabase db;
@@ -55,6 +56,9 @@ void main() {
     await tester.runAsync(() => repo.applyDue(DateTime(2026, 10, 5)));
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('en'),
+        localizationsDelegates: L.localizationsDelegates,
+        supportedLocales: L.supportedLocales,
         theme: LumaTheme.dark,
         home: Scaffold(
           body: ImportReviewDialog(
@@ -98,6 +102,9 @@ void main() {
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('en'),
+        localizationsDelegates: L.localizationsDelegates,
+        supportedLocales: L.supportedLocales,
         theme: LumaTheme.dark,
         home: Scaffold(
           body: Builder(
@@ -184,6 +191,9 @@ void main() {
         final entries = DutchBankParser.parseText(fixture.key, fixture.value);
         await tester.pumpWidget(
           MaterialApp(
+            locale: const Locale('en'),
+            localizationsDelegates: L.localizationsDelegates,
+            supportedLocales: L.supportedLocales,
             theme: LumaTheme.dark,
             home: Scaffold(
               body: Builder(

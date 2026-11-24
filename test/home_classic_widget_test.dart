@@ -162,6 +162,9 @@ void main() {
       }.entries) {
         await tester.pumpWidget(
           MaterialApp(
+            locale: const Locale('en'),
+            localizationsDelegates: L.localizationsDelegates,
+            supportedLocales: L.supportedLocales,
             theme: LumaTheme.dark,
             home: FinanceScope(
               repository: _Finance(),
@@ -191,6 +194,9 @@ void main() {
     addTearDown(settings.dispose);
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('en'),
+        localizationsDelegates: L.localizationsDelegates,
+        supportedLocales: L.supportedLocales,
         theme: LumaTheme.dark,
         home: SettingsScope(
           controller: settings,
@@ -212,6 +218,9 @@ void main() {
     int? destination;
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('en'),
+        localizationsDelegates: L.localizationsDelegates,
+        supportedLocales: L.supportedLocales,
         theme: LumaTheme.dark,
         home: Scaffold(
           body: HomeClassicShortcut(
@@ -229,6 +238,9 @@ void main() {
     int? destination;
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('en'),
+        localizationsDelegates: L.localizationsDelegates,
+        supportedLocales: L.supportedLocales,
         theme: LumaTheme.dark,
         home: Scaffold(
           body: Center(

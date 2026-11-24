@@ -11,6 +11,7 @@ import 'package:luma/storage/storage_guard.dart';
 import 'package:luma/theme/luma_theme.dart';
 
 import 'support/bank_statements.dart';
+import 'package:luma/l10n/app_localizations.dart';
 
 void main() {
   late AppDatabase db;
@@ -37,6 +38,9 @@ void main() {
   Future<void> open(WidgetTester tester) async {
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('en'),
+        localizationsDelegates: L.localizationsDelegates,
+        supportedLocales: L.supportedLocales,
         theme: LumaTheme.dark,
         home: Scaffold(
           body: Builder(
@@ -109,7 +113,16 @@ void main() {
       ))!;
       addTearDown(() => temp.delete(recursive: true));
       final file = File('${temp.path}/statement.csv');
-      await tester.runAsync(() => file.writeAsString(bankStatements['bunq']!));
+      // The dialog compares the current month, so the fixture's October rows
+      // are moved to today or they would fall outside the period.
+      final now = DateTime.now();
+      final today =
+          '${now.year}-${now.month.toString().padLeft(2, '0')}-'
+          '${now.day.toString().padLeft(2, '0')}';
+      final statement = bankStatements['bunq']!
+          .replaceAll('2026-10-04', today)
+          .replaceAll('2026-10-05', today);
+      await tester.runAsync(() => file.writeAsString(statement));
       const channel = MethodChannel('miguelruivo.flutter.plugins.filepicker');
       tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
         channel,

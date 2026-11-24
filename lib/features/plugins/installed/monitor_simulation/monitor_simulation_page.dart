@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../theme/luma_theme.dart';
 import 'monitor_capture_view.dart';
+import 'package:luma/l10n/app_localizations.dart';
 
 class MonitorSimulationPage extends StatelessWidget {
   const MonitorSimulationPage({super.key});
@@ -15,7 +16,7 @@ class MonitorSimulationPage extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'Monitor Simulation',
+            L.of(context).monitorSimTitle,
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
               color: colors.textPrimary,
               fontWeight: FontWeight.w700,
@@ -23,7 +24,7 @@ class MonitorSimulationPage extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'View another computer through an HDMI capture device.',
+            L.of(context).monitorSimSubtitle,
             style: TextStyle(color: colors.textSecondary),
           ),
           const SizedBox(height: 12),
@@ -51,17 +52,13 @@ class _SetupInstructions extends StatelessWidget {
       child: ExpansionTile(
         leading: Icon(Icons.cable_rounded, color: colors.accent),
         title: Text(
-          'How to connect',
+          L.of(context).monitorSimHowToConnect,
           style: TextStyle(color: colors.textPrimary),
         ),
         childrenPadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
         children: [
           Text(
-            '1. Connect the PC’s HDMI output to a USB HDMI capture device.\n'
-            '2. Plug the capture device into this laptop, then select it below.\n'
-            '3. Start the preview. If there is no picture, check that the PC is on and sending a supported signal.\n\n'
-            'Most laptop HDMI ports are outputs and cannot receive the PC’s video directly. '
-            'Use a keyboard and mouse connected to the PC to control it.',
+            L.of(context).monitorSimSteps,
             style: TextStyle(color: colors.textSecondary, height: 1.5),
           ),
         ],

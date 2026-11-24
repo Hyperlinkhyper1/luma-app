@@ -39864,4 +39864,205 @@ class LZh extends L {
   String modelViewerGithubError(int status) {
     return 'GitHub 返回错误（$status）。';
   }
+
+  @override
+  String get assistantPictureNoReferenceImages => '此图片模型不支持参考图片。请选择其他模型来上传图片。';
+
+  @override
+  String get assistantFileNotOpened => '无法打开此文件。';
+
+  @override
+  String get assistantMoveChat => '移动聊天';
+
+  @override
+  String get assistantMainChats => '主聊天';
+
+  @override
+  String get assistantCreateProjectFirst => '请先在“项目”中创建一个项目。';
+
+  @override
+  String get assistantArtifactsTitle => '产出文件';
+
+  @override
+  String get assistantArtifactsLoadFailed => '无法加载产出文件。';
+
+  @override
+  String get assistantArtifactsEmpty => '还没有产出文件。生成的文件和图片会显示在这里。';
+
+  @override
+  String get assistantArtifactSaveCopy => '另存副本';
+
+  @override
+  String get assistantArtifactViewChat => '查看聊天';
+
+  @override
+  String get assistantProjectsAll => '全部项目';
+
+  @override
+  String get assistantProjectsNew => '新建项目';
+
+  @override
+  String get assistantProjectsLoadFailed => '无法加载项目。';
+
+  @override
+  String get assistantProjectsEmpty => '创建你的第一个项目，开启专属聊天空间。';
+
+  @override
+  String get assistantProjectMemory => '项目记忆';
+
+  @override
+  String get assistantProjectEdit => '编辑项目';
+
+  @override
+  String get assistantProjectMemoryHint => '只有此项目中的聊天能使用这份记忆。“自定义”中的记忆设置同样适用。';
+
+  @override
+  String get assistantProjectNoChats => '此项目中还没有聊天。';
+
+  @override
+  String get assistantProjectDelete => '删除项目';
+
+  @override
+  String get assistantProjectDeleteMessage =>
+      '这会删除该项目及其记忆。其中的聊天会回到主聊天列表；生成的文件保留在“产出文件”中。';
+
+  @override
+  String get assistantUploadFiles => '上传文件';
+
+  @override
+  String get assistantUploadFilesHint => '文本、PDF 和支持的图片';
+
+  @override
+  String get assistantRequiresOrbitOrNova => '需要 Orbit 或 Nova';
+
+  @override
+  String get assistantArtifactGeneration => '生成产出文件';
+
+  @override
+  String get aiWikiSearchCostTitle => '成本与性能';
+
+  @override
+  String get aiWikiSearchCostHint =>
+      '检索得分与 OpenRouter 目录中每 100 万输入 token 价格的对比。价格可能来自缓存。悬停或点按某个点可查看模型详情。';
+
+  @override
+  String get aiWikiSearchNoPrices => '此对比没有可用的模型价格。';
+
+  @override
+  String get aiWikiSearchRetrievalScore => '检索得分';
+
+  @override
+  String get aiWikiSearchCostAxis => '每 100 万输入 token 成本（美元）';
+
+  @override
+  String get aiWikiSearchPricesAndScores => '模型价格与得分';
+
+  @override
+  String get aiWikiSearchTitle => 'Wiki 搜索测试';
+
+  @override
+  String get aiWikiSearchIntro =>
+      '嵌入模型需要在高度相似的干扰项中为虚构的参考段落排序。得分为前 10 名的平均倒数排名：第一个结果正确得 100%，排名越靠后得分越低。';
+
+  @override
+  String get aiWikiSearchComparison => '嵌入模型对比';
+
+  @override
+  String get aiWikiSearchConclusions => '模型结论';
+
+  @override
+  String get mapMakerHubTitle => '地图制作';
+
+  @override
+  String get mapMakerHubSubtitle => '创建自定义的幻想地铁线路、城市路网和平面图。';
+
+  @override
+  String get mapMakerHomePlannerSoon => '户型规划即将推出！';
+
+  @override
+  String get mapMakerHubSaves => '存档';
+
+  @override
+  String get mapMakerHubSavesHint => '浏览、编辑并继续你保存的地图、线路示意图和蓝图。';
+
+  @override
+  String get mapMakerComingSoon => '即将推出';
+
+  @override
+  String get mapMakerTransitNewLineTitle => '新建线路';
+
+  @override
+  String get mapMakerTransitLineColor => '线路颜色';
+
+  @override
+  String get mapMakerTransitEditLine => '编辑线路';
+
+  @override
+  String get mapMakerTransitDeleteLine => '删除线路';
+
+  @override
+  String get mapMakerTransitFinishRiver => '完成河流';
+
+  @override
+  String get mapMakerTransitLinesLabel => '线路：';
+
+  @override
+  String get mapMakerTransitNewLine => '新线路';
+
+  @override
+  String get mapMakerTransitWaterway => '水道';
+
+  @override
+  String get mapMakerTransitClosedShape => '闭合形状（湖 / 海）';
+
+  @override
+  String get mapMakerTransitDeleteWaterway => '删除水道';
+
+  @override
+  String get mapMakerTransitStationDetails => '车站详情';
+
+  @override
+  String get mapMakerTransitStationType => '车站类型';
+
+  @override
+  String get mapMakerTransitDeleteStop => '删除站点';
+
+  @override
+  String get monitorSimWindowsOnly => 'HDMI 采集查看器仅在 Windows 上可用。';
+
+  @override
+  String get monitorSimTitle => '显示器模拟';
+
+  @override
+  String get monitorSimSubtitle => '通过 HDMI 采集卡查看另一台电脑。';
+
+  @override
+  String get monitorSimHowToConnect => '连接方法';
+
+  @override
+  String get monitorSimSteps =>
+      '1. 将电脑的 HDMI 输出接到 USB HDMI 采集卡。\n2. 把采集卡插到这台笔记本电脑上，然后在下方选择它。\n3. 开始预览。如果没有画面，请检查电脑是否已开机并输出受支持的信号。\n\n大多数笔记本电脑的 HDMI 接口是输出口，无法直接接收电脑的视频。请使用连接在该电脑上的键盘和鼠标进行操作。';
+
+  @override
+  String get steamCs2InventoryTitle => 'Steam CS2 库存';
+
+  @override
+  String get steamCs2InventoryIntro =>
+      '输入你的 Steam 个人资料链接或 17 位 Steam ID，即可导入 CS2 皮肤、印花、箱子以及市场上出售的其他物品。无需 Steam 密码或 API 密钥。';
+
+  @override
+  String get steamCs2InventoryPublic => '你的 Steam 个人资料和库存必须设为公开，luma 才能读取。';
+
+  @override
+  String get steamCs2InventoryPrivacy => '打开 Steam 隐私设置';
+
+  @override
+  String get steamCs2InventoryRefreshNote =>
+      'CS2 Market 打开期间，luma 每六小时检查一次你的库存。你卖出或交易掉的物品会在下次检查时移除。断开连接后，已导入的物品会保留。';
+
+  @override
+  String get steamCs2Disconnect => '断开连接';
+
+  @override
+  String get steamCs2RefreshInventory => '刷新库存';
 }

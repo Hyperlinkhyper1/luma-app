@@ -7,6 +7,7 @@ import 'package:luma/features/plugins/installed/steam_tools/steam_repository.dar
 import 'package:luma/features/plugins/installed/steam_tools/steam_scope.dart';
 import 'package:luma/features/plugins/installed/steam_tools/ui/steam_account_dialog.dart';
 import 'package:luma/theme/luma_theme.dart';
+import 'package:luma/l10n/app_localizations.dart';
 
 /// Covers the thing this file exists to guard: connecting a Steam account is
 /// a settings dialog reachable from anywhere in the plugin, not a page that
@@ -34,23 +35,31 @@ void main() {
   // overlay, which needs the scope as an ancestor too, not just the page
   // content.
   Widget app(Widget child) => SteamScope(
-        repository: SteamRepository(db),
-        child: MaterialApp(
-          theme: LumaTheme.dark,
-          home: Scaffold(body: child),
-        ),
-      );
+    repository: SteamRepository(db),
+    child: MaterialApp(
+      locale: const Locale('en'),
+      localizationsDelegates: L.localizationsDelegates,
+      supportedLocales: L.supportedLocales,
+      theme: LumaTheme.dark,
+      home: Scaffold(body: child),
+    ),
+  );
 
-  testWidgets('showSteamAccountDialog opens SteamAccountDialog',
-      (tester) async {
-    await tester.pumpWidget(app(Builder(
-      builder: (context) => Center(
-        child: TextButton(
-          onPressed: () => showSteamAccountDialog(context),
-          child: const Text('open'),
+  testWidgets('showSteamAccountDialog opens SteamAccountDialog', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      app(
+        Builder(
+          builder: (context) => Center(
+            child: TextButton(
+              onPressed: () => showSteamAccountDialog(context),
+              child: const Text('open'),
+            ),
+          ),
         ),
       ),
-    )));
+    );
 
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
@@ -72,8 +81,9 @@ void main() {
       expect(find.text('Disconnect'), findsNothing);
     });
 
-    testWidgets('flags both empty fields without touching the network',
-        (tester) async {
+    testWidgets('flags both empty fields without touching the network', (
+      tester,
+    ) async {
       await tester.pumpWidget(app(const SteamAccountDialog()));
       await tester.pumpAndSettle();
 
@@ -81,14 +91,12 @@ void main() {
       await tester.pump();
 
       expect(find.text('Paste your Steam Web API key.'), findsOneWidget);
-      expect(
-        find.text('Enter your Steam ID or profile URL.'),
-        findsOneWidget,
-      );
+      expect(find.text('Enter your Steam ID or profile URL.'), findsOneWidget);
     });
 
-    testWidgets('clears a field error as soon as the field gets input',
-        (tester) async {
+    testWidgets('clears a field error as soon as the field gets input', (
+      tester,
+    ) async {
       await tester.pumpWidget(app(const SteamAccountDialog()));
       await tester.pumpAndSettle();
 
@@ -105,22 +113,24 @@ void main() {
       expect(find.text('Paste your Steam Web API key.'), findsNothing);
       // The id field was never touched, so its error still stands — errors
       // clear per field, not all at once.
-      expect(
-        find.text('Enter your Steam ID or profile URL.'),
-        findsOneWidget,
-      );
+      expect(find.text('Enter your Steam ID or profile URL.'), findsOneWidget);
     });
 
-    testWidgets('Close pops the dialog without validating anything',
-        (tester) async {
-      await tester.pumpWidget(app(Builder(
-        builder: (context) => Center(
-          child: TextButton(
-            onPressed: () => showSteamAccountDialog(context),
-            child: const Text('open'),
+    testWidgets('Close pops the dialog without validating anything', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        app(
+          Builder(
+            builder: (context) => Center(
+              child: TextButton(
+                onPressed: () => showSteamAccountDialog(context),
+                child: const Text('open'),
+              ),
+            ),
           ),
         ),
-      )));
+      );
       await tester.tap(find.text('open'));
       await tester.pumpAndSettle();
       expect(find.byType(SteamAccountDialog), findsOneWidget);

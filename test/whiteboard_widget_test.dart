@@ -10,6 +10,7 @@ import 'package:luma/features/plugins/installed/whiteboard/whiteboard_repository
 import 'package:luma/features/plugins/installed/whiteboard/whiteboard_scope.dart';
 import 'package:luma/storage/storage_guard.dart';
 import 'package:luma/theme/luma_theme.dart';
+import 'package:luma/l10n/app_localizations.dart';
 
 /// Drawing is the whole product here, so the gestures people will actually
 /// make — drag to draw, press a letter to switch tool, Ctrl+Z to take it
@@ -20,6 +21,8 @@ import 'package:luma/theme/luma_theme.dart';
 /// [WidgetTester.runAsync] because drift's futures never complete in the
 /// fake-async zone, and frames are driven by `settle` rather than
 /// `pumpAndSettle`, which would hang on `StreamData`'s spinner.
+final _en = lookupL(const Locale('en'));
+
 void main() {
   late WhiteboardDatabase db;
   late WhiteboardRepository repo;
@@ -62,6 +65,9 @@ void main() {
       MediaQuery(
         data: MediaQueryData(size: size),
         child: MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: L.localizationsDelegates,
+          supportedLocales: L.supportedLocales,
           theme: LumaTheme.dark,
           home: Scaffold(
             body: WhiteboardScope(
@@ -107,20 +113,21 @@ void main() {
     await tester.pump();
   }
 
-  testWidgets('every tool is reachable and named for assistive tech',
-      (tester) async {
+  testWidgets('every tool is reachable and named for assistive tech', (
+    tester,
+  ) async {
     await pumpBoard(tester);
 
     // Icon-only controls: the tooltip is what carries the name, so its absence
     // would leave the toolbar unusable with a screen reader.
     for (final label in [
-      'Select  (V)',
-      'Pen  (P)',
-      'Highlighter  (M)',
-      'Eraser  (E)',
-      'Rectangle  (R)',
-      'Sticky note  (N)',
-      'Text  (T)',
+      _en.whiteboardToolTooltip(_en.whiteboardToolSelect, 'V'),
+      _en.whiteboardToolTooltip(_en.whiteboardToolPen, 'P'),
+      _en.whiteboardToolTooltip(_en.whiteboardToolHighlighter, 'M'),
+      _en.whiteboardToolTooltip(_en.whiteboardToolEraser, 'E'),
+      _en.whiteboardToolTooltip(_en.whiteboardToolRectangle, 'R'),
+      _en.whiteboardToolTooltip(_en.whiteboardToolStickyNote, 'N'),
+      _en.whiteboardToolTooltip(_en.whiteboardToolText, 'T'),
     ]) {
       expect(
         find.byTooltip(label),
@@ -128,7 +135,7 @@ void main() {
         reason: '$label has no tooltip to announce it',
       );
     }
-    expect(find.byTooltip('Undo  (Ctrl+Z)'), findsOneWidget);
+    expect(find.byTooltip(_en.whiteboardUndoTooltip), findsOneWidget);
     expect(find.byTooltip('Export as PNG'), findsOneWidget);
 
     await teardownTree(tester);
@@ -163,8 +170,9 @@ void main() {
     await teardownTree(tester);
   });
 
-  testWidgets('a letter switches tool, and the next drag draws that shape',
-      (tester) async {
+  testWidgets('a letter switches tool, and the next drag draws that shape', (
+    tester,
+  ) async {
     final boardId = await pumpBoard(tester);
 
     await pressKey(tester, LogicalKeyboardKey.keyR);
@@ -179,8 +187,9 @@ void main() {
     await teardownTree(tester);
   });
 
-  testWidgets('Ctrl+Z takes a stroke back and Ctrl+Shift+Z returns it',
-      (tester) async {
+  testWidgets('Ctrl+Z takes a stroke back and Ctrl+Shift+Z returns it', (
+    tester,
+  ) async {
     final boardId = await pumpBoard(tester);
     await drawStroke(tester);
     expect(await real(tester, () => repo.elementsOf(boardId)), hasLength(1));
@@ -200,8 +209,9 @@ void main() {
     await teardownTree(tester);
   });
 
-  testWidgets('the eraser takes out a whole stroke in one sweep',
-      (tester) async {
+  testWidgets('the eraser takes out a whole stroke in one sweep', (
+    tester,
+  ) async {
     final boardId = await pumpBoard(tester);
     await drawStroke(tester);
     expect(await real(tester, () => repo.elementsOf(boardId)), hasLength(1));
@@ -221,8 +231,9 @@ void main() {
     await teardownTree(tester);
   });
 
-  testWidgets('select picks up a stroke, and Delete removes it',
-      (tester) async {
+  testWidgets('select picks up a stroke, and Delete removes it', (
+    tester,
+  ) async {
     final boardId = await pumpBoard(tester);
     await drawStroke(tester);
 
@@ -239,11 +250,15 @@ void main() {
     await teardownTree(tester);
   });
 
-  testWidgets('the toolbar wraps instead of overflowing on a phone',
-      (tester) async {
+  testWidgets('the toolbar wraps instead of overflowing on a phone', (
+    tester,
+  ) async {
     await pumpBoard(tester, size: const Size(390, 780));
     expect(tester.takeException(), isNull);
-    expect(find.byTooltip('Pen  (P)'), findsOneWidget);
+    expect(
+      find.byTooltip(_en.whiteboardToolTooltip(_en.whiteboardToolPen, 'P')),
+      findsOneWidget,
+    );
 
     await teardownTree(tester);
   });

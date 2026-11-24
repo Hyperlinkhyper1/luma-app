@@ -5,11 +5,15 @@ import 'package:luma/features/plugins/installed/worth_counter/worth_counter_page
 import 'package:luma/features/plugins/installed/worth_counter/worth_counter_store.dart';
 import 'package:luma/storage/storage_guard.dart';
 import 'package:luma/theme/luma_theme.dart';
+import 'package:luma/l10n/app_localizations.dart';
 
 Widget _app() => MaterialApp(
-      theme: LumaTheme.dark,
-      home: const Scaffold(body: WorthCounterPage()),
-    );
+  locale: const Locale('en'),
+  localizationsDelegates: L.localizationsDelegates,
+  supportedLocales: L.supportedLocales,
+  theme: LumaTheme.dark,
+  home: const Scaffold(body: WorthCounterPage()),
+);
 
 /// Prepares the (singleton) store with a known set of products. Store setup
 /// touches real async I/O, so it runs outside the widget tester's fake clock.
@@ -66,8 +70,9 @@ void main() {
     await _settleTimers(tester);
   });
 
-  testWidgets('two products add up, and - never goes below zero',
-      (tester) async {
+  testWidgets('two products add up, and - never goes below zero', (
+    tester,
+  ) async {
     final store = await _seed(tester, [
       (name: 'Coffee', price: 2),
       (name: 'Cake', price: 3.5),
@@ -108,10 +113,9 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
-    final store = await _seed(
-      tester,
-      [(name: 'A rather long product name', price: 12.5)],
-    );
+    final store = await _seed(tester, [
+      (name: 'A rather long product name', price: 12.5),
+    ]);
     store.increment(store.products.first.id, 7);
 
     await tester.pumpWidget(_app());
@@ -123,8 +127,9 @@ void main() {
     await _settleTimers(tester);
   });
 
-  testWidgets('shows the empty state when nothing has been added',
-      (tester) async {
+  testWidgets('shows the empty state when nothing has been added', (
+    tester,
+  ) async {
     await _seed(tester, const []);
 
     await tester.pumpWidget(_app());

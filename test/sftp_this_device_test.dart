@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:luma/features/plugins/installed/sftp/host/host_cards.dart';
 import 'package:luma/features/plugins/installed/sftp/host/this_device_page.dart';
 import 'package:luma/theme/luma_theme.dart';
+import 'package:luma/l10n/app_localizations.dart';
 
 /// The "This device" screen makes one promise the Host tab does not: this
 /// device is reachable while the screen is open, and not a moment longer.
@@ -59,6 +60,9 @@ Future<void> _pumpPage(WidgetTester tester, Directory directory) async {
 
   await tester.pumpWidget(
     MaterialApp(
+      locale: const Locale('en'),
+      localizationsDelegates: L.localizationsDelegates,
+      supportedLocales: L.supportedLocales,
       theme: LumaTheme.dark,
       home: SftpThisDevicePage(initialDirectory: directory),
     ),
@@ -71,16 +75,16 @@ void main() {
 
   setUp(() async {
     shared = await Directory.systemTemp.createTemp('luma_this_device');
-    await File('${shared.path}${Platform.pathSeparator}note.txt')
-        .writeAsString('hello');
+    await File(
+      '${shared.path}${Platform.pathSeparator}note.txt',
+    ).writeAsString('hello');
   });
 
   tearDown(() async {
     if (await shared.exists()) await shared.delete(recursive: true);
   });
 
-  testWidgets('opening the screen makes this device reachable',
-      (tester) async {
+  testWidgets('opening the screen makes this device reachable', (tester) async {
     await _pumpPage(tester, shared);
 
     expect(find.text('Other devices can reach this one'), findsOneWidget);
@@ -112,10 +116,7 @@ void main() {
     await _breathe(tester);
 
     expect(await _canConnect(tester, port), isFalse);
-    expect(
-      find.text('Paused while luma is in the background'),
-      findsOneWidget,
-    );
+    expect(find.text('Paused while luma is in the background'), findsOneWidget);
 
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await _breathe(tester);
@@ -128,14 +129,18 @@ void main() {
     await _breathe(tester);
   });
 
-  testWidgets('the credentials fit a phone without overflowing',
-      (tester) async {
+  testWidgets('the credentials fit a phone without overflowing', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(360, 800);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
 
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('en'),
+        localizationsDelegates: L.localizationsDelegates,
+        supportedLocales: L.supportedLocales,
         theme: LumaTheme.dark,
         home: SftpThisDevicePage(initialDirectory: shared),
       ),
@@ -148,15 +153,16 @@ void main() {
     await _breathe(tester);
   });
 
-  testWidgets('the pairing password is masked until it is asked for',
-      (tester) async {
+  testWidgets('the pairing password is masked until it is asked for', (
+    tester,
+  ) async {
     await _pumpPage(tester, shared);
 
     HostCopyRow passwordRow() => tester.widget<HostCopyRow>(
-          find.byWidgetPredicate(
-            (w) => w is HostCopyRow && w.label == 'Pairing password',
-          ),
-        );
+      find.byWidgetPredicate(
+        (w) => w is HostCopyRow && w.label == 'Pairing password',
+      ),
+    );
 
     expect(passwordRow().value, '••••-••••-••••-••••-••••');
 

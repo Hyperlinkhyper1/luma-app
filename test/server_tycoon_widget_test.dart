@@ -7,14 +7,15 @@ import 'package:luma/features/plugins/installed/server_tycoon/server_tycoon_repo
 import 'package:luma/features/plugins/installed/server_tycoon/server_tycoon_scope.dart';
 import 'package:luma/storage/storage_guard.dart';
 import 'package:luma/theme/luma_theme.dart';
+import 'package:luma/l10n/app_localizations.dart';
 
 Widget _app(ServerTycoonRepository repo) => MaterialApp(
-      theme: LumaTheme.dark,
-      home: ServerTycoonScope(
-        repository: repo,
-        child: const ServerTycoonPage(),
-      ),
-    );
+  locale: const Locale('en'),
+  localizationsDelegates: L.localizationsDelegates,
+  supportedLocales: L.supportedLocales,
+  theme: LumaTheme.dark,
+  home: ServerTycoonScope(repository: repo, child: const ServerTycoonPage()),
+);
 
 /// Drags a node by long-pressing it and moving in steps, the way the canvas
 /// expects (a plain drag pans the map instead).
@@ -58,7 +59,9 @@ void main() {
     expect(find.text('Static Website'), findsWidgets);
   });
 
-  testWidgets('long-press dragging a rig commits its new position', (tester) async {
+  testWidgets('long-press dragging a rig commits its new position', (
+    tester,
+  ) async {
     await tester.pumpWidget(_app(repo));
     await tester.pump();
 
@@ -68,11 +71,17 @@ void main() {
     await _dragNode(tester, find.text('Rig 1'), const Offset(120, 80));
 
     final after = repo.state.rigs[rigId]!.pos;
-    expect(after.x, isNot(before.x), reason: 'the drag should have been committed');
+    expect(
+      after.x,
+      isNot(before.x),
+      reason: 'the drag should have been committed',
+    );
     expect(after.y, isNot(before.y));
   });
 
-  testWidgets('a dragged service node keeps the position it was dropped at', (tester) async {
+  testWidgets('a dragged service node keeps the position it was dropped at', (
+    tester,
+  ) async {
     repo.installService(null, 'STATIC_WEBSITE', 1);
     await tester.pumpWidget(_app(repo));
     await tester.pump();
@@ -80,21 +89,29 @@ void main() {
     final instanceId = repo.state.services.keys.first;
     final before = repo.state.services[instanceId]!.pos;
 
-    await _dragNode(tester, find.text('Static Website').first, const Offset(100, 60));
+    await _dragNode(
+      tester,
+      find.text('Static Website').first,
+      const Offset(100, 60),
+    );
 
     final after = repo.state.services[instanceId]!.pos;
     expect(after.x, isNot(before.x));
     expect(after.y, isNot(before.y));
   });
 
-  testWidgets('the tile tracks the finger while the drag is in flight', (tester) async {
+  testWidgets('the tile tracks the finger while the drag is in flight', (
+    tester,
+  ) async {
     await tester.pumpWidget(_app(repo));
     await tester.pump();
 
     final rigId = repo.state.rigs.keys.first;
     final start = tester.getTopLeft(find.text('Rig 1'));
 
-    final gesture = await tester.startGesture(tester.getCenter(find.text('Rig 1')));
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.text('Rig 1')),
+    );
     await tester.pump(kLongPressTimeout + const Duration(milliseconds: 50));
 
     const step = Offset(60, 40);

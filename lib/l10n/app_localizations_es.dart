@@ -42225,4 +42225,221 @@ class LEs extends L {
   String modelViewerGithubError(int status) {
     return 'GitHub devolvió un error ($status).';
   }
+
+  @override
+  String get assistantPictureNoReferenceImages =>
+      'Este modelo de imagen no admite imágenes de referencia. Elige otro modelo para subir una imagen.';
+
+  @override
+  String get assistantFileNotOpened => 'No se pudo abrir este archivo.';
+
+  @override
+  String get assistantMoveChat => 'Mover chat';
+
+  @override
+  String get assistantMainChats => 'Chats principales';
+
+  @override
+  String get assistantCreateProjectFirst =>
+      'Primero crea un proyecto desde Proyectos.';
+
+  @override
+  String get assistantArtifactsTitle => 'Artefactos';
+
+  @override
+  String get assistantArtifactsLoadFailed =>
+      'No se pudieron cargar los artefactos.';
+
+  @override
+  String get assistantArtifactsEmpty =>
+      'No hay artefactos. Los archivos e imágenes generados aparecerán aquí.';
+
+  @override
+  String get assistantArtifactSaveCopy => 'Guardar una copia';
+
+  @override
+  String get assistantArtifactViewChat => 'Ver chat';
+
+  @override
+  String get assistantProjectsAll => 'Todos los proyectos';
+
+  @override
+  String get assistantProjectsNew => 'Nuevo proyecto';
+
+  @override
+  String get assistantProjectsLoadFailed =>
+      'No se pudieron cargar los proyectos.';
+
+  @override
+  String get assistantProjectsEmpty =>
+      'Crea tu primer proyecto para tener un espacio de chat dedicado.';
+
+  @override
+  String get assistantProjectMemory => 'Memoria del proyecto';
+
+  @override
+  String get assistantProjectEdit => 'Editar proyecto';
+
+  @override
+  String get assistantProjectMemoryHint =>
+      'Solo los chats de este proyecto pueden usar esta memoria. El ajuste de memoria de Personalizar también se aplica aquí.';
+
+  @override
+  String get assistantProjectNoChats =>
+      'Todavía no hay chats en este proyecto.';
+
+  @override
+  String get assistantProjectDelete => 'Eliminar proyecto';
+
+  @override
+  String get assistantProjectDeleteMessage =>
+      'Se eliminarán el proyecto y su memoria. Sus chats vuelven a la lista principal; los archivos generados se quedan en Artefactos.';
+
+  @override
+  String get assistantUploadFiles => 'Subir archivos';
+
+  @override
+  String get assistantUploadFilesHint => 'Texto, PDF e imágenes compatibles';
+
+  @override
+  String get assistantRequiresOrbitOrNova => 'Requiere Orbit o Nova';
+
+  @override
+  String get assistantArtifactGeneration => 'Generación de artefactos';
+
+  @override
+  String get aiWikiSearchCostTitle => 'Coste frente a rendimiento';
+
+  @override
+  String get aiWikiSearchCostHint =>
+      'Puntuación de búsqueda frente al precio de catálogo de OpenRouter por 1 M de tokens de entrada. Los precios pueden estar en caché. Pasa el cursor o toca un punto para ver el modelo.';
+
+  @override
+  String get aiWikiSearchNoPrices =>
+      'No hay precios de modelos disponibles para esta comparación.';
+
+  @override
+  String get aiWikiSearchRetrievalScore => 'Puntuación de búsqueda';
+
+  @override
+  String get aiWikiSearchCostAxis => 'Coste por 1 M de tokens de entrada (USD)';
+
+  @override
+  String get aiWikiSearchPricesAndScores => 'Precios y puntuaciones de modelos';
+
+  @override
+  String get aiWikiSearchTitle => 'Prueba de búsqueda wiki';
+
+  @override
+  String get aiWikiSearchIntro =>
+      'Los modelos de embeddings ordenan pasajes de referencia ficticios entre distractores muy parecidos. La puntuación es el rango recíproco medio a 10: un primer resultado correcto vale el 100 %, los puestos inferiores menos.';
+
+  @override
+  String get aiWikiSearchComparison => 'Comparación de modelos de embeddings';
+
+  @override
+  String get aiWikiSearchConclusions => 'Conclusiones por modelo';
+
+  @override
+  String get mapMakerHubTitle => 'Creador de mapas';
+
+  @override
+  String get mapMakerHubSubtitle =>
+      'Crea tus propias redes de metro imaginarias, tramas urbanas y planos de planta.';
+
+  @override
+  String get mapMakerHomePlannerSoon =>
+      '¡El planificador de vivienda llegará pronto!';
+
+  @override
+  String get mapMakerHubSaves => 'Guardados';
+
+  @override
+  String get mapMakerHubSavesHint =>
+      'Explora, edita y retoma tus mapas, esquemas de líneas y planos guardados.';
+
+  @override
+  String get mapMakerComingSoon => 'Próximamente';
+
+  @override
+  String get mapMakerTransitNewLineTitle => 'Nueva línea';
+
+  @override
+  String get mapMakerTransitLineColor => 'Color de la línea';
+
+  @override
+  String get mapMakerTransitEditLine => 'Editar línea';
+
+  @override
+  String get mapMakerTransitDeleteLine => 'Eliminar línea';
+
+  @override
+  String get mapMakerTransitFinishRiver => 'Terminar río';
+
+  @override
+  String get mapMakerTransitLinesLabel => 'Líneas:';
+
+  @override
+  String get mapMakerTransitNewLine => 'Nueva línea';
+
+  @override
+  String get mapMakerTransitWaterway => 'Vía fluvial';
+
+  @override
+  String get mapMakerTransitClosedShape => 'Forma cerrada (lago / mar)';
+
+  @override
+  String get mapMakerTransitDeleteWaterway => 'Eliminar vía fluvial';
+
+  @override
+  String get mapMakerTransitStationDetails => 'Detalles de la estación';
+
+  @override
+  String get mapMakerTransitStationType => 'Tipo de estación';
+
+  @override
+  String get mapMakerTransitDeleteStop => 'Eliminar parada';
+
+  @override
+  String get monitorSimWindowsOnly =>
+      'El visor de captura HDMI está disponible en Windows.';
+
+  @override
+  String get monitorSimTitle => 'Simulación de monitor';
+
+  @override
+  String get monitorSimSubtitle =>
+      'Ve otro ordenador a través de una capturadora HDMI.';
+
+  @override
+  String get monitorSimHowToConnect => 'Cómo conectar';
+
+  @override
+  String get monitorSimSteps =>
+      '1. Conecta la salida HDMI del PC a una capturadora HDMI USB.\n2. Conecta la capturadora a este portátil y selecciónala abajo.\n3. Inicia la vista previa. Si no hay imagen, comprueba que el PC está encendido y envía una señal compatible.\n\nLa mayoría de los puertos HDMI de los portátiles son salidas y no pueden recibir directamente el vídeo del PC. Usa un teclado y un ratón conectados al PC para controlarlo.';
+
+  @override
+  String get steamCs2InventoryTitle => 'Inventario de CS2 en Steam';
+
+  @override
+  String get steamCs2InventoryIntro =>
+      'Introduce la URL de tu perfil de Steam o tu Steam ID de 17 dígitos para importar tus skins de CS2, pegatinas, cajas y todo lo que vende el mercado. No hace falta la contraseña de Steam ni una clave de API.';
+
+  @override
+  String get steamCs2InventoryPublic =>
+      'Tu perfil y tu inventario de Steam deben ser públicos para que luma pueda leerlos.';
+
+  @override
+  String get steamCs2InventoryPrivacy =>
+      'Abrir la configuración de privacidad de Steam';
+
+  @override
+  String get steamCs2InventoryRefreshNote =>
+      'Mientras CS2 Market está abierto, luma revisa tu inventario cada seis horas. Los objetos que vendas o intercambies se quitan en la siguiente revisión. Al desconectar se conservan los objetos importados.';
+
+  @override
+  String get steamCs2Disconnect => 'Desconectar';
+
+  @override
+  String get steamCs2RefreshInventory => 'Actualizar inventario';
 }

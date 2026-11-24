@@ -8,6 +8,7 @@ import '../../../../app/window_controls.dart';
 import '../../../../theme/luma_theme.dart';
 import '../_shared/native_webview.dart';
 import '../_shared/windows_webview.dart' show windowsAssetPath;
+import 'package:luma/l10n/app_localizations.dart';
 
 /// Displays the monitor viewer on Windows. The capture device remains under
 /// the user's control and is released when this view becomes hidden.
@@ -78,9 +79,7 @@ class _MonitorCaptureViewState extends State<MonitorCaptureView> {
   @override
   Widget build(BuildContext context) {
     if (kIsWeb || !Platform.isWindows) {
-      return const Center(
-        child: Text('The HDMI capture viewer is available on Windows.'),
-      );
+      return Center(child: Text(L.of(context).monitorSimWindowsOnly));
     }
     if (_error case final error?) {
       return Center(child: Text(error));

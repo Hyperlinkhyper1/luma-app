@@ -49,8 +49,9 @@ void main() {
     expect(find.text('Pagoda Test'), findsOneWidget);
     expect(find.text('Engine Test'), findsOneWidget);
     expect(find.text('PC Test'), findsOneWidget);
-    // All three tiles currently share the same subtitle.
-    expect(find.text('Open the test screen'), findsNWidgets(3));
+    expect(find.text('Wiki search test'), findsOneWidget);
+    // The four established tiles share the same subtitle.
+    expect(find.text('Open the test screen'), findsNWidgets(4));
   });
 
   testWidgets('the whole tile is one button that opens the test screen', (

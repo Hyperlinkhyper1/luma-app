@@ -11,15 +11,16 @@ import 'package:luma/features/plugins/installed/sftp/sftp_dialogs.dart';
 import 'package:luma/features/plugins/installed/sftp/sftp_site_manager.dart';
 import 'package:luma/theme/luma_theme.dart';
 import 'package:nsd/nsd.dart';
+import 'package:luma/l10n/app_localizations.dart';
 
 /// Covers finding luma hosts on the local network: reading the mDNS record,
 /// the "On this network" list, and the quick-connect dialog that still asks
 /// for the pairing password and lets the port be changed.
 void main() {
   Map<String, Uint8List?> txt(String name, int version) => {
-        'n': Uint8List.fromList(utf8.encode(name)),
-        'v': Uint8List.fromList(utf8.encode('$version')),
-      };
+    'n': Uint8List.fromList(utf8.encode(name)),
+    'v': Uint8List.fromList(utf8.encode('$version')),
+  };
 
   group('reading a host record', () {
     test('prefers a routable IPv4 address over the host name', () {
@@ -84,9 +85,12 @@ void main() {
   });
 
   Widget wrap(Widget child) => MaterialApp(
-        theme: LumaTheme.dark,
-        home: Scaffold(body: child),
-      );
+    locale: const Locale('en'),
+    localizationsDelegates: L.localizationsDelegates,
+    supportedLocales: L.supportedLocales,
+    theme: LumaTheme.dark,
+    home: Scaffold(body: child),
+  );
 
   const nearby = DiscoveredHost(
     id: 'Stephan-PC-ab12',
@@ -96,8 +100,9 @@ void main() {
     version: kHostProtocolVersion,
   );
 
-  testWidgets('a hosting device is listed and one tap starts connecting',
-      (tester) async {
+  testWidgets('a hosting device is listed and one tap starts connecting', (
+    tester,
+  ) async {
     DiscoveredHost? picked;
     await tester.pumpWidget(
       wrap(
@@ -125,8 +130,9 @@ void main() {
     expect(picked, nearby);
   });
 
-  testWidgets('the section stays out of the way where discovery cannot run',
-      (tester) async {
+  testWidgets('the section stays out of the way where discovery cannot run', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       wrap(
         SftpSiteManagerView(
@@ -145,8 +151,9 @@ void main() {
     expect(find.text('On this network'), findsNothing);
   });
 
-  testWidgets('quick connect needs the password and keeps the port editable',
-      (tester) async {
+  testWidgets('quick connect needs the password and keeps the port editable', (
+    tester,
+  ) async {
     QuickConnectAnswer? answer;
     var closed = false;
     await tester.pumpWidget(
@@ -177,7 +184,10 @@ void main() {
     await tester.tap(find.widgetWithText(LumaPrimaryButton, 'Connect'));
     await tester.pumpAndSettle();
     expect(closed, isFalse);
-    expect(find.text('Type the pairing password shown on Stephan-PC.'), findsOneWidget);
+    expect(
+      find.text('Type the pairing password shown on Stephan-PC.'),
+      findsOneWidget,
+    );
 
     await tester.enterText(fields.at(0), '51000');
     await tester.enterText(fields.at(1), 'abcd efgh jkmn pqrs tvwx');
@@ -190,4 +200,3 @@ void main() {
     expect(answer!.save, isFalse);
   });
 }
-

@@ -15,19 +15,23 @@
   "i18n": {
     "nl": {
       "name": "Modelviewer",
-      "description": "Blader door 3D-modellen in een GitHub-repository en open elk model in een interactieve viewer."
+      "description": "Blader door 3D-modellen in een GitHub-repository en open elk model in een interactieve viewer.",
+      "details": "Plak de URL van een GitHub-repository en kies eventueel een branch, tag of commit. Doorzoek de catalogus en open GLB-, glTF-, FBX-, OBJ-, STL- en PLY-modellen een voor een. Draai, zoom, zet de camera terug en speel animaties af als die er zijn. Koppel GitHub voor privérepository’s."
     },
     "fr": {
       "name": "Visionneuse 3D",
-      "description": "Parcourez les modèles 3D d’un dépôt GitHub et ouvrez chacun dans une visionneuse interactive."
+      "description": "Parcourez les modèles 3D d’un dépôt GitHub et ouvrez chacun dans une visionneuse interactive.",
+      "details": "Collez l’URL d’un dépôt GitHub et choisissez éventuellement une branche, un tag ou un commit. Parcourez le catalogue et ouvrez les modèles GLB, glTF, FBX, OBJ, STL et PLY un par un. Faites pivoter, zoomez, réinitialisez la caméra et lancez les animations disponibles. Connectez GitHub pour les dépôts privés."
     },
     "es": {
       "name": "Visor 3D",
-      "description": "Explora los modelos 3D de un repositorio de GitHub y abre cada uno en un visor interactivo."
+      "description": "Explora los modelos 3D de un repositorio de GitHub y abre cada uno en un visor interactivo.",
+      "details": "Pega la URL de un repositorio de GitHub y, si quieres, elige una rama, etiqueta o commit. Busca en el catálogo y abre modelos GLB, glTF, FBX, OBJ, STL y PLY de uno en uno. Gira, haz zoom, restablece la cámara y reproduce animaciones cuando las haya. Conecta GitHub para los repositorios privados."
     },
     "zh": {
       "name": "模型查看器",
-      "description": "浏览 GitHub 仓库中的 3D 模型，并在交互式查看器中逐个打开。"
+      "description": "浏览 GitHub 仓库中的 3D 模型，并在交互式查看器中逐个打开。",
+      "details": "粘贴 GitHub 仓库链接，可选择分支、标签或提交。搜索目录并逐个打开 GLB、glTF、FBX、OBJ、STL 和 PLY 模型。可旋转、缩放、重置相机，并在有动画时播放。连接 GitHub 即可访问私有仓库。"
     }
   }
 }
