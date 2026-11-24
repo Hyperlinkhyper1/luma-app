@@ -575,6 +575,7 @@ class _TransitMapEditorViewState extends State<TransitMapEditorView> {
                           ),
                           decoration: const InputDecoration(
                             border: InputBorder.none,
+                            filled: false,
                             isDense: true,
                             contentPadding: EdgeInsets.zero,
                           ),

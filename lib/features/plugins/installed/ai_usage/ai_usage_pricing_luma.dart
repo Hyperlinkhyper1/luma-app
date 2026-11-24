@@ -140,7 +140,7 @@ AiPricingRates? lumaPricingFor(String? model) {
     'anthropic' => anthropicPricingFor(modelId),
     'openai' => openAiPricingFor(modelId),
     'mistral' => mistralPricingFor(modelId),
-    'google' => switch (geminiDisplayNameForSlug(modelId)) {
+    'google' || 'gemini' => switch (geminiDisplayNameForSlug(modelId)) {
         final name? => geminiPricingFor(name),
         null => null,
       },

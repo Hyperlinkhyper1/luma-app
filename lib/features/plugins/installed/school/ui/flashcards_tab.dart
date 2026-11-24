@@ -381,6 +381,7 @@ class _CardDialogState extends State<_CardDialog> {
             decoration: InputDecoration(labelText: t.schoolCardFront),
             maxLines: 2,
           ),
+          const SizedBox(height: 12),
           TextField(
             controller: _backController,
             decoration: InputDecoration(labelText: t.schoolCardBack),

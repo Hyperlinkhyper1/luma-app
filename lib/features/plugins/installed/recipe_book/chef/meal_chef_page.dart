@@ -583,6 +583,7 @@ class _MealChefPageState extends State<MealChefPage> {
                       : t.mealChefInputHint,
                   hintStyle: TextStyle(color: luma.textMuted, fontSize: 14),
                   border: InputBorder.none,
+                  filled: false,
                   counterText: '',
                   isDense: true,
                   contentPadding: const EdgeInsets.symmetric(vertical: 12),

@@ -19,6 +19,9 @@ class OpenAiCompatibleClient implements AiClient {
     this.reasoningEffort,
     this.disableResponseStorage = false,
     this.viaLumaServer = false,
+    this.maxTokensField = 'max_tokens',
+    this.extraHeaders = const {},
+    this.timeout = const Duration(seconds: 120),
   });
 
   final String baseUrl;
@@ -45,6 +48,17 @@ class OpenAiCompatibleClient implements AiClient {
   /// to the provider. Those requests only leave the device once the account
   /// is approved — see [GatedServerClient].
   final bool viaLumaServer;
+
+  /// The request field the output cap goes in. OpenAI's reasoning models
+  /// only accept `max_completion_tokens`; everyone else takes `max_tokens`.
+  final String maxTokensField;
+
+  /// Added to every request, e.g. OpenRouter's app-attribution header.
+  final Map<String, String> extraHeaders;
+
+  /// Reasoning models can think for a while before the first token, so a
+  /// short timeout turns a slow answer into a failure.
+  final Duration timeout;
 
   static const _maxToolHops = 5;
 
@@ -184,7 +198,7 @@ class OpenAiCompatibleClient implements AiClient {
     final body = <String, dynamic>{
       'model': defaultModel,
       'messages': messages,
-      'max_tokens': maxOutputTokens,
+      maxTokensField: maxOutputTokens,
       if (tools.isNotEmpty) 'tools': tools,
       if (reasoningEffort != null) 'reasoning_effort': reasoningEffort,
       if (disableResponseStorage) 'store': false,
@@ -199,10 +213,11 @@ class OpenAiCompatibleClient implements AiClient {
             headers: {
               'Authorization': 'Bearer $apiKey',
               'Content-Type': 'application/json',
+              ...extraHeaders,
             },
             body: jsonEncode(body),
           )
-          .timeout(const Duration(seconds: 30));
+          .timeout(timeout);
     } on ServerAccessDeniedException catch (e) {
       throw AiAuthError(e.message);
     } catch (e) {

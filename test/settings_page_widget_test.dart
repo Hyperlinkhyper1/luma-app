@@ -213,8 +213,10 @@ void main() {
         expect(find.text('Anthropic Claude'), findsOneWidget);
         expect(find.text('OpenAI'), findsOneWidget);
         expect(find.text('Luma AI'), findsOneWidget);
-        expect(find.byType(TextField), findsOneWidget);
-        expect(find.text('Test connection'), findsOneWidget);
+        expect(find.text('OpenRouter'), findsOneWidget);
+        expect(find.text('Google Gemini'), findsOneWidget);
+        expect(find.byType(TextField), findsNothing);
+        expect(find.text('Manage API keys'), findsOneWidget);
         expect(find.text('Track backend AI usage'), findsOneWidget);
         expect(find.text('Model usage'), findsOneWidget);
         final tracking = find.widgetWithText(

@@ -271,7 +271,10 @@ class ChatController extends ChangeNotifier {
     var apiKey = usingLocalModel
         ? 'local'
         : await _keyStore.readKey(providerId);
-    AiClient client = aiProviderById(providerId).client;
+    AiClient client = aiClientFor(
+      providerId,
+      model: _settings.aiModelFor(providerId),
+    );
 
     final sync = _syncService;
     final serverAvailable = sync != null && sync.serverReady;

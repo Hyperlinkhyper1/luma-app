@@ -153,11 +153,32 @@ document.addEventListener('fullscreenchange', () => {
   const on = document.fullscreenElement === screen;
   window.chrome.webview.postMessage(on ? 'fullscreen-on' : 'fullscreen-off');
 });
+const themeVariables = new Set([
+  'bg', 'surface', 'surface-hover', 'border', 'accent', 'accent-hover',
+  'on-accent', 'text', 'text-secondary', 'text-muted', 'screen',
+]);
+function applyTheme(theme) {
+  const root = document.documentElement;
+  if (!root || !theme || typeof theme !== 'object') return;
+  for (const [name, value] of Object.entries(theme.colors || {})) {
+    if (themeVariables.has(name) && /^#[0-9a-f]{6}([0-9a-f]{2})?$/i.test(value)) {
+      root.style.setProperty(`--${name}`, value);
+    }
+  }
+  if (theme.scheme === 'light' || theme.scheme === 'dark') {
+    root.style.setProperty('color-scheme', theme.scheme);
+  }
+}
 window.chrome.webview.addEventListener('message', event => {
   if (event.data === 'stop-capture') {
     release();
     status.textContent = 'Viewing stopped. Select Start viewing to resume.';
+  } else if (typeof event.data === 'string' && event.data.startsWith('theme:')) {
+    try {
+      applyTheme(JSON.parse(event.data.slice('theme:'.length)));
+    } catch (_) {}
   }
 });
 window.addEventListener('pagehide', release);
 updateControls();
+window.chrome.webview.postMessage('ready');

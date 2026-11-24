@@ -242,10 +242,12 @@ class _FormulaDialogState extends State<_FormulaDialog> {
               autofocus: true,
               decoration: InputDecoration(labelText: t.commonName),
             ),
+            const SizedBox(height: 12),
             TextField(
               controller: _expressionController,
               decoration: InputDecoration(labelText: t.schoolFormulaExpression),
             ),
+            const SizedBox(height: 12),
             TextField(
               controller: _categoryController,
               decoration: InputDecoration(
@@ -253,6 +255,7 @@ class _FormulaDialogState extends State<_FormulaDialog> {
                   hintText: t.schoolFormulaDefaultCategory,
                 ),
             ),
+            const SizedBox(height: 12),
             TextField(
               controller: _descriptionController,
               decoration: InputDecoration(labelText: t.schoolFormulaDescriptionOptional),

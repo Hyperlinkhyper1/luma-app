@@ -210,6 +210,7 @@ class _TimetableEditorDialogState extends State<_TimetableEditorDialog> {
               ],
               onChanged: (v) => setState(() => _subjectId = v!),
             ),
+            const SizedBox(height: 12),
             DropdownButtonFormField<int>(
               initialValue: _dayOfWeek,
               decoration: InputDecoration(labelText: t.schoolTimetableDay),
@@ -248,6 +249,7 @@ class _TimetableEditorDialogState extends State<_TimetableEditorDialog> {
               controller: _locationController,
               decoration: InputDecoration(labelText: t.schoolTimetableLocation),
             ),
+            const SizedBox(height: 12),
             TextField(
               controller: _instructorController,
               decoration: InputDecoration(labelText: t.schoolTimetableInstructor),

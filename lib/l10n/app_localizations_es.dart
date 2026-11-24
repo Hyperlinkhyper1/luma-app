@@ -2047,6 +2047,40 @@ class LEs extends L {
   String get assistantSettingsUser => 'Usuario';
 
   @override
+  String get assistantSettingsApi => 'API';
+
+  @override
+  String get assistantApiIntro =>
+      'Chatea con tu propia clave de Claude, OpenAI, OpenRouter o Google. Las claves se cifran en este dispositivo y solo se envían a ese proveedor.';
+
+  @override
+  String get assistantApiModel => 'Modelo';
+
+  @override
+  String assistantApiModelHint(String model) {
+    return 'Predeterminado: $model';
+  }
+
+  @override
+  String get assistantApiNoKey => 'No hay clave guardada';
+
+  @override
+  String get assistantApiUseInChat => 'Usar en el chat';
+
+  @override
+  String get assistantApiInUse => 'En uso';
+
+  @override
+  String get assistantApiGetKey => 'Obtener una clave';
+
+  @override
+  String get assistantApiManage => 'Gestionar claves API';
+
+  @override
+  String get aiSettingsApiKeysMoved =>
+      'Las claves API de Claude, OpenAI, OpenRouter y Google se gestionan en el Asistente, en Ajustes → API.';
+
+  @override
   String get assistantSettingsLanguage => 'Idioma de las respuestas';
 
   @override
@@ -21667,6 +21701,197 @@ class LEs extends L {
 
   @override
   String get schoolTabCitations => 'Citas';
+
+  @override
+  String get schoolTabPta => 'Entrenador PTA';
+
+  @override
+  String get schoolPtaTitle => 'Práctica: análisis cualitativo';
+
+  @override
+  String get schoolPtaIntro =>
+      'Recibes un frasco con una sustancia desconocida y una lista de cuatro candidatas. Averigua cuál es con reacciones ácido-base, redox y de precipitación, el pH y las tablas Binas 45, 48, 49 y 65. La práctica en sí está en neerlandés.';
+
+  @override
+  String get schoolPtaLevel => 'Nivel';
+
+  @override
+  String get schoolPtaHavo => 'HAVO';
+
+  @override
+  String get schoolPtaVwo => 'VWO';
+
+  @override
+  String get schoolPtaMode => 'Modo';
+
+  @override
+  String get schoolPtaModePractice => 'Práctica';
+
+  @override
+  String get schoolPtaModePracticeHint =>
+      'Una explicación y una ecuación tras cada prueba';
+
+  @override
+  String get schoolPtaModeExam => 'Examen';
+
+  @override
+  String get schoolPtaModeExamHint =>
+      '100 minutos en el reloj, explicaciones solo al entregar';
+
+  @override
+  String get schoolPtaSet => 'Conjunto de sustancias';
+
+  @override
+  String get schoolPtaRandomSet => 'Conjunto aleatorio';
+
+  @override
+  String get schoolPtaRandomSetHint =>
+      'Cuatro sustancias aleatorias que se pueden distinguir';
+
+  @override
+  String get schoolPtaStart => 'Empezar la práctica';
+
+  @override
+  String get schoolPtaJar => 'Sustancia X';
+
+  @override
+  String get schoolPtaCandidates => 'Es una de estas';
+
+  @override
+  String get schoolPtaInspect => 'Mirar y oler';
+
+  @override
+  String get schoolPtaFlame => 'Prueba de llama';
+
+  @override
+  String schoolPtaTube(int n) {
+    return 'Tubo $n';
+  }
+
+  @override
+  String get schoolPtaSample => 'Espátula de X';
+
+  @override
+  String get schoolPtaWater => 'Agua';
+
+  @override
+  String get schoolPtaHeat => 'Calentar';
+
+  @override
+  String get schoolPtaPaper => 'Papel de pH';
+
+  @override
+  String get schoolPtaSmell => 'Oler';
+
+  @override
+  String get schoolPtaRinse => 'Enjuagar';
+
+  @override
+  String get schoolPtaGasTests => 'Pruebas de gas';
+
+  @override
+  String get schoolPtaLimewater => 'Agua de cal';
+
+  @override
+  String get schoolPtaLitmus => 'Tornasol rojo húmedo';
+
+  @override
+  String get schoolPtaGlowingSplint => 'Astilla incandescente';
+
+  @override
+  String get schoolPtaBurningSplint => 'Astilla encendida';
+
+  @override
+  String get schoolPtaReagents => 'Reactivos';
+
+  @override
+  String get schoolPtaMetals => 'Metales';
+
+  @override
+  String get schoolPtaDrops => 'Unas gotas';
+
+  @override
+  String get schoolPtaExcess => 'En exceso';
+
+  @override
+  String get schoolPtaLog => 'Cuaderno de laboratorio';
+
+  @override
+  String get schoolPtaLogEmpty => 'Aquí aparecen tus observaciones.';
+
+  @override
+  String get schoolPtaBinas => 'Binas';
+
+  @override
+  String get schoolPtaBinasNote =>
+      'Resumen de los datos para practicar. Usa tu propio Binas en el examen.';
+
+  @override
+  String get schoolPtaHandIn => 'Entregar respuesta';
+
+  @override
+  String schoolPtaMinutes(int used, int total) {
+    return '$used / $total min';
+  }
+
+  @override
+  String get schoolPtaTimeUp => 'Se acabó el tiempo. Entrega tu respuesta.';
+
+  @override
+  String get schoolPtaChooseTitle => '¿Qué sustancia hay en el frasco?';
+
+  @override
+  String get schoolPtaConfirm => 'Entregar';
+
+  @override
+  String get schoolPtaCorrect => '¡Correcto!';
+
+  @override
+  String get schoolPtaWrong => 'No del todo';
+
+  @override
+  String schoolPtaItWas(String name) {
+    return 'La sustancia X era $name.';
+  }
+
+  @override
+  String schoolPtaYouChose(String name) {
+    return 'Elegiste $name.';
+  }
+
+  @override
+  String schoolPtaStats(int actions, int minutes) {
+    return '$actions acciones · $minutes minutos';
+  }
+
+  @override
+  String get schoolPtaExpected => 'Lo que mostraría cada sustancia';
+
+  @override
+  String get schoolPtaExpectedHint =>
+      'Las filas marcadas distinguen las cuatro sustancias.';
+
+  @override
+  String get schoolPtaTest => 'Prueba';
+
+  @override
+  String get schoolPtaReactions => 'Reacciones de tu práctica';
+
+  @override
+  String get schoolPtaNoReactions => 'No hubo reacciones en tus pruebas.';
+
+  @override
+  String get schoolPtaNewPractical => 'Nueva práctica';
+
+  @override
+  String get schoolPtaSameSet => 'Mismo conjunto otra vez';
+
+  @override
+  String get schoolPtaQuit => 'Salir';
+
+  @override
+  String get schoolPtaQuitConfirm =>
+      '¿Salir de esta práctica? Se perderá tu cuaderno.';
 
   @override
   String get schoolPracticeTestSaveTitle =>

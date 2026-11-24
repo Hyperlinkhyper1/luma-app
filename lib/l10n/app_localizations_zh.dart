@@ -1950,6 +1950,40 @@ class LZh extends L {
   String get assistantSettingsUser => '用户';
 
   @override
+  String get assistantSettingsApi => 'API';
+
+  @override
+  String get assistantApiIntro =>
+      '使用你自己的 Claude、OpenAI、OpenRouter 或 Google 密钥聊天。密钥在此设备上加密保存，只会发送给对应的提供商。';
+
+  @override
+  String get assistantApiModel => '模型';
+
+  @override
+  String assistantApiModelHint(String model) {
+    return '默认：$model';
+  }
+
+  @override
+  String get assistantApiNoKey => '未保存密钥';
+
+  @override
+  String get assistantApiUseInChat => '在聊天中使用';
+
+  @override
+  String get assistantApiInUse => '使用中';
+
+  @override
+  String get assistantApiGetKey => '获取密钥';
+
+  @override
+  String get assistantApiManage => '管理 API 密钥';
+
+  @override
+  String get aiSettingsApiKeysMoved =>
+      'Claude、OpenAI、OpenRouter 和 Google 的 API 密钥在助手的“设置 → API”中管理。';
+
+  @override
   String get assistantSettingsLanguage => '回复语言';
 
   @override
@@ -20486,6 +20520,191 @@ class LZh extends L {
 
   @override
   String get schoolTabCitations => '引用';
+
+  @override
+  String get schoolTabPta => 'PTA 训练';
+
+  @override
+  String get schoolPtaTitle => '实验：定性分析';
+
+  @override
+  String get schoolPtaIntro =>
+      '你会拿到一瓶未知物质和四种候选物质的清单。利用酸碱反应、氧化还原反应、沉淀反应、pH 以及 Binas 表 45、48、49 和 65 找出它是哪一种。实验内容本身为荷兰语。';
+
+  @override
+  String get schoolPtaLevel => '级别';
+
+  @override
+  String get schoolPtaHavo => 'HAVO';
+
+  @override
+  String get schoolPtaVwo => 'VWO';
+
+  @override
+  String get schoolPtaMode => '模式';
+
+  @override
+  String get schoolPtaModePractice => '练习';
+
+  @override
+  String get schoolPtaModePracticeHint => '每次试验后显示解释和反应方程式';
+
+  @override
+  String get schoolPtaModeExam => '考试';
+
+  @override
+  String get schoolPtaModeExamHint => '计时 100 分钟，交卷后才显示解释';
+
+  @override
+  String get schoolPtaSet => '物质组';
+
+  @override
+  String get schoolPtaRandomSet => '随机组';
+
+  @override
+  String get schoolPtaRandomSetHint => '四种可以区分的随机物质';
+
+  @override
+  String get schoolPtaStart => '开始实验';
+
+  @override
+  String get schoolPtaJar => '物质 X';
+
+  @override
+  String get schoolPtaCandidates => '它是以下之一';
+
+  @override
+  String get schoolPtaInspect => '观察和闻';
+
+  @override
+  String get schoolPtaFlame => '焰色反应';
+
+  @override
+  String schoolPtaTube(int n) {
+    return '试管 $n';
+  }
+
+  @override
+  String get schoolPtaSample => '一勺 X';
+
+  @override
+  String get schoolPtaWater => '水';
+
+  @override
+  String get schoolPtaHeat => '加热';
+
+  @override
+  String get schoolPtaPaper => 'pH 试纸';
+
+  @override
+  String get schoolPtaSmell => '闻';
+
+  @override
+  String get schoolPtaRinse => '冲洗';
+
+  @override
+  String get schoolPtaGasTests => '气体检验';
+
+  @override
+  String get schoolPtaLimewater => '石灰水';
+
+  @override
+  String get schoolPtaLitmus => '湿润红色石蕊试纸';
+
+  @override
+  String get schoolPtaGlowingSplint => '带火星的木条';
+
+  @override
+  String get schoolPtaBurningSplint => '燃着的木条';
+
+  @override
+  String get schoolPtaReagents => '试剂';
+
+  @override
+  String get schoolPtaMetals => '金属';
+
+  @override
+  String get schoolPtaDrops => '几滴';
+
+  @override
+  String get schoolPtaExcess => '过量';
+
+  @override
+  String get schoolPtaLog => '实验记录';
+
+  @override
+  String get schoolPtaLogEmpty => '你的观察结果会显示在这里。';
+
+  @override
+  String get schoolPtaBinas => 'Binas';
+
+  @override
+  String get schoolPtaBinasNote => '用于练习的数据摘要。考试时请使用你自己的 Binas。';
+
+  @override
+  String get schoolPtaHandIn => '提交答案';
+
+  @override
+  String schoolPtaMinutes(int used, int total) {
+    return '$used / $total 分钟';
+  }
+
+  @override
+  String get schoolPtaTimeUp => '时间到了，请提交答案。';
+
+  @override
+  String get schoolPtaChooseTitle => '瓶子里是哪种物质？';
+
+  @override
+  String get schoolPtaConfirm => '提交';
+
+  @override
+  String get schoolPtaCorrect => '正确！';
+
+  @override
+  String get schoolPtaWrong => '不太对';
+
+  @override
+  String schoolPtaItWas(String name) {
+    return '物质 X 是 $name。';
+  }
+
+  @override
+  String schoolPtaYouChose(String name) {
+    return '你选择了 $name。';
+  }
+
+  @override
+  String schoolPtaStats(int actions, int minutes) {
+    return '$actions 个操作 · $minutes 分钟';
+  }
+
+  @override
+  String get schoolPtaExpected => '每种物质会出现的现象';
+
+  @override
+  String get schoolPtaExpectedHint => '标记的行可以区分这四种物质。';
+
+  @override
+  String get schoolPtaTest => '试验';
+
+  @override
+  String get schoolPtaReactions => '你的实验中的反应';
+
+  @override
+  String get schoolPtaNoReactions => '你的试验中没有发生反应。';
+
+  @override
+  String get schoolPtaNewPractical => '新实验';
+
+  @override
+  String get schoolPtaSameSet => '再来一次同一组';
+
+  @override
+  String get schoolPtaQuit => '停止';
+
+  @override
+  String get schoolPtaQuitConfirm => '停止本次实验？实验记录将丢失。';
 
   @override
   String get schoolPracticeTestSaveTitle => '将练习测验保存为 PDF';

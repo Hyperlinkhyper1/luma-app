@@ -77,7 +77,9 @@ function createViewer(mediaDevices) {
   window.chrome = { webview };
   const posted = [];
   webview.postMessage = data => posted.push(data);
+  const rootStyle = {};
   const document = Object.assign(new Element(), {
+    documentElement: { style: { setProperty: (name, value) => { rootStyle[name] = value; } } },
     getElementById: id => elements[id],
     createElement: () => new Element(),
     querySelector: () => screen,
@@ -94,7 +96,7 @@ function createViewer(mediaDevices) {
     return Promise.resolve();
   };
   vm.runInNewContext(source, { document, window, navigator: { mediaDevices } });
-  return { elements, window, webview, document, screen, posted };
+  return { elements, window, webview, document, screen, posted, rootStyle };
 }
 
 test('discovery lists only video inputs and releases the temporary camera', async () => {
@@ -272,5 +274,22 @@ test('full screen toggles from the button, double-click and F11, and tells the a
   assert.equal(viewer.document.fullscreenElement, viewer.screen);
   viewer.elements.stop.dispatch('click');
   assert.equal(viewer.document.fullscreenElement, null);
-  assert.deepEqual(viewer.posted, ['fullscreen-on', 'fullscreen-off', 'fullscreen-on', 'fullscreen-off']);
+  assert.deepEqual(viewer.posted, ['ready', 'fullscreen-on', 'fullscreen-off', 'fullscreen-on', 'fullscreen-off']);
+});
+
+test('the app themes the viewer once it reports ready, ignoring unknown values', () => {
+  const viewer = createViewer({ getUserMedia: async () => makeStream(), enumerateDevices: async () => [] });
+  assert.deepEqual(viewer.posted, ['ready']);
+  viewer.webview.dispatch('message', {
+    data: 'theme:' + JSON.stringify({
+      scheme: 'light',
+      colors: { accent: '#7c5ad9', bg: '#f7f5fc', border: 'red;}', position: '#000000' },
+    }),
+  });
+  assert.deepEqual(viewer.rootStyle, {
+    '--accent': '#7c5ad9',
+    '--bg': '#f7f5fc',
+    'color-scheme': 'light',
+  });
+  viewer.webview.dispatch('message', { data: 'theme:not json' });
 });

@@ -113,6 +113,7 @@ class MindMapNodeCard extends StatelessWidget {
                       decoration: InputDecoration(
                         isDense: true,
                         border: InputBorder.none,
+                        filled: false,
                         focusedBorder: InputBorder.none,
                         enabledBorder: InputBorder.none,
                         contentPadding: EdgeInsets.zero,

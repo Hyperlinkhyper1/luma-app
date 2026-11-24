@@ -29,6 +29,8 @@ final List<ModelUsageEntry> kModelUsageEntries = [
   ModelUsageEntry('google:smartest', () => 'Luma Pulsar 1.0'),
   ModelUsageEntry('local', () => currentL.chatProviderLocalName),
   ModelUsageEntry('anthropic', () => 'Anthropic Claude'),
+  ModelUsageEntry('gemini', () => 'Google Gemini'),
+  ModelUsageEntry('openrouter', () => 'OpenRouter'),
   ModelUsageEntry('openai', () => 'OpenAI'),
 ];
 

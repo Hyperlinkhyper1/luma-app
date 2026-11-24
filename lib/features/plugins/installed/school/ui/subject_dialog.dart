@@ -83,6 +83,7 @@ class _SubjectDialogState extends State<_SubjectDialog> {
               autofocus: true,
               decoration: InputDecoration(labelText: t.commonName),
             ),
+            const SizedBox(height: 12),
             TextField(
               controller: _creditsController,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),

@@ -45,7 +45,11 @@ Future<String> analyzeCrashLog(BuildContext context, String logTail) async {
   }
 
   try {
-    final result = await provider.client.chat(
+    final client = aiClientFor(
+      provider.id.name,
+      model: settings.aiModelFor(provider.id.name),
+    );
+    final result = await client.chat(
       apiKey: apiKey,
       history: [
         AiTurn(

@@ -1,9 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'dart:typed_data';
-
 import 'package:crypto/crypto.dart';
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../security/secure_secret_store.dart';
@@ -23,6 +22,10 @@ class AiKeyStore {
   static const _macLength = 16;
 
   static AiKeyStore? _instance;
+
+  /// Bumped whenever a key is saved or removed, so an open chat can notice
+  /// a key added from the API screen without being reopened.
+  static final ValueNotifier<int> changes = ValueNotifier(0);
 
   static Future<AiKeyStore> load() async {
     if (_instance != null) return _instance!;
@@ -44,7 +47,21 @@ class AiKeyStore {
       legacyFile: keyFile,
       encryptedData: data,
     );
-    return _instance = AiKeyStore._(key, dir.path);
+    final store = AiKeyStore._(key, dir.path);
+    await store._moveLegacyGoogleKey();
+    return _instance = store;
+  }
+
+  /// A Google key used to be saved under Luma AI's `google` id, where it
+  /// silently replaced the server's Luma AI. It now belongs to the Google
+  /// Gemini entry on the API screen, the one place keys are managed.
+  Future<void> _moveLegacyGoogleKey() async {
+    try {
+      final legacy = await readKey('google');
+      if (legacy == null) return;
+      if (await readKey('gemini') == null) await saveKey('gemini', legacy);
+      await clearKey('google');
+    } catch (_) {}
   }
 
   File _fileFor(String providerId) {
@@ -79,11 +96,13 @@ class AiKeyStore {
     final token =
         'ai2:${base64Encode(AuthenticatedCipher.seal(utf8.encode(apiKey), _key, 'luma-ai:$providerId'))}';
     await _fileFor(providerId).writeAsString(token, flush: true);
+    changes.value++;
   }
 
   Future<void> clearKey(String providerId) async {
     final file = _fileFor(providerId);
     if (await file.exists()) await file.delete();
+    changes.value++;
   }
 
   String _decrypt(String token) {

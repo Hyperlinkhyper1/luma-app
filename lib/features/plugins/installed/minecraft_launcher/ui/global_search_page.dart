@@ -92,6 +92,7 @@ class _GlobalSearchPageState extends State<GlobalSearchPage> {
           decoration: InputDecoration(
             hintText: t.minecraftLauncherSearchHint,
             border: InputBorder.none,
+            filled: false,
           ),
           onChanged: _onChanged,
         ),

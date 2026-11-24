@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../app/widgets.dart';
 import '../../../theme/luma_theme.dart';
 import '../data/chat_repository.dart';
 
@@ -198,8 +199,9 @@ class AssistantProjectsView extends StatelessWidget {
       builder: (context) => AlertDialog(
         title: Text(project == null ? 'New project' : 'Edit project'),
         content: SizedBox(
-          width: 520,
+          width: lumaDialogWidth(context, 480),
           child: SingleChildScrollView(
+            padding: const EdgeInsets.only(top: 6),
             child: Form(
               key: form,
               child: Column(
@@ -211,17 +213,21 @@ class AssistantProjectsView extends StatelessWidget {
                     maxLength: 200,
                     decoration: const InputDecoration(
                       labelText: 'Project name',
+                      counterText: '',
                     ),
                     validator: (value) => value?.trim().isEmpty == true
                         ? 'Enter a project name'
                         : null,
                   ),
+                  const SizedBox(height: 14),
                   TextField(
                     controller: description,
-                    maxLines: 3,
+                    minLines: 2,
+                    maxLines: 4,
                     decoration: const InputDecoration(labelText: 'Description'),
                   ),
-                  if (project != null)
+                  if (project != null) ...[
+                    const SizedBox(height: 14),
                     TextField(
                       controller: memory,
                       minLines: 5,
@@ -231,6 +237,7 @@ class AssistantProjectsView extends StatelessWidget {
                         helperText: 'Facts and context for this project only',
                       ),
                     ),
+                  ],
                 ],
               ),
             ),
@@ -286,7 +293,11 @@ class AssistantProjectsView extends StatelessWidget {
             onPressed: () => Navigator.pop(context, false),
             child: const Text('Cancel'),
           ),
-          TextButton(
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: context.luma.danger,
+              foregroundColor: Colors.white,
+            ),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Delete'),
           ),
