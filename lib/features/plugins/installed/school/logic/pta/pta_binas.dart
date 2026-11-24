@@ -16,7 +16,7 @@ class BinasSheet {
 }
 
 const binasCations = [
-  Sp.na, Sp.k, Sp.nh4, Sp.mg, Sp.ca, Sp.ba, Sp.cu, Sp.fe2, Sp.fe3, Sp.zn, Sp.al, Sp.ag, //
+  Sp.na, Sp.k, Sp.nh4, Sp.mg, Sp.ca, Sp.ba, Sp.cu, Sp.fe2, Sp.fe3, Sp.zn, Sp.al, Sp.ag, Sp.li, Sp.sr, Sp.pb, //
 ];
 const binasAnions = [
   Sp.oh, Sp.cl, Sp.br, Sp.i, Sp.no3, Sp.so4, Sp.co3, Sp.po4, Sp.so3, Sp.s2o3, Sp.c2o4, Sp.ac, //
@@ -63,6 +63,15 @@ const _solubilityExtra = <(Sp, Sp), String>{
   (Sp.al, Sp.s2o3): '-',
   (Sp.ag, Sp.s2o3): '-',
   (Sp.ag, Sp.ac): 'm',
+  (Sp.pb, Sp.br): 'm',
+  (Sp.pb, Sp.co3): 's',
+  (Sp.pb, Sp.po4): 's',
+  (Sp.pb, Sp.so3): 's',
+  (Sp.pb, Sp.c2o4): 's',
+  (Sp.sr, Sp.co3): 's',
+  (Sp.sr, Sp.po4): 's',
+  (Sp.sr, Sp.so3): 's',
+  (Sp.sr, Sp.c2o4): 's',
 };
 
 String solubility(Sp cation, Sp anion) {
@@ -196,8 +205,6 @@ List<BinasSheet> binasSheets() {
       ['Ion', 'Vlamkleur'],
       [
         for (final e in flames.entries) [e.key.formula, e.value.description],
-        ['Li⁺', 'karmijnrood'],
-        ['Sr²⁺', 'rood'],
         ['NH₄⁺, Mg²⁺, Zn²⁺, Al³⁺', 'geen kenmerkende kleur'],
       ],
       'Natrium geeft al bij sporen een felgele vlam die andere kleuren kan '

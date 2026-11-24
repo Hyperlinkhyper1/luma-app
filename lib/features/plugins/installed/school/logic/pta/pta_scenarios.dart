@@ -3,18 +3,88 @@ import 'dart:math' as math;
 import 'pta_chemistry.dart';
 import 'pta_lab.dart';
 
-/// A set of four candidate substances handed out with the jar.
+/// The candidate substances listed for one unknown jar.
 class PtaSet {
-  const PtaSet(this.id, this.title, this.level, this.ids, this.focus);
+  const PtaSet(this.id, this.title, this.level, this.ids, this.focus)
+    : bookletNumber = null;
+
+  const PtaSet.booklet(this.bookletNumber, this.ids)
+    : id = 'booklet-$bookletNumber',
+      title = 'Stof $bookletNumber',
+      level = Level.havo,
+      focus = '';
+
   final String id;
   final String title;
   final Level level;
   final List<String> ids;
+  final int? bookletNumber;
 
   /// What the set trains, shown under its title.
   final String focus;
 
   List<Substance> get candidates => [for (final id in ids) substanceById(id)];
+}
+
+/// Candidate groups printed in the HAVO 5 preparation booklet.
+const havoBookletSets = [
+  PtaSet.booklet(1, ['metal-cu', 'metal-zn']),
+  PtaSet.booklet(2, ['kcl', 'ki']),
+  PtaSet.booklet(3, ['feso4', 'fe2so43']),
+  PtaSet.booklet(4, ['br2', 'i2', 'feno33-aq']),
+  PtaSet.booklet(5, ['metal-ca', 'metal-ag', 'metal-zn']),
+  PtaSet.booklet(6, ['na2so4', 'na2so3', 'na2s']),
+  PtaSet.booklet(7, ['feno32', 'feno33', 'znno32', 'bano3']),
+  PtaSet.booklet(8, ['kno3', 'bano3', 'znno32', 'cuno32']),
+  PtaSet.booklet(9, ['na2so4', 'na2so3', 'na3po4', 'na2s']),
+  PtaSet.booklet(10, ['kcl', 'kbr', 'ki', 'kno3']),
+  PtaSet.booklet(11, ['znoh2', 'baoh2', 'koh', 'h2o2']),
+  PtaSet.booklet(12, ['metal-zn', 'metal-fe', 'metal-na', 'metal-cu']),
+  PtaSet.booklet(13, ['bano3', 'baco3', 'bacl2', 'baso4']),
+  PtaSet.booklet(14, ['al2so43', 'feno32', 'znno32', 'ki']),
+  PtaSet.booklet(15, ['na3po4', 'na2so3', 'ca3po42', 'caso3']),
+  PtaSet.booklet(16, ['agno3', 'bano3', 'znno32', 'pbno32']),
+  PtaSet.booklet(17, ['baso4', 'na2so4', 'baso3', 'na2so3']),
+  PtaSet.booklet(18, ['cl2', 'baryta', 'lye', 'water']),
+  PtaSet.booklet(19, ['nacl', 'na2so4', 'naoh', 'na2co3']),
+  PtaSet.booklet(20, ['hcl', 'lye', 'limewater', 'h2so4']),
+  PtaSet.booklet(21, ['nh3', 'nh4cl', 'cao', 'nahco3']),
+  PtaSet.booklet(23, ['na2o', 'baoh2', 'cuo', 'water']),
+  PtaSet.booklet(24, ['na3po4', 'nai', 'na2co3', 'nacl']),
+  PtaSet.booklet(25, ['bano3', 'baso4', 'baco3', 'bao']),
+  PtaSet.booklet(26, ['hexane', 'ethane', 'ethanol', 'water']),
+  PtaSet.booklet(27, ['agno3', 'pbno32', 'znno32', 'feno32']),
+  PtaSet.booklet(28, ['hcl', 'h2so4', 'hno3', 'h2c2o4']),
+  PtaSet.booklet(29, ['nh42so4', 'feso4', 'fe2so43', 'na2so4']),
+  PtaSet.booklet(30, ['baso4', 'baco3', 'ba3po42', 'bano3']),
+  PtaSet.booklet(31, ['nh3', 'lye', 'limewater', 'water']),
+  PtaSet.booklet(32, ['water', 'ethanol', 'hac', 'nh4no3-aq']),
+  PtaSet.booklet(33, ['metal-ca', 'metal-zn', 'metal-fe', 'metal-ag']),
+  PtaSet.booklet(34, ['bacl2', 'baco3', 'baso4', 'starch']),
+  PtaSet.booklet(35, ['na2so3', 'na2so4', 'na2co3', 'na2s']),
+  PtaSet.booklet(36, ['cuno32', 'feno32', 'feno33', 'agno3']),
+  PtaSet.booklet(37, ['h2o2', 'hcl', 'hi', 'water']),
+  PtaSet.booklet(38, ['nano3', 'nacl', 'na2so4', 'na2co3']),
+  PtaSet.booklet(39, ['nano3', 'nh4no3', 'lino3', 'srno32']),
+  PtaSet.booklet(40, ['hac', 'h2c2o4', 'hcl', 'h2so4']),
+];
+
+List<PtaSet> examSets(Level level, math.Random rng) {
+  if (level == Level.vwo) {
+    final sets = setsFor(level)..shuffle(rng);
+    return sets.take(4).toList();
+  }
+  final sets = <PtaSet>[];
+  for (final section in const [
+    [13, 15, 17, 24, 25, 30, 34, 38],
+    [7, 9, 10, 14, 16, 27, 35, 36],
+    [18, 20, 21, 28, 31, 32, 37, 40],
+    [8, 11, 12, 19, 23, 26, 29, 33, 39],
+  ]) {
+    final number = section[rng.nextInt(section.length)];
+    sets.add(havoBookletSets.firstWhere((set) => set.bookletNumber == number));
+  }
+  return sets;
 }
 
 const ptaSets = <PtaSet>[
@@ -53,7 +123,7 @@ const ptaSets = <PtaSet>[
       'Welke stof reduceert jood, welke wordt geoxideerd? (48)'),
   PtaSet('v-organic', 'Zwakke basen', Level.vwo,
       ['na2c2o4', 'na2co3', 'ch3coona', 'na2so4'],
-      'pH (49), geur en oxalaat met warm permanganaat'),
+      'pH (49) en oxalaat met warm permanganaat'),
   PtaSet('v-phosphate', 'Fosfaat', Level.vwo,
       ['na3po4', 'nacl', 'na2so4', 'nano3'],
       'Neerslagen die wel of niet in zuur oplossen'),
@@ -95,11 +165,12 @@ final standardTests = <StandardTest>[
   StandardTest('Uiterlijk', (lab) => _obs(lab.inspect())),
   StandardTest('Oplossen in water', _dissolved),
   StandardTest('pH (indicatorpapier)', (lab) {
-    _dissolved(lab);
+    lab.addSample(0);
+    if (lab.tubes[0].solid != null) lab.addWater(0);
     return _obs(lab.paper(0));
   }),
   StandardTest('Vlamkleur', (lab) => _obs(lab.flameTest())),
-  StandardTest('Droog verhitten', (lab) {
+  StandardTest('Monster verwarmen', (lab) {
     lab.addSample(0);
     final out = [..._obs(lab.heat(0))];
     final gases = lab.tubes[0].headspace;
@@ -123,8 +194,12 @@ final standardTests = <StandardTest>[
     if (lab.tubes[0].headspace.isNotEmpty) {
       out.addAll(_labelled('Kalkwater', _obs(lab.gasTest(0, GasTest.limewater))));
     }
-    out.addAll(_labelled('Geur', _obs(lab.smell(0))));
+    out.addAll(_labelled('Joodpapier', _obs(lab.gasTest(0, GasTest.iodinePaper))));
     return out;
+  }),
+  StandardTest('Zoutzuur direct op een vers monster', (lab) {
+    lab.addSample(0);
+    return _reagent(lab, 'hcl', Dose.excess);
   }),
   StandardTest('Natronloog (druppels, overmaat, verwarmen)', (lab) {
     _dissolved(lab);
@@ -164,9 +239,17 @@ final standardTests = <StandardTest>[
       ..._labelled('Zetmeel', _reagent(lab, 'starch')),
     ];
   }),
+  StandardTest('Kaliumjodide', (lab) {
+    _dissolved(lab);
+    return _reagent(lab, 'ki', Dose.excess);
+  }),
   StandardTest('Kaliumthiocyanaat', (lab) {
     _dissolved(lab);
     return _reagent(lab, 'kscn');
+  }),
+  StandardTest('IJzer(II)sulfaatoplossing', (lab) {
+    lab.addSample(0);
+    return _reagent(lab, 'feso4', Dose.excess);
   }),
   StandardTest('Broomwater + hexaan', (lab) {
     _dissolved(lab);

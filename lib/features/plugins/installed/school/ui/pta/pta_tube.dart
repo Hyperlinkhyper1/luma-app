@@ -65,7 +65,7 @@ class TubeVisual {
       }
     }
     return TubeVisual(
-      water: (t.waterMl / kMaxMl).clamp(0.0, 1.0),
+      water: ((t.waterMl + t.ethanolMl) / kMaxMl).clamp(0.0, 1.0),
       hexane: (t.hexaneMl / kMaxMl).clamp(0.0, 1.0),
       waterColor: look.water ?? _plainWater,
       hexaneColor: look.organic ?? _plainHexane,
@@ -461,22 +461,29 @@ class _TubePainter extends CustomPainter {
   bool shouldRepaint(_TubePainter old) => true;
 }
 
-/// The jar with substance X.
+/// A numbered jar containing a solid, liquid, or gas.
 class PtaJar extends StatelessWidget {
-  const PtaJar({super.key, required this.color, required this.glass});
-  final Color color;
+  const PtaJar({
+    super.key,
+    required this.label,
+    required this.substance,
+    required this.glass,
+  });
+  final String label;
+  final Substance substance;
   final Color glass;
 
   @override
   Widget build(BuildContext context) => CustomPaint(
         size: const Size(84, 96),
-        painter: _JarPainter(color, glass),
+        painter: _JarPainter(label, substance, glass),
       );
 }
 
 class _JarPainter extends CustomPainter {
-  _JarPainter(this.color, this.glass);
-  final Color color;
+  _JarPainter(this.label, this.substance, this.glass);
+  final String label;
+  final Substance substance;
   final Color glass;
 
   @override
@@ -488,27 +495,34 @@ class _JarPainter extends CustomPainter {
       size.height - 2,
       const Radius.circular(12),
     );
-    final rnd = math.Random(5);
     canvas.save();
     canvas.clipRRect(body.deflate(2));
     final fillTop = size.height - 36;
-    final grains = Path()..moveTo(6, fillTop + 6);
-    for (var x = 6.0; x <= size.width - 6; x += 6) {
-      grains.lineTo(x, fillTop + rnd.nextDouble() * 6);
-    }
-    grains
-      ..lineTo(size.width - 6, size.height)
-      ..lineTo(6, size.height)
-      ..close();
-    canvas.drawPath(grains, Paint()..color = color);
-    final dot = Paint()..color = Colors.black.withValues(alpha: 0.07);
-    for (var i = 0; i < 40; i++) {
-      canvas.drawCircle(
-        Offset(10 + rnd.nextDouble() * (size.width - 20),
-            fillTop + 8 + rnd.nextDouble() * 24),
-        0.9,
-        dot,
+    if (substance.liquid != null) {
+      canvas.drawRect(
+        Rect.fromLTWH(6, fillTop, size.width - 12, 36),
+        Paint()..color = substance.solidColor.withValues(alpha: 0.5),
       );
+    } else if (!substance.gaseous) {
+      final rnd = math.Random(5);
+      final grains = Path()..moveTo(6, fillTop + 6);
+      for (var x = 6.0; x <= size.width - 6; x += 6) {
+        grains.lineTo(x, fillTop + rnd.nextDouble() * 6);
+      }
+      grains
+        ..lineTo(size.width - 6, size.height)
+        ..lineTo(6, size.height)
+        ..close();
+      canvas.drawPath(grains, Paint()..color = substance.solidColor);
+      final dot = Paint()..color = Colors.black.withValues(alpha: 0.07);
+      for (var i = 0; i < 40; i++) {
+        canvas.drawCircle(
+          Offset(10 + rnd.nextDouble() * (size.width - 20),
+              fillTop + 8 + rnd.nextDouble() * 24),
+          0.9,
+          dot,
+        );
+      }
     }
     canvas.restore();
     canvas.drawRRect(
@@ -522,18 +536,18 @@ class _JarPainter extends CustomPainter {
       RRect.fromLTRBR(10, 8, size.width - 10, 22, const Radius.circular(4)),
       Paint()..color = glass.withValues(alpha: 0.85),
     );
-    final label = RRect.fromLTRBR(
+    final labelRect = RRect.fromLTRBR(
       18,
       34,
       size.width - 18,
       54,
       const Radius.circular(4),
     );
-    canvas.drawRRect(label, Paint()..color = Colors.white.withValues(alpha: 0.9));
+    canvas.drawRRect(labelRect, Paint()..color = Colors.white.withValues(alpha: 0.9));
     final tp = TextPainter(
-      text: const TextSpan(
-        text: 'X',
-        style: TextStyle(
+      text: TextSpan(
+        text: label,
+        style: const TextStyle(
           color: Color(0xFF2B2440),
           fontWeight: FontWeight.w800,
           fontSize: 14,
@@ -543,13 +557,13 @@ class _JarPainter extends CustomPainter {
     )..layout();
     tp.paint(
       canvas,
-      Offset(label.center.dx - tp.width / 2, label.center.dy - tp.height / 2),
+      Offset(labelRect.center.dx - tp.width / 2, labelRect.center.dy - tp.height / 2),
     );
   }
 
   @override
   bool shouldRepaint(_JarPainter old) =>
-      old.color != color || old.glass != glass;
+      old.label != label || old.substance != substance || old.glass != glass;
 }
 
 /// A burner flame in the colour of the last flame test.

@@ -21524,7 +21524,7 @@ class LEn extends L {
 
   @override
   String get schoolPtaIntro =>
-      'Identify an unknown substance from four randomly selected candidates in a virtual lab. The practical is in Dutch.';
+      'Practise for the HAVO 5 qualitative analysis exam. Choose a candidate group from the preparation booklet or take a mock exam with four unknown jars. The lab content is in Dutch.';
 
   @override
   String get schoolPtaLevel => 'Level';
@@ -21550,7 +21550,7 @@ class LEn extends L {
 
   @override
   String get schoolPtaModeExamHint =>
-      '100 minutes on the clock, explanations only after you hand in';
+      'Four jars, 120 minutes, and feedback after submission';
 
   @override
   String get schoolPtaSet => 'Substance set';
@@ -21569,13 +21569,13 @@ class LEn extends L {
   String get schoolPtaAdvancedSettings => 'Advanced settings';
 
   @override
-  String get schoolPtaJar => 'Substance X';
+  String get schoolPtaJar => 'Jar';
 
   @override
   String get schoolPtaCandidates => 'It is one of these';
 
   @override
-  String get schoolPtaInspect => 'Look & smell';
+  String get schoolPtaInspect => 'Inspect';
 
   @override
   String get schoolPtaFlame => 'Flame test';
@@ -21586,7 +21586,7 @@ class LEn extends L {
   }
 
   @override
-  String get schoolPtaSample => 'Spatula of X';
+  String get schoolPtaSample => 'Add sample';
 
   @override
   String get schoolPtaWater => 'Water';
@@ -21596,9 +21596,6 @@ class LEn extends L {
 
   @override
   String get schoolPtaPaper => 'pH paper';
-
-  @override
-  String get schoolPtaSmell => 'Smell';
 
   @override
   String get schoolPtaRinse => 'Rinse';
@@ -21652,7 +21649,7 @@ class LEn extends L {
   }
 
   @override
-  String get schoolPtaTimeUp => 'Time is up. Hand in your answer.';
+  String get schoolPtaTimeUp => 'Time is up. Hand in your work.';
 
   @override
   String get schoolPtaChooseTitle => 'Which substance is in the jar?';
@@ -21668,7 +21665,7 @@ class LEn extends L {
 
   @override
   String schoolPtaItWas(String name) {
-    return 'Substance X was $name.';
+    return 'The correct substance was $name.';
   }
 
   @override
@@ -21686,7 +21683,7 @@ class LEn extends L {
 
   @override
   String get schoolPtaExpectedHint =>
-      'Marked rows tell the four substances apart.';
+      'Highlighted tests produce different observations across the candidates.';
 
   @override
   String get schoolPtaTest => 'Test';
@@ -21708,7 +21705,65 @@ class LEn extends L {
 
   @override
   String get schoolPtaQuitConfirm =>
-      'Stop this practical? Your journal is lost.';
+      'Stop this practical? Your worksheets and observations will be lost.';
+
+  @override
+  String get schoolPtaWorksheet => 'Worksheet';
+
+  @override
+  String get schoolPtaFormulaHint =>
+      'Write the formula and state symbol for each candidate. Balance your equations and write the half-equations first for redox reactions.';
+
+  @override
+  String get schoolPtaAddStep => 'Add test';
+
+  @override
+  String get schoolPtaRemoveStep => 'Remove test';
+
+  @override
+  String get schoolPtaAction => 'Procedure';
+
+  @override
+  String get schoolPtaPrediction => 'Prediction for each candidate';
+
+  @override
+  String get schoolPtaObservation => 'Observation';
+
+  @override
+  String get schoolPtaDeduction => 'What do you rule out or identify?';
+
+  @override
+  String get schoolPtaEquation => 'Reaction equation(s)';
+
+  @override
+  String get schoolPtaConclusion =>
+      'Use your observations to justify your conclusion.';
+
+  @override
+  String get schoolPtaConfirmTest => 'Confirmation test, if possible';
+
+  @override
+  String get schoolPtaNoAnswer => 'Unanswered';
+
+  @override
+  String get schoolPtaCorrectJars => 'Jars correctly identified';
+
+  @override
+  String get schoolPtaAnswered => 'Jars with a final answer';
+
+  @override
+  String get schoolPtaHandInPrompt =>
+      'Hand in your worksheets and view the results?';
+
+  @override
+  String get schoolPtaRedoxOnly =>
+      'Use only redox reactions to support your conclusion for this question.';
+
+  @override
+  String get schoolPtaIodinePaper => 'Filter paper with iodine solution';
+
+  @override
+  String get schoolPtaTimeLeft => 'Time left';
 
   @override
   String get schoolPracticeTestSaveTitle => 'Save practice test as PDF';

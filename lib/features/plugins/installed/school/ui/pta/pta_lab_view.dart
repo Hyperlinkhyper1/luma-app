@@ -9,7 +9,7 @@ import '../../logic/pta/pta_scenarios.dart';
 import 'pta_binas_sheet.dart';
 import 'pta_tube.dart';
 
-const kExamMinutes = 100;
+const kExamMinutes = 120;
 
 /// The bench: the jar and its four candidates, four test tubes, the
 /// reagent shelf and the lab journal.
@@ -18,16 +18,24 @@ class PtaLabView extends StatefulWidget {
     super.key,
     required this.lab,
     required this.set,
-    required this.exam,
+    required this.jarLabel,
+    required this.examMinutes,
+    required this.jars,
+    required this.onWorksheet,
     required this.onHandIn,
     required this.onQuit,
   });
 
   final PtaLab lab;
   final PtaSet set;
-  final bool exam;
-  final ValueChanged<Substance> onHandIn;
+  final String jarLabel;
+  final int? examMinutes;
+  final Widget jars;
+  final VoidCallback onWorksheet;
+  final VoidCallback onHandIn;
   final VoidCallback onQuit;
+
+  bool get exam => examMinutes != null;
 
   @override
   State<PtaLabView> createState() => _PtaLabViewState();
@@ -39,7 +47,7 @@ class _PtaLabViewState extends State<PtaLabView> {
   int _flameVersion = 0;
 
   PtaLab get lab => widget.lab;
-  bool get _timeUp => widget.exam && lab.minutes >= kExamMinutes;
+  bool get _timeUp => widget.examMinutes == 0;
 
   void _act(LabEntry Function() action, {int? tube, bool flame = false}) {
     if (_timeUp) return;
@@ -68,53 +76,7 @@ class _PtaLabViewState extends State<PtaLabView> {
         ],
       ),
     );
-    if (ok == true) widget.onQuit();
-  }
-
-  Future<void> _handIn() async {
-    final t = L.of(context);
-    final candidates = widget.set.candidates;
-    final choice = await showDialog<Substance>(
-      context: context,
-      builder: (context) {
-        Substance? picked;
-        return StatefulBuilder(
-          builder: (context, setLocal) => AlertDialog(
-            title: Text(t.schoolPtaChooseTitle),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                for (final c in candidates)
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: Icon(
-                      picked == c
-                          ? Icons.radio_button_checked_rounded
-                          : Icons.radio_button_unchecked_rounded,
-                      color: picked == c ? context.luma.accent : null,
-                    ),
-                    title: Text(c.name),
-                    subtitle: Text(c.formula),
-                    onTap: () => setLocal(() => picked = c),
-                  ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text(MaterialLocalizations.of(context).cancelButtonLabel),
-              ),
-              FilledButton(
-                onPressed:
-                    picked == null ? null : () => Navigator.pop(context, picked),
-                child: Text(t.schoolPtaConfirm),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-    if (choice != null) widget.onHandIn(choice);
+    if (mounted && ok == true) widget.onQuit();
   }
 
   @override
@@ -122,15 +84,20 @@ class _PtaLabViewState extends State<PtaLabView> {
     return LayoutBuilder(
       builder: (context, box) {
         final top = _TopBar(
-          title: widget.set.title,
-          exam: widget.exam,
+          title: widget.exam ? L.of(context).schoolPtaTitle : widget.set.title,
+          examMinutes: widget.examMinutes,
           minutes: lab.minutes,
           onQuit: _confirmQuit,
-          onHandIn: _handIn,
+          onWorksheet: widget.onWorksheet,
+          onHandIn: widget.onHandIn,
+          jars: widget.jars,
         );
         final jar = _JarPanel(
           lab: lab,
+          jarLabel: widget.jarLabel,
           candidates: widget.set.candidates,
+          exam: widget.exam,
+          redoxOnly: !widget.exam && (widget.set.bookletNumber ?? 5) <= 4,
           flameVersion: _flameVersion,
           enabled: !_timeUp,
           onInspect: () => _act(lab.inspect),
@@ -202,17 +169,26 @@ class _PtaLabViewState extends State<PtaLabView> {
             ),
           );
         }
-        return ListView(
+        return Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-          children: [
-            top,
-            const SizedBox(height: 12),
-            jar,
-            const SizedBox(height: 12),
-            bench,
-            const SizedBox(height: 12),
-            SizedBox(height: 520, child: log),
-          ],
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              top,
+              const SizedBox(height: 12),
+              Expanded(
+                child: ListView(
+                  children: [
+                    jar,
+                    const SizedBox(height: 12),
+                    bench,
+                    const SizedBox(height: 12),
+                    SizedBox(height: 520, child: log),
+                  ],
+                ),
+              ),
+            ],
+          ),
         );
       },
     );
@@ -222,61 +198,80 @@ class _PtaLabViewState extends State<PtaLabView> {
 class _TopBar extends StatelessWidget {
   const _TopBar({
     required this.title,
-    required this.exam,
+    required this.examMinutes,
     required this.minutes,
     required this.onQuit,
+    required this.onWorksheet,
     required this.onHandIn,
+    required this.jars,
   });
 
   final String title;
-  final bool exam;
+  final int? examMinutes;
   final int minutes;
   final VoidCallback onQuit;
+  final VoidCallback onWorksheet;
   final VoidCallback onHandIn;
+  final Widget jars;
 
   @override
   Widget build(BuildContext context) {
     final t = L.of(context);
     final luma = context.luma;
-    final nearlyOut = exam && minutes >= kExamMinutes * 0.85;
-    return Wrap(
-      spacing: 10,
-      runSpacing: 10,
-      crossAxisAlignment: WrapCrossAlignment.center,
+    final remaining = examMinutes;
+    final exam = remaining != null;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        IntrinsicWidth(
-          child: LumaGhostButton(
-            label: t.schoolPtaQuit,
-            icon: Icons.arrow_back_rounded,
-            onTap: onQuit,
-          ),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            IntrinsicWidth(
+              child: LumaGhostButton(
+                label: t.schoolPtaQuit,
+                icon: Icons.arrow_back_rounded,
+                onTap: onQuit,
+              ),
+            ),
+            Text(title, style: Theme.of(context).textTheme.titleMedium),
+            _Pill(
+              text: exam ? t.schoolPtaModeExam : t.schoolPtaModePractice,
+              color: exam ? luma.warning : luma.accent,
+            ),
+            _Pill(
+              icon: Icons.timer_outlined,
+              text: exam
+                  ? '${t.schoolPtaTimeLeft} · ${t.schoolPtaMinutes(remaining, kExamMinutes)}'
+                  : "$minutes'",
+              color: exam && remaining <= 15 ? luma.danger : luma.textSecondary,
+            ),
+            IntrinsicWidth(
+              child: LumaGhostButton(
+                label: t.schoolPtaWorksheet,
+                icon: Icons.edit_note_rounded,
+                onTap: onWorksheet,
+              ),
+            ),
+            IntrinsicWidth(
+              child: LumaGhostButton(
+                label: t.schoolPtaBinas,
+                icon: Icons.menu_book_rounded,
+                onTap: () => showPtaBinas(context),
+              ),
+            ),
+            IntrinsicWidth(
+              child: LumaPrimaryButton(
+                label: t.schoolPtaHandIn,
+                icon: Icons.task_alt_rounded,
+                onTap: onHandIn,
+              ),
+            ),
+          ],
         ),
-        Text(title, style: Theme.of(context).textTheme.titleMedium),
-        _Pill(
-          text: exam ? t.schoolPtaModeExam : t.schoolPtaModePractice,
-          color: exam ? luma.warning : luma.accent,
-        ),
-        _Pill(
-          icon: Icons.timer_outlined,
-          text: exam
-              ? t.schoolPtaMinutes(minutes, kExamMinutes)
-              : "$minutes'",
-          color: nearlyOut ? luma.danger : luma.textSecondary,
-        ),
-        IntrinsicWidth(
-          child: LumaGhostButton(
-            label: t.schoolPtaBinas,
-            icon: Icons.menu_book_rounded,
-            onTap: () => showPtaBinas(context),
-          ),
-        ),
-        IntrinsicWidth(
-          child: LumaPrimaryButton(
-            label: t.schoolPtaHandIn,
-            icon: Icons.task_alt_rounded,
-            onTap: onHandIn,
-          ),
-        ),
+        const SizedBox(height: 8),
+        jars,
       ],
     );
   }
@@ -290,36 +285,41 @@ class _Pill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.14),
-          borderRadius: BorderRadius.circular(999),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (icon != null) ...[
-              Icon(icon, size: 15, color: color),
-              const SizedBox(width: 5),
-            ],
-            Text(
-              text,
-              style: TextStyle(
-                color: color,
-                fontWeight: FontWeight.w600,
-                fontSize: 12.5,
-                fontFeatures: const [FontFeature.tabularFigures()],
-              ),
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+    decoration: BoxDecoration(
+      color: color.withValues(alpha: 0.14),
+      borderRadius: BorderRadius.circular(999),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (icon != null) ...[
+          Icon(icon, size: 15, color: color),
+          const SizedBox(width: 5),
+        ],
+        Flexible(
+          child: Text(
+            text,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.w600,
+              fontSize: 12.5,
+              fontFeatures: const [FontFeature.tabularFigures()],
             ),
-          ],
+          ),
         ),
-      );
+      ],
+    ),
+  );
 }
 
 class _JarPanel extends StatelessWidget {
   const _JarPanel({
     required this.lab,
+    required this.jarLabel,
     required this.candidates,
+    required this.exam,
+    required this.redoxOnly,
     required this.flameVersion,
     required this.enabled,
     required this.onInspect,
@@ -327,7 +327,10 @@ class _JarPanel extends StatelessWidget {
   });
 
   final PtaLab lab;
+  final String jarLabel;
   final List<Substance> candidates;
+  final bool exam;
+  final bool redoxOnly;
   final int flameVersion;
   final bool enabled;
   final VoidCallback onInspect;
@@ -341,16 +344,27 @@ class _JarPanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(t.schoolPtaJar, style: Theme.of(context).textTheme.titleSmall),
+          Text(
+            '${t.schoolPtaJar} $jarLabel',
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
           const SizedBox(height: 10),
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              PtaJar(color: lab.unknown.solidColor, glass: luma.textMuted),
+              PtaJar(
+                label: jarLabel,
+                substance: lab.unknown,
+                glass: luma.textMuted,
+              ),
               const SizedBox(width: 18),
               PtaFlame(color: lab.lastFlame, version: flameVersion),
             ],
           ),
+          if (redoxOnly) ...[
+            const SizedBox(height: 12),
+            Text(t.schoolPtaRedoxOnly),
+          ],
           const SizedBox(height: 12),
           Wrap(
             spacing: 8,
@@ -413,10 +427,11 @@ class _JarPanel extends StatelessWidget {
                             fontWeight: FontWeight.w600,
                           ),
                         ),
-                        Text(
-                          candidates[i].formula,
-                          style: TextStyle(color: luma.textSecondary),
-                        ),
+                        if (!exam)
+                          Text(
+                            candidates[i].notation,
+                            style: TextStyle(color: luma.textSecondary),
+                          ),
                       ],
                     ),
                   ),
@@ -473,7 +488,10 @@ class _BenchPanel extends StatelessWidget {
               ),
               child: Text(
                 t.schoolPtaTimeUp,
-                style: TextStyle(color: luma.danger, fontWeight: FontWeight.w600),
+                style: TextStyle(
+                  color: luma.danger,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           Container(
@@ -532,16 +550,15 @@ class _BenchPanel extends StatelessWidget {
                 label: t.schoolPtaPaper,
                 onTap: on(() => lab.paper(i)),
               ),
-              _ActionButton(
-                icon: Icons.air_rounded,
-                label: t.schoolPtaSmell,
-                onTap: on(() => lab.smell(i)),
-              ),
               PopupMenuButton<GasTest>(
                 enabled: enabled,
                 tooltip: t.schoolPtaGasTests,
                 onSelected: (g) => act(() => lab.gasTest(i, g)),
                 itemBuilder: (context) => [
+                  PopupMenuItem(
+                    value: GasTest.iodinePaper,
+                    child: Text(t.schoolPtaIodinePaper),
+                  ),
                   PopupMenuItem(
                     value: GasTest.limewater,
                     child: Text(t.schoolPtaLimewater),
@@ -581,7 +598,9 @@ class _BenchPanel extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             children: [
-              for (final r in reagents)
+              for (final r in reagents.where(
+                (r) => r.kind != ReagentKind.water,
+              ))
                 r.hasDose
                     ? PopupMenuButton<Dose>(
                         enabled: enabled,
@@ -613,7 +632,7 @@ class _BenchPanel extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             children: [
-              for (final m in Metal.values)
+              for (final m in const [Metal.mg, Metal.zn, Metal.cu, Metal.fe])
                 _ShelfChip(
                   color: Color(m.argb),
                   title: m.name,
@@ -693,12 +712,12 @@ class _Bottle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => _ShelfChip(
-        color: reagent.color,
-        title: reagent.name,
-        subtitle: reagent.label,
-        enabled: enabled,
-        onTap: onTap,
-      );
+    color: reagent.color,
+    title: reagent.name,
+    subtitle: reagent.label,
+    enabled: enabled,
+    onTap: onTap,
+  );
 }
 
 class _ShelfChip extends StatelessWidget {
@@ -729,7 +748,10 @@ class _ShelfChip extends StatelessWidget {
       ),
       child: Row(
         children: [
-          CustomPaint(size: const Size(16, 24), painter: _BottlePainter(color, luma.textMuted)),
+          CustomPaint(
+            size: const Size(16, 24),
+            painter: _BottlePainter(color, luma.textMuted),
+          ),
           const SizedBox(width: 9),
           Expanded(
             child: Column(
@@ -776,9 +798,21 @@ class _BottlePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final body = RRect.fromLTRBR(1, 7, size.width - 1, size.height, const Radius.circular(4));
+    final body = RRect.fromLTRBR(
+      1,
+      7,
+      size.width - 1,
+      size.height,
+      const Radius.circular(4),
+    );
     canvas.drawRRect(
-      RRect.fromLTRBR(1, size.height * 0.45, size.width - 1, size.height, const Radius.circular(4)),
+      RRect.fromLTRBR(
+        1,
+        size.height * 0.45,
+        size.width - 1,
+        size.height,
+        const Radius.circular(4),
+      ),
       Paint()..color = liquid.a < 0.3 ? glass.withValues(alpha: 0.18) : liquid,
     );
     canvas.drawRRect(
@@ -795,7 +829,8 @@ class _BottlePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_BottlePainter old) => old.liquid != liquid || old.glass != glass;
+  bool shouldRepaint(_BottlePainter old) =>
+      old.liquid != liquid || old.glass != glass;
 }
 
 class _LogPanel extends StatelessWidget {
@@ -816,7 +851,10 @@ class _LogPanel extends StatelessWidget {
             children: [
               Icon(Icons.edit_note_rounded, color: luma.accent),
               const SizedBox(width: 8),
-              Text(t.schoolPtaLog, style: Theme.of(context).textTheme.titleSmall),
+              Text(
+                t.schoolPtaLog,
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
             ],
           ),
           const SizedBox(height: 10),
@@ -831,7 +869,8 @@ class _LogPanel extends StatelessWidget {
                   )
                 : ListView.separated(
                     itemCount: entries.length,
-                    separatorBuilder: (_, _) => Divider(color: luma.border, height: 18),
+                    separatorBuilder: (_, _) =>
+                        Divider(color: luma.border, height: 18),
                     itemBuilder: (context, n) => _LogEntryView(
                       entry: entries[n],
                       showNotes: showNotes,
@@ -933,7 +972,10 @@ class _LogEntryView extends StatelessWidget {
                     ),
                   ),
                 Expanded(
-                  child: Text(o, style: TextStyle(color: luma.textSecondary, fontSize: 13)),
+                  child: Text(
+                    o,
+                    style: TextStyle(color: luma.textSecondary, fontSize: 13),
+                  ),
                 ),
               ],
             ),

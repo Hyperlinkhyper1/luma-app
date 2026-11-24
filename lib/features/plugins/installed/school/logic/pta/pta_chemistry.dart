@@ -9,11 +9,14 @@ enum Sp {
   oh('OH⁻', -1),
   na('Na⁺', 1),
   k('K⁺', 1),
+  li('Li⁺', 1),
   nh4('NH₄⁺', 1),
   nh3('NH₃', 0),
   mg('Mg²⁺', 2),
   ca('Ca²⁺', 2),
   ba('Ba²⁺', 2),
+  sr('Sr²⁺', 2),
+  pb('Pb²⁺', 2),
   cu('Cu²⁺', 2),
   fe2('Fe²⁺', 2),
   fe3('Fe³⁺', 3),
@@ -42,6 +45,9 @@ enum Sp {
   so3('SO₃²⁻', -2),
   hso3('HSO₃⁻', -1),
   so2('SO₂', 0),
+  sulfide('S²⁻', -2),
+  hs('HS⁻', -1),
+  h2s('H₂S', 0),
   s2o3('S₂O₃²⁻', -2),
   s4o6('S₄O₆²⁻', -2),
   c2o4('C₂O₄²⁻', -2),
@@ -52,6 +58,8 @@ enum Sp {
   h2o2('H₂O₂', 0),
   i2('I₂', 0),
   br2('Br₂', 0),
+  cl2('Cl₂', 0),
+  clo('ClO⁻', -1),
   bro('BrO⁻', -1),
   io('IO⁻', -1);
 
@@ -82,6 +90,13 @@ class AcidBase {
 }
 
 const acidBaseSystems = <AcidBase>[
+  AcidBase(
+    acid: ['H₂S', 'HS⁻'],
+    base: ['HS⁻', 'S²⁻'],
+    members: [Sp.h2s, Sp.hs, Sp.sulfide],
+    topCharge: 0,
+    pKa: [7, 14],
+  ),
   AcidBase(
     acid: ['H₂C₂O₄', 'HC₂O₄⁻'],
     base: ['HC₂O₄⁻', 'C₂O₄²⁻'],
@@ -217,6 +232,10 @@ enum Pp {
   ag2SO3(Sp.ag, 2, Sp.so3, 1, 1.5e-14, 'Ag₂SO₃', 'zilversulfiet', 'wit', 0xFFF4F4F0),
   ag2C2O4(Sp.ag, 2, Sp.c2o4, 1, 5.4e-12, 'Ag₂C₂O₄', 'zilveroxalaat', 'wit', 0xFFF4F4F0),
   agSCN(Sp.ag, 1, Sp.scn, 1, 1.0e-12, 'AgSCN', 'zilverthiocyanaat', 'wit', 0xFFF4F4F0),
+  pbCl2(Sp.pb, 1, Sp.cl, 2, 1.7e-5, 'PbCl₂', 'lood(II)chloride', 'wit', 0xFFF4F4F0, true),
+  pbI2(Sp.pb, 1, Sp.i, 2, 8.5e-9, 'PbI₂', 'lood(II)jodide', 'geel', 0xFFEDC72A),
+  pbSO4(Sp.pb, 1, Sp.so4, 1, 1.6e-8, 'PbSO₄', 'lood(II)sulfaat', 'wit', 0xFFF4F4F0),
+  srSO4(Sp.sr, 1, Sp.so4, 1, 3.2e-7, 'SrSO₄', 'strontiumsulfaat', 'wit', 0xFFF4F4F0),
   baSO4(Sp.ba, 1, Sp.so4, 1, 1.1e-10, 'BaSO₄', 'bariumsulfaat', 'wit', 0xFFF6F6F4),
   baCO3(Sp.ba, 1, Sp.co3, 1, 2.6e-9, 'BaCO₃', 'bariumcarbonaat', 'wit', 0xFFF6F6F4),
   ba3PO42(Sp.ba, 3, Sp.po4, 2, 6.0e-39, 'Ba₃(PO₄)₂', 'bariumfosfaat', 'wit', 0xFFF6F6F4),
@@ -235,10 +254,13 @@ enum Pp {
   feOH3(Sp.fe3, 1, Sp.oh, 3, 2.8e-39, 'Fe(OH)₃', 'ijzer(III)hydroxide', 'roodbruin', 0xFF9B4A1D),
   znOH2(Sp.zn, 1, Sp.oh, 2, 3.0e-17, 'Zn(OH)₂', 'zinkhydroxide', 'wit', 0xFFF6F6F4),
   alOH3(Sp.al, 1, Sp.oh, 3, 1.3e-33, 'Al(OH)₃', 'aluminiumhydroxide', 'wit', 0xFFF2F4F6),
+  pbOH2(Sp.pb, 1, Sp.oh, 2, 1.2e-15, 'Pb(OH)₂', 'lood(II)hydroxide', 'wit', 0xFFF4F4F0),
+  cuO(Sp.cu, 1, Sp.oh, 2, null, 'CuO', 'koper(II)oxide', 'zwart', 0xFF262626),
   cuI(null, 0, null, 0, null, 'CuI', 'koper(I)jodide', 'wit', 0xFFEDE6DA),
   mnO2(null, 0, null, 0, null, 'MnO₂', 'mangaan(IV)oxide', 'bruinzwart', 0xFF3E2A1C),
   sulfur(null, 0, null, 0, null, 'S', 'zwavel', 'geelwit', 0xFFF1E9A8),
-  ag2S(null, 0, null, 0, null, 'Ag₂S', 'zilversulfide', 'zwart', 0xFF1C1C1C);
+  starch(null, 0, null, 0, null, '(C₆H₁₀O₅)ₙ', 'zetmeel', 'wit', 0xFFF4F4F0),
+  ag2S(Sp.ag, 2, Sp.sulfide, 1, 6.0e-51, 'Ag₂S', 'zilversulfide', 'zwart', 0xFF1C1C1C);
 
   const Pp(
     this.cation,
@@ -277,7 +299,8 @@ enum Pp {
   String get equation {
     if (cation == null || anion == null) return '';
     if (this == Pp.agOH) return '2 Ag⁺ + 2 OH⁻ → Ag₂O(s) + H₂O';
-    String term(int n, Sp s) => n == 1 ? s.formula : '$n ${s.formula}';
+    String term(int n, Sp s) =>
+        '${n == 1 ? '' : '$n '}${s.formula}(aq)';
     return '${term(a, cation!)} + ${term(b, anion!)} → $formula(s)';
   }
 }
@@ -300,12 +323,14 @@ const spColors = <Sp, SpColor>{
   Sp.mno4: SpColor(0xFF8E2D9E, 1500, 'roze', 'paars'),
   Sp.i2: SpColor(0xFF9A5A1A, 700, 'geel', 'bruin'),
   Sp.br2: SpColor(0xFFE58A1F, 250, 'geel', 'oranje'),
+  Sp.cl2: SpColor(0xFFB4CC67, 250, 'lichtgeelgroen', 'geelgroen'),
   Sp.feSCN: SpColor(0xFFB0121B, 2500, 'oranjerood', 'bloedrood'),
 };
 
 enum Gas {
   co2('CO₂', 'koolstofdioxide'),
   so2('SO₂', 'zwaveldioxide'),
+  h2s('H₂S', 'waterstofsulfide'),
   nh3('NH₃', 'ammoniak'),
   h2('H₂', 'waterstof'),
   o2('O₂', 'zuurstof'),
@@ -328,16 +353,22 @@ enum Deposit {
 }
 
 enum Metal {
+  na('natrium', 'Na', Sp.na, -2.71, 0xFFDCE0E3, reactsWithWater: true),
+  ca('calcium', 'Ca', Sp.ca, -2.87, 0xFFD9DCE0, reactsWithWater: true),
   mg('magnesiumlint', 'Mg', Sp.mg, -2.37, 0xFFD9DCE0),
   zn('zinkkorrel', 'Zn', Sp.zn, -0.76, 0xFFB7BEC6),
-  cu('koperdraad', 'Cu', Sp.cu, 0.34, 0xFFC8743A);
+  fe('ijzer', 'Fe', Sp.fe2, -0.44, 0xFF777D83),
+  cu('koperdraad', 'Cu', Sp.cu, 0.34, 0xFFC8743A),
+  ag('zilver', 'Ag', Sp.ag, 0.80, 0xFFDEDFE2);
 
-  const Metal(this.name, this.symbol, this.ion, this.v0, this.argb);
+  const Metal(this.name, this.symbol, this.ion, this.v0, this.argb,
+      {this.reactsWithWater = false});
   final String name;
   final String symbol;
   final Sp ion;
   final double v0;
   final int argb;
+  final bool reactsWithWater;
 }
 
 /// Flame colours (Binas table 65A) per cation.
@@ -351,6 +382,8 @@ const flames = <Sp, Flame>{
   Sp.na: Flame('felgeel (oranjegeel)', 0xFFFFC21A),
   Sp.k: Flame('lila (paarsachtig); het best te zien door blauw kobaltglas', 0xFFB38BE8),
   Sp.ca: Flame('oranjerood (steenrood)', 0xFFF0622A),
+  Sp.li: Flame('karmijnrood', 0xFFDC344B),
+  Sp.sr: Flame('helderrood', 0xFFEE4341),
   Sp.ba: Flame('geelgroen', 0xFFB8E04A),
   Sp.cu: Flame('groen tot blauwgroen', 0xFF2FC79A),
 };
@@ -391,10 +424,62 @@ class Substance {
     required this.appearance,
     required this.solidArgb,
     this.level = Level.havo,
-    this.smell,
     this.heat = _noHeat,
     this.candidate = true,
+    this.liquid,
+    this.metal,
+    this.gaseous = false,
+    this.initialSolid,
+    this.waterReaction,
   });
+
+  const Substance.salt(
+    String id,
+    String name,
+    String formula,
+    Map<Sp, double> ions, {
+    String appearance = 'wit poeder',
+    int color = _white,
+    Pp? initialSolid,
+    String? waterReaction,
+  }) : this(
+         id: id,
+         name: name,
+         formula: formula,
+         ions: ions,
+         appearance: appearance,
+         solidArgb: color,
+         initialSolid: initialSolid,
+         waterReaction: waterReaction,
+       );
+
+  const Substance.solution(
+    String id,
+    String name,
+    String formula,
+    Reagent liquid, {
+    String appearance = 'een kleurloze vloeistof',
+  }) : this(
+         id: id,
+         name: name,
+         formula: formula,
+         ions: const {},
+         appearance: appearance,
+         solidArgb: _clear,
+         liquid: liquid,
+       );
+
+  const Substance.element(String id, String name, String formula, Metal metal,
+      {String appearance = 'grijs metaal'})
+    : this(
+        id: id,
+        name: name,
+        formula: formula,
+        ions: const {},
+        appearance: appearance,
+        solidArgb: _white,
+        metal: metal,
+      );
 
   final String id;
   final String name;
@@ -403,17 +488,32 @@ class Substance {
   final String appearance;
   final int solidArgb;
   final Level level;
-  final String? smell;
   final DryHeat heat;
+  final Reagent? liquid;
+  final Metal? metal;
+  final bool gaseous;
+  final Pp? initialSolid;
+  final String? waterReaction;
 
   /// False for forms that only exist after heating (anhydrous copper
   /// sulfate), never handed out as a jar.
   final bool candidate;
 
-  Color get solidColor => Color(solidArgb);
+  Color get solidColor => Color(liquid?.argb ?? metal?.argb ?? solidArgb);
+
+  String get notation {
+    final phase = gaseous
+        ? 'g'
+        : liquid == null
+        ? 's'
+        : liquid!.kind == ReagentKind.solution || liquid!.kind == ReagentKind.starch
+        ? 'aq'
+        : 'l';
+    return '$formula($phase)';
+  }
 
   Sp? get cation {
-    for (final s in ions.keys) {
+    for (final s in (liquid?.conc ?? ions).keys) {
       if (s.charge > 0) return s;
     }
     return null;
@@ -495,7 +595,7 @@ const substances = <Substance>[
     appearance: 'witte kristallen',
     solidArgb: _white,
     heat: DryHeat(
-      'De stof smelt en ontleedt bij sterk verhitten; er ontwijkt een gas met een prikkelende geur.',
+      'De stof smelt en ontleedt bij sterk verhitten; er ontwijkt een gas.',
       gases: {Gas.nh3},
       interpretation: 'Een ammoniumzout geeft bij sterk verhitten ammoniak af.',
       equation: '(NH₄)₂SO₄(s) → NH₃(g) + NH₄HSO₄(s)',
@@ -508,7 +608,6 @@ const substances = <Substance>[
     ions: {Sp.nh4: 2, Sp.co3: 1},
     appearance: 'witte brokjes',
     solidArgb: _white,
-    smell: 'De stof ruikt naar ammoniak.',
     heat: DryHeat(
       'De stof verdwijnt helemaal; er ontwijken gassen en aan de koude buiswand ontstaan waterdruppeltjes.',
       gases: {Gas.nh3, Gas.co2},
@@ -527,9 +626,9 @@ const substances = <Substance>[
     ions: {Sp.ca: 1, Sp.co3: 1},
     appearance: 'wit poeder',
     solidArgb: _white,
-    heat: DryHeat('Er is geen zichtbare verandering (calciumcarbonaat ontleedt pas boven 800 °C).'),
+    initialSolid: Pp.caCO3,
   ),
-  Substance(id: 'baso4', name: 'bariumsulfaat', formula: 'BaSO₄', ions: {Sp.ba: 1, Sp.so4: 1}, appearance: 'fijn wit poeder', solidArgb: _white),
+  Substance(id: 'baso4', name: 'bariumsulfaat', formula: 'BaSO₄', ions: {Sp.ba: 1, Sp.so4: 1}, appearance: 'wit poeder', solidArgb: _white, initialSolid: Pp.baSO4),
   Substance(id: 'mgso4', name: 'magnesiumsulfaat', formula: 'MgSO₄·7H₂O', ions: {Sp.mg: 1, Sp.so4: 1}, appearance: 'witte kristallen', solidArgb: _white, heat: _crystalWater),
   Substance(
     id: 'cuso4',
@@ -588,7 +687,7 @@ const substances = <Substance>[
     ions: {Sp.fe3: 1, Sp.cl: 3},
     appearance: 'geelbruine brokjes',
     solidArgb: 0xFFC98A2B,
-    heat: DryHeat('De stof smelt tot een donkerbruine vloeistof en er ontwijkt een prikkelende damp.', gases: {Gas.hcl}),
+    heat: DryHeat('De stof smelt tot een donkerbruine vloeistof.', gases: {Gas.hcl}),
   ),
   Substance(
     id: 'alcl3',
@@ -598,16 +697,16 @@ const substances = <Substance>[
     appearance: 'witte kristallen',
     solidArgb: _white,
     heat: DryHeat(
-      'Aan de koude buiswand ontstaan waterdruppeltjes en er ontwijkt een prikkelende damp.',
+      'Aan de koude buiswand ontstaan druppeltjes.',
       gases: {Gas.hcl},
       interpretation: 'Het gehydrateerde zout ontleedt en geeft water en waterstofchloride af.',
     ),
   ),
   Substance(id: 'nabr', name: 'natriumbromide', formula: 'NaBr', ions: {Sp.na: 1, Sp.br: 1}, appearance: 'witte kristallen', solidArgb: _white, level: Level.vwo),
-  Substance(id: 'kbr', name: 'kaliumbromide', formula: 'KBr', ions: {Sp.k: 1, Sp.br: 1}, appearance: 'witte kristallen', solidArgb: _white, level: Level.vwo),
-  Substance(id: 'nai', name: 'natriumjodide', formula: 'NaI', ions: {Sp.na: 1, Sp.i: 1}, appearance: 'witte kristallen', solidArgb: _white, level: Level.vwo),
-  Substance(id: 'ki', name: 'kaliumjodide', formula: 'KI', ions: {Sp.k: 1, Sp.i: 1}, appearance: 'witte kristallen', solidArgb: _white, level: Level.vwo),
-  Substance(id: 'na2so3', name: 'natriumsulfiet', formula: 'Na₂SO₃', ions: {Sp.na: 2, Sp.so3: 1}, appearance: 'wit poeder', solidArgb: _white, level: Level.vwo),
+  Substance(id: 'kbr', name: 'kaliumbromide', formula: 'KBr', ions: {Sp.k: 1, Sp.br: 1}, appearance: 'witte kristallen', solidArgb: _white),
+  Substance(id: 'nai', name: 'natriumjodide', formula: 'NaI', ions: {Sp.na: 1, Sp.i: 1}, appearance: 'witte kristallen', solidArgb: _white),
+  Substance(id: 'ki', name: 'kaliumjodide', formula: 'KI', ions: {Sp.k: 1, Sp.i: 1}, appearance: 'witte kristallen', solidArgb: _white),
+  Substance(id: 'na2so3', name: 'natriumsulfiet', formula: 'Na₂SO₃', ions: {Sp.na: 2, Sp.so3: 1}, appearance: 'wit poeder', solidArgb: _white),
   Substance(
     id: 'na2s2o3',
     name: 'natriumthiosulfaat',
@@ -630,16 +729,69 @@ const substances = <Substance>[
     appearance: 'wit poeder',
     solidArgb: _white,
     level: Level.vwo,
-    heat: DryHeat('De stof smelt; bij sterk verhitten wordt ze zwart en ruik je een brandlucht.'),
+    heat: DryHeat('De stof smelt; bij sterk verhitten wordt ze zwart.'),
   ),
-  Substance(id: 'na3po4', name: 'natriumfosfaat', formula: 'Na₃PO₄', ions: {Sp.na: 3, Sp.po4: 1}, appearance: 'wit poeder', solidArgb: _white, level: Level.vwo),
+  Substance.salt('na3po4', 'natriumfosfaat', 'Na₃PO₄', {Sp.na: 3, Sp.po4: 1}),
+  Substance.salt('bano3', 'bariumnitraat', 'Ba(NO₃)₂', {Sp.ba: 1, Sp.no3: 2}),
+  Substance.salt('baco3', 'bariumcarbonaat', 'BaCO₃', {Sp.ba: 1, Sp.co3: 1}, initialSolid: Pp.baCO3),
+  Substance.salt('baso3', 'bariumsulfiet', 'BaSO₃', {Sp.ba: 1, Sp.so3: 1}, initialSolid: Pp.baSO3),
+  Substance.salt('ba3po42', 'bariumfosfaat', 'Ba₃(PO₄)₂', {Sp.ba: 3, Sp.po4: 2}, initialSolid: Pp.ba3PO42),
+  Substance.salt('bao', 'bariumoxide', 'BaO', {Sp.ba: 1, Sp.oh: 2}, waterReaction: 'BaO(s) + H₂O(l) → Ba²⁺(aq) + 2 OH⁻(aq)'),
+  Substance.salt('na2o', 'natriumoxide', 'Na₂O', {Sp.na: 2, Sp.oh: 2}, waterReaction: 'Na₂O(s) + H₂O(l) → 2 Na⁺(aq) + 2 OH⁻(aq)'),
+  Substance.salt('cao', 'calciumoxide', 'CaO', {Sp.ca: 1, Sp.oh: 2}, waterReaction: 'CaO(s) + H₂O(l) → Ca(OH)₂(s)'),
+  Substance.salt('cuo', 'koper(II)oxide', 'CuO', {Sp.cu: 1, Sp.oh: 2}, appearance: 'zwart poeder', color: 0xFF262626, initialSolid: Pp.cuO),
+  Substance.salt('baoh2', 'bariumhydroxide', 'Ba(OH)₂', {Sp.ba: 1, Sp.oh: 2}),
+  Substance.salt('znoh2', 'zinkhydroxide', 'Zn(OH)₂', {Sp.zn: 1, Sp.oh: 2}, initialSolid: Pp.znOH2),
+  Substance.salt('koh', 'kaliumhydroxide', 'KOH', {Sp.k: 1, Sp.oh: 1}),
+  Substance.salt('naoh', 'natriumhydroxide', 'NaOH', {Sp.na: 1, Sp.oh: 1}),
+  Substance.salt('ca3po42', 'calciumfosfaat', 'Ca₃(PO₄)₂', {Sp.ca: 3, Sp.po4: 2}, initialSolid: Pp.ca3PO42),
+  Substance.salt('caso3', 'calciumsulfiet', 'CaSO₃', {Sp.ca: 1, Sp.so3: 1}, initialSolid: Pp.caSO3),
+  Substance.salt('na2s', 'natriumsulfide', 'Na₂S', {Sp.na: 2, Sp.sulfide: 1}),
+  Substance.salt('agno3', 'zilvernitraat', 'AgNO₃', {Sp.ag: 1, Sp.no3: 1}),
+  Substance.salt('pbno32', 'lood(II)nitraat', 'Pb(NO₃)₂', {Sp.pb: 1, Sp.no3: 2}),
+  Substance.salt('znno32', 'zinknitraat', 'Zn(NO₃)₂', {Sp.zn: 1, Sp.no3: 2}),
+  Substance.salt('feno32', 'ijzer(II)nitraat', 'Fe(NO₃)₂', {Sp.fe2: 1, Sp.no3: 2}, appearance: 'lichtgroene kristallen', color: 0xFFA9D49A),
+  Substance.salt('feno33', 'ijzer(III)nitraat', 'Fe(NO₃)₃', {Sp.fe3: 1, Sp.no3: 3}, appearance: 'lichtgele kristallen', color: 0xFFEACD85),
+  Substance.salt('fe2so43', 'ijzer(III)sulfaat', 'Fe₂(SO₄)₃', {Sp.fe3: 2, Sp.so4: 3}, appearance: 'geelwit poeder', color: 0xFFEACD85),
+  Substance.salt('cuno32', 'koper(II)nitraat', 'Cu(NO₃)₂', {Sp.cu: 1, Sp.no3: 2}, appearance: 'blauwe kristallen', color: 0xFF2F7FD8),
+  Substance.salt('al2so43', 'aluminiumsulfaat', 'Al₂(SO₄)₃', {Sp.al: 2, Sp.so4: 3}),
+  Substance.salt('nh4no3', 'ammoniumnitraat', 'NH₄NO₃', {Sp.nh4: 1, Sp.no3: 1}),
+  Substance.salt('lino3', 'lithiumnitraat', 'LiNO₃', {Sp.li: 1, Sp.no3: 1}),
+  Substance.salt('srno32', 'strontiumnitraat', 'Sr(NO₃)₂', {Sp.sr: 1, Sp.no3: 2}),
+  Substance.element('metal-ca', 'calcium', 'Ca', Metal.ca),
+  Substance.element('metal-zn', 'zink', 'Zn', Metal.zn),
+  Substance.element('metal-na', 'natrium', 'Na', Metal.na),
+  Substance.element('metal-fe', 'ijzer', 'Fe', Metal.fe),
+  Substance.element('metal-cu', 'koper', 'Cu', Metal.cu, appearance: 'roodbruin metaal'),
+  Substance.element('metal-ag', 'zilver', 'Ag', Metal.ag),
+  Substance.solution('water', 'water', 'H₂O', _water),
+  Substance.solution('hcl', 'zoutzuur', 'HCl', _hydrochloricAcid),
+  Substance.solution('hno3', 'verdund salpeterzuur', 'HNO₃', _nitricAcid),
+  Substance.solution('h2so4', 'verdund zwavelzuur', 'H₂SO₄', _sulfuricAcid),
+  Substance.solution('h2c2o4', 'oxaalzuuroplossing', 'H₂C₂O₄', _oxalicAcid),
+  Substance.solution('hac', 'verdund azijnzuur', 'CH₃COOH', _aceticAcid),
+  Substance.solution('hi', 'waterstofjodide-oplossing', 'HI', _hydroiodicAcid),
+  Substance.solution('lye', 'natronloog', 'NaOH', _sodiumHydroxide),
+  Substance.solution('limewater', 'kalkwater', 'Ca(OH)₂', _limewater),
+  Substance.solution('baryta', 'barietwater', 'Ba(OH)₂', _baryta),
+  Substance.solution('nh3', 'ammonia', 'NH₃', _ammonia),
+  Substance.solution('h2o2', 'waterstofperoxide-oplossing', 'H₂O₂', _peroxide),
+  Substance.solution('nh4no3-aq', 'ammoniumnitraatoplossing', 'NH₄NO₃', _ammoniumNitrate),
+  Substance.solution('feno33-aq', 'ijzer(III)nitraatoplossing', 'Fe(NO₃)₃', _ferricNitrate, appearance: 'een geelbruine oplossing'),
+  Substance.solution('br2', 'broomwater', 'Br₂', _bromine, appearance: 'een oranje oplossing'),
+  Substance.solution('cl2', 'chloorwater', 'Cl₂', _chlorine, appearance: 'een lichtgeelgroene oplossing'),
+  Substance.solution('i2', 'joodoplossing', 'I₂', _iodine, appearance: 'een bruine oplossing'),
+  Substance.solution('hexane', 'hexaan', 'C₆H₁₄', _hexane),
+  Substance.solution('ethanol', 'ethanol', 'C₂H₅OH', _ethanol),
+  Substance.salt('starch', 'zetmeel', '(C₆H₁₀O₅)ₙ', {}, initialSolid: Pp.starch),
+  Substance(id: 'ethane', name: 'ethaan', formula: 'C₂H₆', ions: {}, appearance: 'een kleurloos gas', solidArgb: 0x22E8F0F8, gaseous: true),
 ];
 
 final _byId = {for (final s in substances) s.id: s};
 
 Substance substanceById(String id) => _byId[id]!;
 
-enum ReagentKind { solution, indicator, starch, hexane, water }
+enum ReagentKind { solution, indicator, starch, hexane, ethanol, water }
 
 enum Indicator {
   methylOrange('methyloranje', 3.1, 4.4, 'rood', 'oranje', 'geel', 0xFFD8322A, 0xFFF08A24, 0xFFF4CF3A),
@@ -697,22 +849,46 @@ class Reagent {
   bool get hasDose => kind == ReagentKind.solution;
 }
 
+const _clear = 0x22E8F0F8;
+const _hydrochloricAcid = Reagent(id: 'hcl', name: 'zoutzuur', label: 'HCl(aq) 2 M', argb: _clear, conc: {Sp.h: 2, Sp.cl: 2});
+const _nitricAcid = Reagent(id: 'hno3', name: 'salpeterzuur', label: 'HNO₃(aq) 2 M', argb: _clear, conc: {Sp.h: 2, Sp.no3: 2});
+const _sulfuricAcid = Reagent(id: 'h2so4', name: 'verdund zwavelzuur', label: 'H₂SO₄(aq) 1 M', argb: _clear, conc: {Sp.h: 2, Sp.so4: 1});
+const _sodiumHydroxide = Reagent(id: 'naoh', name: 'natronloog', label: 'NaOH(aq) 2 M', argb: _clear, conc: {Sp.na: 2, Sp.oh: 2});
+const _limewater = Reagent(id: 'limewater', name: 'kalkwater', label: 'Ca(OH)₂(aq) verzadigd', argb: _clear, conc: {Sp.ca: 0.02, Sp.oh: 0.04});
+const _bromine = Reagent(id: 'br2', name: 'broomwater', label: 'Br₂(aq) 0,02 M', argb: 0xFFE8962E, conc: {Sp.br2: 0.02});
+const _iodine = Reagent(id: 'i2', name: 'joodoplossing', label: 'I₂ in KI(aq) 0,01 M', argb: 0xFF9A5A1A, conc: {Sp.i2: 0.01, Sp.k: 0.03, Sp.i: 0.03});
+const _peroxide = Reagent(id: 'h2o2', name: 'waterstofperoxide-oplossing', label: 'H₂O₂(aq) 3%', argb: _clear, conc: {Sp.h2o2: 0.9});
+const _starch = Reagent(id: 'starch', name: 'zetmeelsuspensie', label: 'zetmeel in water', argb: 0x55EEEEE6, kind: ReagentKind.starch);
+const _hexane = Reagent(id: 'hexane', name: 'hexaan', label: 'C₆H₁₄(l)', argb: 0x22F8F4E0, kind: ReagentKind.hexane);
+const _water = Reagent(id: 'water', name: 'water', label: 'H₂O(l)', argb: _clear, kind: ReagentKind.water);
+const _ethanol = Reagent(id: 'ethanol', name: 'ethanol', label: 'C₂H₅OH(l)', argb: _clear, kind: ReagentKind.ethanol);
+const _oxalicAcid = Reagent(id: 'oxalic', name: 'verdund oxaalzuur', label: 'H₂C₂O₄(aq)', argb: _clear, conc: {Sp.h2c2o4: 0.25});
+const _aceticAcid = Reagent(id: 'acetic', name: 'verdund azijnzuur', label: 'CH₃COOH(aq)', argb: _clear, conc: {Sp.hac: 0.25});
+const _hydroiodicAcid = Reagent(id: 'hi', name: 'waterstofjodide-oplossing', label: 'HI(aq)', argb: _clear, conc: {Sp.h: 0.1, Sp.i: 0.1});
+const _baryta = Reagent(id: 'baryta', name: 'barietwater', label: 'Ba(OH)₂(aq)', argb: _clear, conc: {Sp.ba: 0.05, Sp.oh: 0.1});
+const _ammonia = Reagent(id: 'nh3', name: 'ammonia', label: 'NH₃(aq)', argb: _clear, conc: {Sp.nh3: 0.1});
+const _ammoniumNitrate = Reagent(id: 'nh4no3', name: 'ammoniumnitraatoplossing', label: 'NH₄NO₃(aq)', argb: _clear, conc: {Sp.nh4: 0.1, Sp.no3: 0.1});
+const _ferricNitrate = Reagent(id: 'feno33', name: 'ijzer(III)nitraatoplossing', label: 'Fe(NO₃)₃(aq)', argb: 0xFFE0A030, conc: {Sp.fe3: 0.1, Sp.no3: 0.3});
+const _chlorine = Reagent(id: 'cl2', name: 'chloorwater', label: 'Cl₂(aq)', argb: 0xFFB4CC67, conc: {Sp.cl2: 0.015, Sp.h: 0.005, Sp.cl: 0.005});
+
 const reagents = <Reagent>[
-  Reagent(id: 'hcl', name: 'zoutzuur', label: 'HCl(aq) 2 M', argb: 0x22E8F0F8, conc: {Sp.h: 2, Sp.cl: 2}),
-  Reagent(id: 'hno3', name: 'salpeterzuur', label: 'HNO₃(aq) 2 M', argb: 0x22E8F0F8, conc: {Sp.h: 2, Sp.no3: 2}),
-  Reagent(id: 'h2so4', name: 'verdund zwavelzuur', label: 'H₂SO₄(aq) 1 M', argb: 0x22E8F0F8, conc: {Sp.h: 2, Sp.so4: 1}),
-  Reagent(id: 'naoh', name: 'natronloog', label: 'NaOH(aq) 2 M', argb: 0x22E8F0F8, conc: {Sp.na: 2, Sp.oh: 2}),
+  _hydrochloricAcid,
+  _nitricAcid,
+  _sulfuricAcid,
+  _sodiumHydroxide,
   Reagent(id: 'bano3', name: 'bariumnitraatoplossing', label: 'Ba(NO₃)₂(aq) 0,1 M', argb: 0x22E8F0F8, conc: {Sp.ba: 0.1, Sp.no3: 0.2}),
   Reagent(id: 'agno3', name: 'zilvernitraatoplossing', label: 'AgNO₃(aq) 0,1 M', argb: 0x22E8F0F8, conc: {Sp.ag: 0.1, Sp.no3: 0.1}),
-  Reagent(id: 'limewater', name: 'kalkwater', label: 'Ca(OH)₂(aq) verzadigd', argb: 0x22E8F0F8, conc: {Sp.ca: 0.02, Sp.oh: 0.04}),
+  _limewater,
   Reagent(id: 'ki', name: 'kaliumjodide-oplossing', label: 'KI(aq) 0,1 M', argb: 0x22E8F0F8, conc: {Sp.k: 0.1, Sp.i: 0.1}),
   Reagent(id: 'kscn', name: 'kaliumthiocyanaatoplossing', label: 'KSCN(aq) 0,1 M', argb: 0x22E8F0F8, conc: {Sp.k: 0.1, Sp.scn: 0.1}),
-  Reagent(id: 'br2', name: 'broomwater', label: 'Br₂(aq) 0,02 M', argb: 0xFFE8962E, conc: {Sp.br2: 0.02}),
-  Reagent(id: 'i2', name: 'joodoplossing', label: 'I₂ in KI(aq) 0,01 M', argb: 0xFF9A5A1A, conc: {Sp.i2: 0.01, Sp.k: 0.03, Sp.i: 0.03}),
+  Reagent(id: 'feso4', name: 'ijzer(II)sulfaatoplossing', label: 'FeSO₄(aq) 0,1 M', argb: 0xFF9CCB7A, conc: {Sp.fe2: 0.1, Sp.so4: 0.1}),
+  _bromine,
+  _iodine,
   Reagent(id: 'kmno4', name: 'aangezuurde kaliumpermanganaatoplossing', label: 'KMnO₄ 0,01 M in H₂SO₄ 1 M', argb: 0xFF8E2D9E, conc: {Sp.k: 0.01, Sp.mno4: 0.01, Sp.h: 2, Sp.so4: 1}),
-  Reagent(id: 'h2o2', name: 'waterstofperoxide-oplossing', label: 'H₂O₂(aq) 3%', argb: 0x22E8F0F8, conc: {Sp.h2o2: 0.9}),
-  Reagent(id: 'starch', name: 'zetmeeloplossing', label: 'zetmeel(aq)', argb: 0x55EEEEE6, kind: ReagentKind.starch),
-  Reagent(id: 'hexane', name: 'hexaan', label: 'C₆H₁₄(l)', argb: 0x22F8F4E0, kind: ReagentKind.hexane),
+  _peroxide,
+  _starch,
+  _hexane,
+  _water,
   Reagent(id: 'mo', name: 'methyloranje', label: 'indicator', argb: 0xFFF08A24, kind: ReagentKind.indicator, indicator: Indicator.methylOrange),
   Reagent(id: 'btb', name: 'broomthymolblauw', label: 'indicator', argb: 0xFF4E9E55, kind: ReagentKind.indicator, indicator: Indicator.bromothymolBlue),
   Reagent(id: 'fft', name: 'fenolftaleïne', label: 'indicator', argb: 0x33F2A6CF, kind: ReagentKind.indicator, indicator: Indicator.phenolphthalein),

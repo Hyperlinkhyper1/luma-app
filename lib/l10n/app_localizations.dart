@@ -35198,7 +35198,7 @@ abstract class L {
   /// No description provided for @schoolPtaIntro.
   ///
   /// In en, this message translates to:
-  /// **'Identify an unknown substance from four randomly selected candidates in a virtual lab. The practical is in Dutch.'**
+  /// **'Practise for the HAVO 5 qualitative analysis exam. Choose a candidate group from the preparation booklet or take a mock exam with four unknown jars. The lab content is in Dutch.'**
   String get schoolPtaIntro;
 
   /// No description provided for @schoolPtaLevel.
@@ -35246,7 +35246,7 @@ abstract class L {
   /// No description provided for @schoolPtaModeExamHint.
   ///
   /// In en, this message translates to:
-  /// **'100 minutes on the clock, explanations only after you hand in'**
+  /// **'Four jars, 120 minutes, and feedback after submission'**
   String get schoolPtaModeExamHint;
 
   /// No description provided for @schoolPtaSet.
@@ -35282,7 +35282,7 @@ abstract class L {
   /// No description provided for @schoolPtaJar.
   ///
   /// In en, this message translates to:
-  /// **'Substance X'**
+  /// **'Jar'**
   String get schoolPtaJar;
 
   /// No description provided for @schoolPtaCandidates.
@@ -35294,7 +35294,7 @@ abstract class L {
   /// No description provided for @schoolPtaInspect.
   ///
   /// In en, this message translates to:
-  /// **'Look & smell'**
+  /// **'Inspect'**
   String get schoolPtaInspect;
 
   /// No description provided for @schoolPtaFlame.
@@ -35312,7 +35312,7 @@ abstract class L {
   /// No description provided for @schoolPtaSample.
   ///
   /// In en, this message translates to:
-  /// **'Spatula of X'**
+  /// **'Add sample'**
   String get schoolPtaSample;
 
   /// No description provided for @schoolPtaWater.
@@ -35332,12 +35332,6 @@ abstract class L {
   /// In en, this message translates to:
   /// **'pH paper'**
   String get schoolPtaPaper;
-
-  /// No description provided for @schoolPtaSmell.
-  ///
-  /// In en, this message translates to:
-  /// **'Smell'**
-  String get schoolPtaSmell;
 
   /// No description provided for @schoolPtaRinse.
   ///
@@ -35438,7 +35432,7 @@ abstract class L {
   /// No description provided for @schoolPtaTimeUp.
   ///
   /// In en, this message translates to:
-  /// **'Time is up. Hand in your answer.'**
+  /// **'Time is up. Hand in your work.'**
   String get schoolPtaTimeUp;
 
   /// No description provided for @schoolPtaChooseTitle.
@@ -35468,7 +35462,7 @@ abstract class L {
   /// No description provided for @schoolPtaItWas.
   ///
   /// In en, this message translates to:
-  /// **'Substance X was {name}.'**
+  /// **'The correct substance was {name}.'**
   String schoolPtaItWas(String name);
 
   /// No description provided for @schoolPtaYouChose.
@@ -35492,7 +35486,7 @@ abstract class L {
   /// No description provided for @schoolPtaExpectedHint.
   ///
   /// In en, this message translates to:
-  /// **'Marked rows tell the four substances apart.'**
+  /// **'Highlighted tests produce different observations across the candidates.'**
   String get schoolPtaExpectedHint;
 
   /// No description provided for @schoolPtaTest.
@@ -35534,8 +35528,116 @@ abstract class L {
   /// No description provided for @schoolPtaQuitConfirm.
   ///
   /// In en, this message translates to:
-  /// **'Stop this practical? Your journal is lost.'**
+  /// **'Stop this practical? Your worksheets and observations will be lost.'**
   String get schoolPtaQuitConfirm;
+
+  /// No description provided for @schoolPtaWorksheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Worksheet'**
+  String get schoolPtaWorksheet;
+
+  /// No description provided for @schoolPtaFormulaHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Write the formula and state symbol for each candidate. Balance your equations and write the half-equations first for redox reactions.'**
+  String get schoolPtaFormulaHint;
+
+  /// No description provided for @schoolPtaAddStep.
+  ///
+  /// In en, this message translates to:
+  /// **'Add test'**
+  String get schoolPtaAddStep;
+
+  /// No description provided for @schoolPtaRemoveStep.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove test'**
+  String get schoolPtaRemoveStep;
+
+  /// No description provided for @schoolPtaAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Procedure'**
+  String get schoolPtaAction;
+
+  /// No description provided for @schoolPtaPrediction.
+  ///
+  /// In en, this message translates to:
+  /// **'Prediction for each candidate'**
+  String get schoolPtaPrediction;
+
+  /// No description provided for @schoolPtaObservation.
+  ///
+  /// In en, this message translates to:
+  /// **'Observation'**
+  String get schoolPtaObservation;
+
+  /// No description provided for @schoolPtaDeduction.
+  ///
+  /// In en, this message translates to:
+  /// **'What do you rule out or identify?'**
+  String get schoolPtaDeduction;
+
+  /// No description provided for @schoolPtaEquation.
+  ///
+  /// In en, this message translates to:
+  /// **'Reaction equation(s)'**
+  String get schoolPtaEquation;
+
+  /// No description provided for @schoolPtaConclusion.
+  ///
+  /// In en, this message translates to:
+  /// **'Use your observations to justify your conclusion.'**
+  String get schoolPtaConclusion;
+
+  /// No description provided for @schoolPtaConfirmTest.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirmation test, if possible'**
+  String get schoolPtaConfirmTest;
+
+  /// No description provided for @schoolPtaNoAnswer.
+  ///
+  /// In en, this message translates to:
+  /// **'Unanswered'**
+  String get schoolPtaNoAnswer;
+
+  /// No description provided for @schoolPtaCorrectJars.
+  ///
+  /// In en, this message translates to:
+  /// **'Jars correctly identified'**
+  String get schoolPtaCorrectJars;
+
+  /// No description provided for @schoolPtaAnswered.
+  ///
+  /// In en, this message translates to:
+  /// **'Jars with a final answer'**
+  String get schoolPtaAnswered;
+
+  /// No description provided for @schoolPtaHandInPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Hand in your worksheets and view the results?'**
+  String get schoolPtaHandInPrompt;
+
+  /// No description provided for @schoolPtaRedoxOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Use only redox reactions to support your conclusion for this question.'**
+  String get schoolPtaRedoxOnly;
+
+  /// No description provided for @schoolPtaIodinePaper.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter paper with iodine solution'**
+  String get schoolPtaIodinePaper;
+
+  /// No description provided for @schoolPtaTimeLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'Time left'**
+  String get schoolPtaTimeLeft;
 
   /// No description provided for @schoolPracticeTestSaveTitle.
   ///

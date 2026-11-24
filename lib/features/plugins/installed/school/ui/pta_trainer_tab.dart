@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -5,15 +6,15 @@ import 'package:flutter/material.dart';
 import '../../../../../app/widgets.dart';
 import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
+import '../logic/pta/pta_attempt.dart';
 import '../logic/pta/pta_binas.dart';
 import '../logic/pta/pta_chemistry.dart';
-import '../logic/pta/pta_lab.dart';
 import '../logic/pta/pta_scenarios.dart';
 import 'pta/pta_lab_view.dart';
 import 'pta/pta_result_view.dart';
+import 'pta/pta_worksheet.dart';
 
-/// PTA trainer: practise the school exam "practicum kwalitatieve analyse" —
-/// one jar, four candidate substances, a virtual lab to find out which.
+/// The qualitative-analysis practicum from setup through submission.
 class PtaTrainerTab extends StatefulWidget {
   const PtaTrainerTab({super.key, this.random});
 
@@ -30,27 +31,127 @@ class _PtaTrainerTabState extends State<PtaTrainerTab> {
   late final math.Random _rng = widget.random ?? math.Random();
   _Phase _phase = _Phase.intro;
   bool _exam = false;
-  PtaSet? _set;
-  PtaLab? _lab;
-  Substance? _choice;
+  final _minutes = ValueNotifier(kExamMinutes);
+  Timer? _timer;
+  List<PtaJarAttempt> _jars = [];
+  int _selected = 0;
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _minutes.dispose();
+    super.dispose();
+  }
 
   Future<void> _start() async {
-    final setup = await showDialog<(Level, bool)>(
+    final setup = await showDialog<(Level, bool, PtaSet?)>(
       context: context,
       builder: (context) => const _SetupDialog(),
     );
     if (!mounted || setup == null) return;
 
-    final (level, exam) = setup;
-    final set = randomSet(level, _rng);
-    final candidates = set.candidates;
+    final (level, exam, selectedSet) = setup;
+    final sets = exam
+        ? examSets(level, _rng)
+        : [
+            selectedSet ??
+                (level == Level.havo
+                    ? havoBookletSets[_rng.nextInt(havoBookletSets.length)]
+                    : randomSet(level, _rng)),
+          ];
+    _minutes.value = kExamMinutes;
+    if (exam) {
+      _timer = Timer.periodic(const Duration(minutes: 1), (timer) {
+        _minutes.value = math.max(0, kExamMinutes - timer.tick);
+        if (_minutes.value == 0) timer.cancel();
+      });
+    }
     setState(() {
       _exam = exam;
-      _set = set;
-      _lab = PtaLab(candidates[_rng.nextInt(candidates.length)]);
-      _choice = null;
+      _jars = [
+        for (final (index, set) in sets.indexed)
+          PtaJarAttempt('A${index + 1}', set, _rng),
+      ];
+      _selected = 0;
       _phase = _Phase.lab;
     });
+  }
+
+  void _quit() {
+    _timer?.cancel();
+    setState(() => _phase = _Phase.intro);
+  }
+
+  Future<void> _openWorksheet(PtaJarAttempt jar) async {
+    await showPtaWorksheet(context, jar, examMinutes: _exam ? _minutes : null);
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _handIn() async {
+    if (!_exam && _jars.single.choice == null) {
+      await _openWorksheet(_jars.single);
+      if (!mounted || _jars.single.choice == null) return;
+    }
+    final t = L.of(context);
+    final answered = _jars.where((jar) => jar.choice != null).length;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(t.schoolPtaHandIn),
+        content: Text(
+          '${t.schoolPtaHandInPrompt}\n\n$answered / ${_jars.length} · ${t.schoolPtaAnswered}',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(t.commonCancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(t.schoolPtaConfirm),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || confirmed != true) return;
+    _timer?.cancel();
+    setState(() => _phase = _Phase.result);
+  }
+
+  Widget _bench() {
+    final jar = _jars[_selected];
+    final t = L.of(context);
+    return ValueListenableBuilder<int>(
+      key: ObjectKey(_jars),
+      valueListenable: _minutes,
+      builder: (context, remaining, _) => PtaLabView(
+        key: ObjectKey(jar),
+        lab: jar.lab,
+        set: jar.set,
+        jarLabel: jar.label,
+        examMinutes: _exam ? remaining : null,
+        jars: _jars.length == 1
+            ? const SizedBox.shrink()
+            : Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                children: [
+                  for (final (index, attempt) in _jars.indexed)
+                    ChoiceChip(
+                      label: Text('${t.schoolPtaJar} ${attempt.label}'),
+                      selected: index == _selected,
+                      avatar: attempt.choice != null
+                          ? const Icon(Icons.edit_note_rounded, size: 18)
+                          : null,
+                      onSelected: (_) => setState(() => _selected = index),
+                    ),
+                ],
+              ),
+        onWorksheet: () => _openWorksheet(jar),
+        onHandIn: _handIn,
+        onQuit: _quit,
+      ),
+    );
   }
 
   @override
@@ -59,22 +160,10 @@ class _PtaTrainerTabState extends State<PtaTrainerTab> {
       duration: const Duration(milliseconds: 200),
       child: switch (_phase) {
         _Phase.intro => _IntroView(onStart: _start),
-        _Phase.lab => PtaLabView(
-          key: ValueKey(_lab),
-          lab: _lab!,
-          set: _set!,
-          exam: _exam,
-          onHandIn: (c) => setState(() {
-            _choice = c;
-            _phase = _Phase.result;
-          }),
-          onQuit: () => setState(() => _phase = _Phase.intro),
-        ),
+        _Phase.lab => _bench(),
         _Phase.result => PtaResultView(
-          key: ValueKey('result-${_lab.hashCode}'),
-          lab: _lab!,
-          set: _set!,
-          choice: _choice!,
+          key: ObjectKey(_jars),
+          jars: _jars,
           onNew: _start,
         ),
       },
@@ -148,7 +237,8 @@ class _SetupDialog extends StatefulWidget {
 
 class _SetupDialogState extends State<_SetupDialog> {
   late final _sheets = binasSheets();
-  Level? _level;
+  Level _level = Level.havo;
+  PtaSet? _set;
   bool _exam = false;
 
   @override
@@ -179,11 +269,34 @@ class _SetupDialogState extends State<_SetupDialog> {
                   ChoiceChip(
                     label: Text(label),
                     selected: level == option,
-                    onSelected: (_) => setState(() => _level = option),
+                    onSelected: (_) => setState(() {
+                      _level = option;
+                      _set = null;
+                    }),
                   ),
               ],
             ),
             const SizedBox(height: 12),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(t.schoolPtaModeExam),
+              subtitle: Text(t.schoolPtaModeExamHint),
+              value: _exam,
+              onChanged: (exam) => setState(() => _exam = exam),
+            ),
+            if (!_exam && level == Level.havo)
+              DropdownButtonFormField<PtaSet>(
+                initialValue: _set,
+                isExpanded: true,
+                decoration: InputDecoration(labelText: t.schoolPtaSet),
+                hint: Text(t.schoolPtaRandomSet),
+                items: [
+                  DropdownMenuItem(child: Text(t.schoolPtaRandomSet)),
+                  for (final set in havoBookletSets)
+                    DropdownMenuItem(value: set, child: Text(set.title)),
+                ],
+                onChanged: (set) => _set = set,
+              ),
             ExpansionTile(
               tilePadding: EdgeInsets.zero,
               title: Text(t.schoolPtaAdvancedSettings),
@@ -199,14 +312,6 @@ class _SetupDialogState extends State<_SetupDialog> {
                     padding: const EdgeInsets.symmetric(vertical: 2),
                     child: Text('${sheet.code} · ${sheet.title}'),
                   ),
-                const Divider(),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(t.schoolPtaModeExam),
-                  subtitle: Text(t.schoolPtaModeExamHint),
-                  value: _exam,
-                  onChanged: (exam) => setState(() => _exam = exam),
-                ),
               ],
             ),
           ],
@@ -218,9 +323,7 @@ class _SetupDialogState extends State<_SetupDialog> {
           child: Text(t.commonCancel),
         ),
         FilledButton(
-          onPressed: level == null
-              ? null
-              : () => Navigator.pop(context, (level, _exam)),
+          onPressed: () => Navigator.pop(context, (level, _exam, _set)),
           child: Text(t.schoolPtaStart),
         ),
       ],

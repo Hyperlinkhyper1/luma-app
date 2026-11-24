@@ -20528,7 +20528,8 @@ class LZh extends L {
   String get schoolPtaTitle => '实验：定性分析';
 
   @override
-  String get schoolPtaIntro => '在虚拟实验室中，从随机抽取的四种候选物质里找出未知物质。实验内容为荷兰语。';
+  String get schoolPtaIntro =>
+      '练习 HAVO 5 定性分析实验考试。可选择备考手册中的一组物质，或参加包含四瓶未知物质的模拟考试。实验内容为荷兰语。';
 
   @override
   String get schoolPtaLevel => '级别';
@@ -20552,7 +20553,7 @@ class LZh extends L {
   String get schoolPtaModeExam => '考试';
 
   @override
-  String get schoolPtaModeExamHint => '计时 100 分钟，交卷后才显示解释';
+  String get schoolPtaModeExamHint => '四瓶，限时 120 分钟，交卷后查看反馈';
 
   @override
   String get schoolPtaSet => '物质组';
@@ -20570,13 +20571,13 @@ class LZh extends L {
   String get schoolPtaAdvancedSettings => '高级设置';
 
   @override
-  String get schoolPtaJar => '物质 X';
+  String get schoolPtaJar => '样品瓶';
 
   @override
   String get schoolPtaCandidates => '它是以下之一';
 
   @override
-  String get schoolPtaInspect => '观察和闻';
+  String get schoolPtaInspect => '观察';
 
   @override
   String get schoolPtaFlame => '焰色反应';
@@ -20587,7 +20588,7 @@ class LZh extends L {
   }
 
   @override
-  String get schoolPtaSample => '一勺 X';
+  String get schoolPtaSample => '加入样品';
 
   @override
   String get schoolPtaWater => '水';
@@ -20597,9 +20598,6 @@ class LZh extends L {
 
   @override
   String get schoolPtaPaper => 'pH 试纸';
-
-  @override
-  String get schoolPtaSmell => '闻';
 
   @override
   String get schoolPtaRinse => '冲洗';
@@ -20652,7 +20650,7 @@ class LZh extends L {
   }
 
   @override
-  String get schoolPtaTimeUp => '时间到了，请提交答案。';
+  String get schoolPtaTimeUp => '时间到。请交卷。';
 
   @override
   String get schoolPtaChooseTitle => '瓶子里是哪种物质？';
@@ -20668,7 +20666,7 @@ class LZh extends L {
 
   @override
   String schoolPtaItWas(String name) {
-    return '物质 X 是 $name。';
+    return '正确的物质是 $name。';
   }
 
   @override
@@ -20685,7 +20683,7 @@ class LZh extends L {
   String get schoolPtaExpected => '每种物质会出现的现象';
 
   @override
-  String get schoolPtaExpectedHint => '标记的行可以区分这四种物质。';
+  String get schoolPtaExpectedHint => '标出的实验会让不同候选物质出现不同的现象。';
 
   @override
   String get schoolPtaTest => '试验';
@@ -20706,7 +20704,62 @@ class LZh extends L {
   String get schoolPtaQuit => '停止';
 
   @override
-  String get schoolPtaQuitConfirm => '停止本次实验？实验记录将丢失。';
+  String get schoolPtaQuitConfirm => '结束本次实验？作答记录和观察结果将丢失。';
+
+  @override
+  String get schoolPtaWorksheet => '实验记录表';
+
+  @override
+  String get schoolPtaFormulaHint =>
+      '写出每种候选物质的化学式和物态符号。配平反应方程式，遇到氧化还原反应时先写出半反应式。';
+
+  @override
+  String get schoolPtaAddStep => '添加实验';
+
+  @override
+  String get schoolPtaRemoveStep => '删除实验';
+
+  @override
+  String get schoolPtaAction => '实验操作';
+
+  @override
+  String get schoolPtaPrediction => '预测每种候选物质的现象';
+
+  @override
+  String get schoolPtaObservation => '观察结果';
+
+  @override
+  String get schoolPtaDeduction => '你排除或确认了什么？';
+
+  @override
+  String get schoolPtaEquation => '化学反应方程式';
+
+  @override
+  String get schoolPtaConclusion => '用观察结果说明你的结论。';
+
+  @override
+  String get schoolPtaConfirmTest => '验证实验（如适用）';
+
+  @override
+  String get schoolPtaNoAnswer => '未作答';
+
+  @override
+  String get schoolPtaCorrectJars => '正确鉴别的样品瓶';
+
+  @override
+  String get schoolPtaAnswered => '已给出最终答案的样品瓶';
+
+  @override
+  String get schoolPtaHandInPrompt => '交卷并查看结果？';
+
+  @override
+  String get schoolPtaRedoxOnly => '本题只用氧化还原反应来支持结论。';
+
+  @override
+  String get schoolPtaIodinePaper => '蘸有碘溶液的滤纸';
+
+  @override
+  String get schoolPtaTimeLeft => '剩余时间';
 
   @override
   String get schoolPracticeTestSaveTitle => '将练习测验保存为 PDF';

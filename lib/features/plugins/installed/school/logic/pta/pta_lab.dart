@@ -19,9 +19,9 @@ const _visible = 0.002;
 
 enum Dose { drops, excess }
 
-enum GasTest { limewater, litmus, glowingSplint, burningSplint }
+enum GasTest { limewater, litmus, iodinePaper, glowingSplint, burningSplint }
 
-/// Virtual minutes each action costs in exam mode.
+/// Estimated bench time for each action in the practice log.
 const actionMinutes = <String, int>{
   'inspect': 1,
   'sample': 2,
@@ -32,7 +32,6 @@ const actionMinutes = <String, int>{
   'metal': 2,
   'heat': 4,
   'paper': 2,
-  'smell': 1,
   'gas': 2,
   'flame': 4,
   'rinse': 2,
@@ -45,6 +44,7 @@ class Tube {
   final Map<Deposit, double> deposits = {};
   final Set<Indicator> indicators = {};
   double waterMl = 0;
+  double ethanolMl = 0;
   double hexaneMl = 0;
   bool starch = false;
   Substance? solid;
@@ -58,9 +58,9 @@ class Tube {
   bool heating = false;
 
   bool get hot => warm > 0;
-  double get totalMl => waterMl + hexaneMl;
+  double get totalMl => waterMl + ethanolMl + hexaneMl;
   bool get isEmpty =>
-      waterMl <= 0 && hexaneMl <= 0 && solid == null && metals.isEmpty;
+      totalMl <= 0 && solid == null && metals.isEmpty;
 
   double amt(Sp s) => sp[s] ?? 0;
   double ppAmt(Pp p) => pp[p] ?? 0;
@@ -86,6 +86,7 @@ class Tube {
   Tube copy() {
     final t = Tube()
       ..waterMl = waterMl
+      ..ethanolMl = ethanolMl
       ..hexaneMl = hexaneMl
       ..starch = starch
       ..solid = solid
@@ -108,6 +109,7 @@ class Tube {
     deposits.clear();
     indicators.clear();
     waterMl = 0;
+    ethanolMl = 0;
     hexaneMl = 0;
     starch = false;
     solid = null;
@@ -258,6 +260,16 @@ const _s4 = [Sp.so3, Sp.hso3, Sp.so2];
 const _ox = [Sp.c2o4, Sp.hc2o4, Sp.h2c2o4];
 
 const redoxReactions = <Redox>[
+  Redox('cl2_i', [([Sp.cl2], 1), ([Sp.i], 2)], {Sp.cl: 2, Sp.i2: 1},
+      equation: 'Cl₂(aq) + 2 I⁻(aq) → 2 Cl⁻(aq) + I₂(aq)',
+      why: 'Chloor oxideert jodide tot jood (Binas 48).'),
+  Redox('cl2_oh', [([Sp.cl2], 1), ([Sp.oh], 2)], {Sp.cl: 1, Sp.clo: 1},
+      equation: 'Cl₂(aq) + 2 OH⁻(aq) → Cl⁻(aq) + ClO⁻(aq) + H₂O(l)',
+      why: 'Chloor reageert met hydroxide tot chloride en hypochloriet.'),
+  Redox('i2_sulfide', [([Sp.i2], 1), ([Sp.sulfide], 1)], {Sp.i: 2},
+      solids: {Pp.sulfur: 1},
+      equation: 'I₂(aq) + S²⁻(aq) → 2 I⁻(aq) + S(s)',
+      why: 'Jood oxideert sulfide tot vaste zwavel.'),
   Redox('mno4_fe2', [([Sp.mno4], 1), ([Sp.fe2], 5)], {Sp.mn2: 1, Sp.fe3: 5},
       medium: Medium.acid,
       equation: 'MnO₄⁻ + 5 Fe²⁺ + 8 H⁺ → Mn²⁺ + 5 Fe³⁺ + 4 H₂O',
@@ -482,6 +494,8 @@ class _Engine {
     _protonate(Sp.c2o4, Sp.hc2o4);
     _protonate(Sp.h2po4, Sp.h3po4);
     _protonate(Sp.hso3, Sp.so2, 'h:hso3');
+    _protonate(Sp.sulfide, Sp.hs, 'h:sulfide');
+    _protonate(Sp.hs, Sp.h2s, 'h:hs');
     n = math.min(a(Sp.s2o3), a(Sp.h) / 2);
     if (n > _eps) {
       move({Sp.s2o3: -n, Sp.h: -2 * n, Sp.so2: n});
@@ -515,11 +529,13 @@ class _Engine {
     _hydroxide(Pp.cuOH2);
     _hydroxide(Pp.znOH2);
     _deprotonate(Sp.h2po4, Sp.hpo4);
+    _deprotonate(Sp.h2s, Sp.hs);
     _deprotonate(Sp.hso3, Sp.so3);
     _hydroxide(Pp.feOH2);
     _hydroxide(Pp.agOH);
     _deprotonate(Sp.nh4, Sp.nh3, 'oh:nh4');
     _hydroxide(Pp.mgOH2);
+    _hydroxide(Pp.pbOH2);
     _deprotonate(Sp.hco3, Sp.co3, 'oh:hco3');
     _deprotonate(Sp.hpo4, Sp.po4);
     _hydroxide(Pp.caOH2);
@@ -658,17 +674,29 @@ class _Engine {
         ev.add('metal:${m.name}:$key', n);
       }
 
-      react(Sp.ag, 2, (n) => _deposit(Deposit.ag, 2 * n), 'ag');
-      if (m.v0 < 0.77) react(Sp.fe3, 2, (n) => t.add(Sp.fe2, 2 * n), 'fe3');
-      if (m.v0 < 0.34) react(Sp.cu, 1, (n) => _deposit(Deposit.cu, n), 'cu');
-      if (m.v0 < 0) react(Sp.h, 2, (n) => ev.addGas(Gas.h2, n), 'h');
+      final electrons = m.ion.charge.toDouble();
+      final divalent = electrons / 2;
+      if (m.v0 < 0.80) react(Sp.ag, electrons, (n) => _deposit(Deposit.ag, electrons * n), 'ag');
+      if (m.v0 < 0.77) react(Sp.fe3, electrons, (n) => t.add(Sp.fe2, electrons * n), 'fe3');
+      if (m.v0 < 0.34) react(Sp.cu, divalent, (n) => _deposit(Deposit.cu, divalent * n), 'cu');
+      if (m.v0 < 0) react(Sp.h, electrons, (n) => ev.addGas(Gas.h2, divalent * n), 'h');
       if (m.v0 < -0.44) {
-        react(Sp.fe2, 1, (n) => _deposit(Deposit.fe, n), 'fe2');
+        react(Sp.fe2, divalent, (n) => _deposit(Deposit.fe, divalent * n), 'fe2');
       }
       if (m.v0 < -0.76) {
-        react(Sp.zn, 1, (n) => _deposit(Deposit.zn, n), 'zn');
+        react(Sp.zn, divalent, (n) => _deposit(Deposit.zn, divalent * n), 'zn');
       }
-      t.metals[m] = have;
+      if (m.reactsWithWater && have > _eps && t.waterMl > 0) {
+        move({m.ion: have, Sp.oh: electrons * have});
+        ev.addGas(Gas.h2, divalent * have);
+        ev.add('metal:${m.name}:water', have);
+        have = 0;
+      }
+      if (have < _eps) {
+        t.metals.remove(m);
+      } else {
+        t.metals[m] = have;
+      }
     }
   }
 
@@ -929,9 +957,9 @@ class PtaLab {
   }
 
   LabEntry inspect() {
-    final obs = ['Stof X bestaat uit ${unknown.appearance}.'];
-    if (unknown.smell != null) obs.add(unknown.smell!);
-    return _record('inspect', null, 'Stof X bekijken en voorzichtig ruiken', obs);
+    return _record('inspect', null, 'Het monster bekijken', [
+      'Je ziet ${unknown.appearance}.',
+    ]);
   }
 
   LabEntry flameTest() {
@@ -943,7 +971,7 @@ class PtaLab {
     return _record(
       'flame',
       null,
-      'Vlamproef met een beetje stof X op een magnesiastaafje',
+      'Vlamproef met een beetje monster op een magnesiastaafje',
       obs,
       notes: const ['Vlamkleuren van metaalionen staan in Binas tabel 65A.'],
       flame: lastFlame,
@@ -953,38 +981,75 @@ class PtaLab {
   LabEntry addSample(int i) {
     final t = tubes[i];
     _startAction(t);
+    const label = 'Monster toevoegen';
+    if (unknown.gaseous) {
+      return _record('sample', i, label, [
+        'In het potje zit een kleurloos gas. Er komt geen vloeistof of vaste stof in de buis.',
+      ]);
+    }
+    if (unknown.liquid case final liquid?) {
+      return _addLiquid(i, liquid, kWaterMl, 'Een beetje monster toevoegen', sample: true);
+    }
     if (t.solid != null && t.solid != unknown) {
-      return _record('sample', i, 'Spatelpunt stof X toevoegen',
+      return _record('sample', i, label,
           ['Er zit al een andere vaste stof in deze buis; spoel hem eerst om.']);
     }
     final before = t.copy();
+    if (unknown.metal case final metal?) {
+      t.metals[metal] = (t.metals[metal] ?? 0) + kSampleMmol;
+      if (t.waterMl <= 0) {
+        return _record('sample', i, label, ['Er ligt ${unknown.appearance} op de bodem.']);
+      }
+      final mixed = t.copy();
+      final ev = Events();
+      settle(t, ev);
+      _afterChange(t, ev);
+      return _record('sample', i, label, describe(before, mixed, t, ev), ev: ev);
+    }
     t.solid = t.solid ?? unknown;
     t.solidMmol += kSampleMmol;
     if (t.waterMl <= 0) {
-      return _record('sample', i, 'Spatelpunt stof X toevoegen',
+      return _record('sample', i, label,
           ['Er ligt nu ${unknown.appearance} op de bodem van de buis.']);
     }
     final ev = Events();
-    final mixed = _dissolve(t);
+    final equation = _dissolve(t);
+    final mixed = t.copy();
     settle(t, ev);
     _afterChange(t, ev);
     final obs = [
       _dissolveSentence(t),
       ..._afterDissolving(t, describe(before, mixed, t, ev)),
     ];
-    return _record('sample', i, 'Spatelpunt stof X toevoegen', obs, ev: ev);
+    return _record('sample', i, label, obs, ev: ev, equations: [?equation]);
   }
 
-  Tube _dissolve(Tube t) {
+  String? _dissolve(Tube t) {
     final s = t.solid;
-    if (s == null) return t.copy();
-    for (final e in s.ions.entries) {
-      t.add(e.key, e.value * t.solidMmol);
+    if (s == null || t.waterMl <= 0) return null;
+    String? equation = s.waterReaction;
+    if (s.initialSolid case final phase?) {
+      t.addPp(phase, t.solidMmol);
+      if (phase == Pp.starch) t.starch = true;
+    } else {
+      for (final e in s.ions.entries) {
+        t.add(e.key, e.value * t.solidMmol);
+      }
+      if (equation == null && s.ions.isNotEmpty) {
+        final hydrate = s.formula.split('·');
+        final ions = [
+          for (final e in s.ions.entries)
+            '${e.value == 1 ? '' : '${e.value.toInt()} '}${e.key.formula}(aq)',
+          if (hydrate.length == 2)
+            hydrate.last.replaceFirst('H₂O', ' H₂O(l)').trimLeft(),
+        ];
+        equation = '${s.notation} → ${ions.join(' + ')}';
+      }
     }
     t.solid = null;
     t.solidMmol = 0;
     t.solidHeated = false;
-    return t.copy();
+    return equation;
   }
 
   /// Drops what the dissolve sentence already says: an undissolved jar
@@ -1015,30 +1080,8 @@ class PtaLab {
   LabEntry addWater(int i) {
     final t = tubes[i];
     _startAction(t);
-    if (t.totalMl + kWaterMl > kMaxMl) {
-      return _record('water', i, 'Water toevoegen', ['De buis is te vol.']);
-    }
-    final before = t.copy();
-    final hadSolid = t.solid != null;
-    t.waterMl += kWaterMl;
-    final ev = Events();
-    final mixed = _dissolve(t);
-    settle(t, ev);
-    _afterChange(t, ev);
-    final obs = <String>[];
-    if (hadSolid) {
-      obs.add(_dissolveSentence(t));
-      final look = lookOf(t);
-      obs.add(look.waterKey == null
-          ? 'De vloeistof is kleurloos.'
-          : 'De vloeistof is ${look.waterName}.');
-      obs.addAll(_afterDissolving(
-          t, describe(before, mixed, t, ev, skipColor: true)));
-    } else {
-      obs.addAll(describe(before, mixed, t, ev));
-    }
-    return _record('water', i, 'Gedestilleerd water toevoegen en schudden', obs,
-        ev: ev);
+    return _addLiquid(i, reagentById('water'), kWaterMl,
+        'Gedestilleerd water toevoegen en schudden');
   }
 
   LabEntry addReagent(int i, Reagent r, [Dose dose = Dose.drops]) {
@@ -1052,6 +1095,7 @@ class PtaLab {
       case ReagentKind.starch:
       case ReagentKind.hexane:
         return _addExtra(i, r);
+      case ReagentKind.ethanol:
       case ReagentKind.solution:
         break;
     }
@@ -1059,25 +1103,49 @@ class PtaLab {
     final label = dose == Dose.drops
         ? '${_cap(r.name)} toevoegen (enkele druppels)'
         : '${_cap(r.name)} toevoegen (overmaat)';
+    return _addLiquid(i, r, ml, label);
+  }
+
+  LabEntry _addLiquid(int i, Reagent r, double ml, String label, {bool sample = false}) {
+    final t = tubes[i];
+    final water = r.kind == ReagentKind.water;
+    final cost = sample ? 'sample' : water ? 'water' : 'reagent';
     if (t.totalMl + ml > kMaxMl) {
-      return _record('reagent', i, label, ['De buis is te vol.']);
+      return _record(cost, i, label, ['De buis is te vol.']);
     }
     final before = t.copy();
     final hadSolid = t.solid != null;
-    for (final e in r.conc.entries) {
-      t.add(e.key, e.value * ml);
+    switch (r.kind) {
+      case ReagentKind.hexane:
+        t.hexaneMl += ml;
+      case ReagentKind.ethanol:
+        t.ethanolMl += ml;
+      default:
+        t.waterMl += ml;
+        if (r.kind == ReagentKind.starch) t.starch = true;
+        for (final e in r.conc.entries) {
+          t.add(e.key, e.value * ml);
+        }
     }
-    t.waterMl += ml;
     final ev = Events();
-    final mixed = _dissolve(t);
+    final equation = _dissolve(t);
+    final mixed = t.copy();
     settle(t, ev);
     _afterChange(t, ev);
-    final described = describe(before, mixed, t, ev);
+    final dissolved = hadSolid && t.solid == null;
+    final described = describe(before, mixed, t, ev, skipColor: dissolved && water);
     final obs = [
-      if (hadSolid) _dissolveSentence(t),
-      ...(hadSolid ? _afterDissolving(t, described) : described),
+      if (dissolved) _dissolveSentence(t),
+      if (dissolved && water) 'De vloeistof is ${lookOf(t).waterName}.',
+      if (before.waterMl > 0 && before.hexaneMl == 0 && t.hexaneMl > 0 ||
+          before.hexaneMl > 0 && before.waterMl == 0 && t.waterMl > 0)
+        'Na schudden zie je twee vloeistoflagen.',
+      if (water && before.ethanolMl > 0 && before.waterMl == 0)
+        'De vloeistoffen mengen volledig.',
+      ...(dissolved ? _afterDissolving(t, described) : described),
     ];
-    return _record('reagent', i, label, obs, ev: ev);
+    if (obs.length > 1) obs.remove('Geen zichtbare verandering.');
+    return _record(cost, i, label, obs, ev: ev, equations: [?equation]);
   }
 
   LabEntry _addIndicator(int i, Reagent r) {
@@ -1163,6 +1231,12 @@ class PtaLab {
     final t = tubes[i];
     _startAction(t);
     t.heating = true;
+    if (t.totalMl > 0 && (t.ethanolMl == t.totalMl || t.hexaneMl == t.totalMl)) {
+      final boilingPoint = t.ethanolMl > 0 ? 78 : 69;
+      return _record('heat', i, 'De vloeistof in een waterbad verwarmen', [
+        'De vloeistof kookt rond $boilingPoint °C.',
+      ]);
+    }
     if (t.waterMl <= 0 && t.solid != null) return _heatDry(i);
     if (t.waterMl <= 0) {
       return _record('heat', i, 'Verwarmen boven de brander',
@@ -1244,37 +1318,6 @@ class PtaLab {
         notes: [note], paper: p);
   }
 
-  LabEntry smell(int i) {
-    final t = tubes[i];
-    _startAction(t);
-    const label = 'De geur boven de buis voorzichtig toewuiven';
-    final obs = smellOf(t);
-    return _record('smell', i, label, obs);
-  }
-
-  static List<String> smellOf(Tube t) {
-    final obs = <String>[];
-    if (t.waterMl <= 0) {
-      if (t.solid != null && t.solid!.smell != null) obs.add(t.solid!.smell!);
-      if (t.headspace.contains(Gas.nh3)) {
-        obs.add('Je ruikt een scherpe, prikkelende geur (zoals ammoniak).');
-      }
-      if (obs.isEmpty) obs.add('Je ruikt niets bijzonders.');
-      return obs;
-    }
-    final nh3 = speciated(t, Sp.nh3);
-    if (nh3 > 0.03 || (t.hot && nh3 > 0.005) || t.headspace.contains(Gas.nh3)) {
-      obs.add('Je ruikt een scherpe, prikkelende geur (zoals ammoniak).');
-    }
-    if (speciated(t, Sp.so2) > 0.01) {
-      obs.add('Je ruikt een stikkende geur (zoals een afgestreken lucifer).');
-    }
-    if (speciated(t, Sp.hac) > 0.1) obs.add('Je ruikt azijn.');
-    if (t.amt(Sp.br2) > 0.002) obs.add('Je ruikt de scherpe geur van broom.');
-    if (obs.isEmpty) obs.add('Je ruikt niets bijzonders.');
-    return obs;
-  }
-
   LabEntry gasTest(int i, GasTest kind) {
     final t = tubes[i];
     final gases = t.headspace;
@@ -1292,7 +1335,7 @@ class PtaLab {
             eqs.add('CO₂ + Ca²⁺ + 2 OH⁻ → CaCO₃(s) + H₂O');
           }
           if (gases.contains(Gas.so2)) {
-            notes.add('Let op: ook SO₂ maakt kalkwater troebel (CaSO₃). Ruik daarom ook aan het gas.');
+            notes.add('Ook SO₂ maakt kalkwater troebel (CaSO₃). Met joodpapier kun je SO₂ van CO₂ onderscheiden.');
             eqs.add('SO₂ + Ca²⁺ + 2 OH⁻ → CaSO₃(s) + H₂O');
           }
         } else {
@@ -1309,6 +1352,24 @@ class PtaLab {
           eqs.add('NH₃ + H₂O ⇄ NH₄⁺ + OH⁻');
         } else {
           obs = ['Het lakmoespapier blijft rood.'];
+        }
+      case GasTest.iodinePaper:
+        label = 'Met joodoplossing bevochtigd filtreerpapier boven de buis houden';
+        final sulfurDioxide = gases.contains(Gas.so2);
+        final hydrogenSulfide = gases.contains(Gas.h2s);
+        obs = [
+          if (sulfurDioxide || hydrogenSulfide)
+            'De bruine kleur op het papier verdwijnt.'
+          else
+            'Het papier blijft bruin.',
+        ];
+        if (sulfurDioxide) {
+          notes.add('Zwaveldioxide reduceert jood tot jodide.');
+          eqs.add('SO₂(g) + I₂(aq) + 2 H₂O(l) → SO₄²⁻(aq) + 2 I⁻(aq) + 4 H⁺(aq)');
+        }
+        if (hydrogenSulfide) {
+          notes.add('Ook waterstofsulfide ontkleurt joodpapier.');
+          eqs.add('H₂S(g) + I₂(aq) → S(s) + 2 I⁻(aq) + 2 H⁺(aq)');
         }
       case GasTest.glowingSplint:
         label = 'Een gloeiend houtje in de buis houden';
@@ -1351,6 +1412,7 @@ class PtaLab {
       if (e.key != Gas.nh3 && e.key != Gas.so2) visible += e.value;
     }
     if (speciated(t, Sp.so2) > 0.01) gases.add(Gas.so2);
+    if (speciated(t, Sp.h2s) > 0.01) gases.add(Gas.h2s);
     final nh3 = speciated(t, Sp.nh3);
     if (nh3 > 0.3 || (t.hot && nh3 > 0.01)) gases.add(Gas.nh3);
     if (_slowBubbles(t) != null) gases.add(Gas.h2);
@@ -1423,7 +1485,7 @@ Map<String, (double, Pp)> _solidsByLook(Tube t) {
   return out;
 }
 
-const _reagentColours = [Sp.mno4, Sp.br2, Sp.i2];
+const _reagentColours = [Sp.mno4, Sp.br2, Sp.cl2, Sp.i2];
 
 /// Plain-language observations for one action: [before] the action,
 /// [mixed] right after adding but before anything reacted, [after] once
@@ -1567,9 +1629,13 @@ List<(String, String)> explain(Events ev) {
           _bicarbonateEq);
     }
   }
-  if (ev['h:hso3'] > 0.01) {
-    add('Sulfiet is een base (Binas 49) en reageert met H⁺ tot zwaveldioxide (stikkende geur).',
-        'SO₃²⁻ + 2 H⁺ → SO₂ + H₂O');
+  if (ev['h:hso3'] > 0.01 && ev['dis:baSO3'] + ev['dis:caSO3'] < 0.005) {
+    add('Sulfiet is een base (Binas 49) en reageert met H⁺ tot zwaveldioxide.',
+        'SO₃²⁻(aq) + 2 H⁺(aq) → SO₂(g) + H₂O(l)');
+  }
+  if (ev['h:hs'] > 0.01) {
+    add('Sulfide vormt waterstofsulfide in een zure oplossing.',
+        'S²⁻(aq) + 2 H⁺(aq) → H₂S(g)');
   }
   if (ev['h:s2o3'] > 0.005) {
     add('Thiosulfaat ontleedt in zuur milieu: er ontstaat zwavel (troebeling) en zwaveldioxide.',
@@ -1596,15 +1662,18 @@ List<(String, String)> explain(Events ev) {
     }
   }
   for (final p in Pp.values) {
-    if (p.ksp == null) continue;
     final d = ev['dis:${p.name}'];
     if (d < 0.005) continue;
     if (p.acidSoluble) {
       add(
         '${_capFirst(p.name)} lost op in zuur: H⁺ reageert met ${p.anion!.formula}.',
-        p.anion == Sp.oh
-            ? '${p.formula}(s) + ${p.b} H⁺ → ${p.cation!.formula} + ${p.b} H₂O'
-            : '',
+        switch (p.anion) {
+          Sp.oh => '${p.formula}(s) + ${p.b} H⁺(aq) → ${p.cation!.formula}(aq) + ${p == Pp.cuO ? '' : '${p.b} '}H₂O(l)',
+          Sp.co3 => '${p.formula}(s) + 2 H⁺(aq) → ${p.cation!.formula}(aq) + CO₂(g) + H₂O(l)',
+          Sp.so3 => '${p.formula}(s) + 2 H⁺(aq) → ${p.cation!.formula}(aq) + SO₂(g) + H₂O(l)',
+          Sp.po4 => '${p.formula}(s) + 6 H⁺(aq) → 3 ${p.cation!.formula}(aq) + 2 H₃PO₄(aq)',
+          _ => '',
+        },
       );
     }
   }
@@ -1648,39 +1717,45 @@ List<(String, String)> explain(Events ev) {
 }
 
 (String, String) _metalText(Metal m, String ox) {
-  final s = m.symbol;
-  final ion = m.ion.formula;
+  final monovalent = m.ion.charge == 1;
+  final s = '${monovalent ? '2 ' : ''}${m.symbol}(s)';
+  final ion = '${monovalent ? '2 ' : ''}${m.ion.formula}(aq)';
   final v = _v(m.v0);
   switch (ox) {
     case 'ag':
       return (
-        '$s ($v) is een sterkere reductor dan Ag (0,80 V): er slaat zilver neer.',
-        '$s(s) + 2 Ag⁺ → $ion + 2 Ag(s)'
+        '${m.symbol} ($v) is een sterkere reductor dan Ag (0,80 V): er slaat zilver neer.',
+        '$s + 2 Ag⁺(aq) → $ion + 2 Ag(s)'
       );
     case 'fe3':
       return (
-        '$s ($v) reduceert Fe³⁺ tot Fe²⁺ (0,77 V).',
-        '$s(s) + 2 Fe³⁺ → $ion + 2 Fe²⁺'
+        '${m.symbol} ($v) reduceert Fe³⁺ tot Fe²⁺ (0,77 V).',
+        '$s + 2 Fe³⁺(aq) → $ion + 2 Fe²⁺(aq)'
       );
     case 'cu':
       return (
-        '$s ($v) is een sterkere reductor dan Cu (0,34 V): er slaat koper neer.',
-        '$s(s) + Cu²⁺ → $ion + Cu(s)'
+        '${m.symbol} ($v) is een sterkere reductor dan Cu (0,34 V): er slaat koper neer.',
+        '$s + Cu²⁺(aq) → $ion + Cu(s)'
       );
     case 'h':
       return (
-        '$s ($v) is een sterkere reductor dan H₂ (0,00 V): met H⁺ ontstaat waterstof.',
-        '$s(s) + 2 H⁺ → $ion + H₂(g)'
+        '${m.symbol} ($v) is een sterkere reductor dan H₂ (0,00 V): met H⁺ ontstaat waterstof.',
+        '$s + 2 H⁺(aq) → $ion + H₂(g)'
+      );
+    case 'water':
+      return (
+        'Het metaal reageert met water. Er ontstaan waterstof en hydroxide-ionen.',
+        '$s + 2 H₂O(l) → $ion + 2 OH⁻(aq) + H₂(g)'
       );
     case 'fe2':
       return (
-        '$s ($v) reduceert Fe²⁺ (−0,44 V) langzaam tot ijzer.',
-        '$s(s) + Fe²⁺ → $ion + Fe(s)'
+        '${m.symbol} ($v) reduceert Fe²⁺ (−0,44 V) langzaam tot ijzer.',
+        '$s + Fe²⁺(aq) → $ion + Fe(s)'
       );
     default:
       return (
-        '$s ($v) reduceert Zn²⁺ (−0,76 V) tot zink.',
-        '$s(s) + Zn²⁺ → $ion + Zn(s)'
+        '${m.symbol} ($v) reduceert Zn²⁺ (−0,76 V) tot zink.',
+        '$s + Zn²⁺(aq) → $ion + Zn(s)'
       );
   }
 }

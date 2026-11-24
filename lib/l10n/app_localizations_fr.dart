@@ -21769,7 +21769,7 @@ class LFr extends L {
 
   @override
   String get schoolPtaIntro =>
-      'Identifiez une substance inconnue parmi quatre candidates tirées au sort dans un laboratoire virtuel. Le TP est en néerlandais.';
+      'Préparez l’épreuve d’analyse qualitative de HAVO 5. Choisissez un groupe du livret ou passez un examen blanc avec quatre flacons inconnus. Le contenu du laboratoire est en néerlandais.';
 
   @override
   String get schoolPtaLevel => 'Niveau';
@@ -21795,7 +21795,7 @@ class LFr extends L {
 
   @override
   String get schoolPtaModeExamHint =>
-      '100 minutes au chrono, explications après la remise';
+      'Quatre flacons, 120 minutes et correction après la remise';
 
   @override
   String get schoolPtaSet => 'Série de substances';
@@ -21814,13 +21814,13 @@ class LFr extends L {
   String get schoolPtaAdvancedSettings => 'Paramètres avancés';
 
   @override
-  String get schoolPtaJar => 'Substance X';
+  String get schoolPtaJar => 'Flacon';
 
   @override
   String get schoolPtaCandidates => 'C’est l’une de celles-ci';
 
   @override
-  String get schoolPtaInspect => 'Observer et sentir';
+  String get schoolPtaInspect => 'Observer';
 
   @override
   String get schoolPtaFlame => 'Test de flamme';
@@ -21831,7 +21831,7 @@ class LFr extends L {
   }
 
   @override
-  String get schoolPtaSample => 'Spatule de X';
+  String get schoolPtaSample => 'Ajouter un échantillon';
 
   @override
   String get schoolPtaWater => 'Eau';
@@ -21841,9 +21841,6 @@ class LFr extends L {
 
   @override
   String get schoolPtaPaper => 'Papier pH';
-
-  @override
-  String get schoolPtaSmell => 'Sentir';
 
   @override
   String get schoolPtaRinse => 'Rincer';
@@ -21897,7 +21894,7 @@ class LFr extends L {
   }
 
   @override
-  String get schoolPtaTimeUp => 'Le temps est écoulé. Rendez votre réponse.';
+  String get schoolPtaTimeUp => 'Le temps est écoulé. Remettez votre travail.';
 
   @override
   String get schoolPtaChooseTitle => 'Quelle substance est dans le pot ?';
@@ -21913,7 +21910,7 @@ class LFr extends L {
 
   @override
   String schoolPtaItWas(String name) {
-    return 'La substance X était $name.';
+    return 'La bonne substance était $name.';
   }
 
   @override
@@ -21931,7 +21928,7 @@ class LFr extends L {
 
   @override
   String get schoolPtaExpectedHint =>
-      'Les lignes marquées distinguent les quatre substances.';
+      'Les tests surlignés donnent des observations différentes selon la substance.';
 
   @override
   String get schoolPtaTest => 'Essai';
@@ -21953,7 +21950,66 @@ class LFr extends L {
   String get schoolPtaQuit => 'Arrêter';
 
   @override
-  String get schoolPtaQuitConfirm => 'Arrêter ce TP ? Votre cahier sera perdu.';
+  String get schoolPtaQuitConfirm =>
+      'Arrêter ce TP ? Vos fiches et vos observations seront perdues.';
+
+  @override
+  String get schoolPtaWorksheet => 'Fiche de travail';
+
+  @override
+  String get schoolPtaFormulaHint =>
+      'Indiquez la formule et l’état physique de chaque substance candidate. Équilibrez les équations et écrivez d’abord les demi-équations pour les réactions d’oxydoréduction.';
+
+  @override
+  String get schoolPtaAddStep => 'Ajouter un test';
+
+  @override
+  String get schoolPtaRemoveStep => 'Supprimer le test';
+
+  @override
+  String get schoolPtaAction => 'Manipulation';
+
+  @override
+  String get schoolPtaPrediction => 'Prévision pour chaque substance';
+
+  @override
+  String get schoolPtaObservation => 'Observation';
+
+  @override
+  String get schoolPtaDeduction => 'Qu’excluez-vous ou qu’identifiez-vous ?';
+
+  @override
+  String get schoolPtaEquation => 'Équations de réaction';
+
+  @override
+  String get schoolPtaConclusion =>
+      'Justifiez votre conclusion avec vos observations.';
+
+  @override
+  String get schoolPtaConfirmTest => 'Test de confirmation, si possible';
+
+  @override
+  String get schoolPtaNoAnswer => 'Sans réponse';
+
+  @override
+  String get schoolPtaCorrectJars => 'Flacons correctement identifiés';
+
+  @override
+  String get schoolPtaAnswered => 'Flacons avec une réponse finale';
+
+  @override
+  String get schoolPtaHandInPrompt =>
+      'Remettre vos fiches et voir les résultats ?';
+
+  @override
+  String get schoolPtaRedoxOnly =>
+      'Utilisez uniquement des réactions d’oxydoréduction pour justifier votre conclusion.';
+
+  @override
+  String get schoolPtaIodinePaper => 'Papier filtre imbibé de solution iodée';
+
+  @override
+  String get schoolPtaTimeLeft => 'Temps restant';
 
   @override
   String get schoolPracticeTestSaveTitle =>

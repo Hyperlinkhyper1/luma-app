@@ -68,30 +68,45 @@ void main() {
         ('nai', 'geel'),
       ]) {
         final lab = _dissolved(id);
-        expect(_add(lab, 'agno3'), contains('Er ontstaat een $colour neerslag'));
+        expect(
+          _add(lab, 'agno3'),
+          contains('Er ontstaat een $colour neerslag'),
+        );
         expect(_add(lab, 'hno3', Dose.excess), isNot(contains('lost op')));
       }
       expect(_add(_dissolved('nano3'), 'agno3'), 'Geen zichtbare verandering.');
     });
 
-    test('barium carbonate dissolves in acid with fizzing, barium sulfate does not', () {
-      final carbonate = _dissolved('na2co3');
-      expect(_add(carbonate, 'bano3'), contains('wit neerslag'));
-      final acid = _add(carbonate, 'hno3', Dose.excess);
-      expect(acid, contains('bruist'));
-      expect(acid, contains('neerslag lost op'));
+    test(
+      'barium carbonate dissolves in acid with fizzing, barium sulfate does not',
+      () {
+        final carbonate = _dissolved('na2co3');
+        expect(_add(carbonate, 'bano3'), contains('wit neerslag'));
+        final acid = _add(carbonate, 'hno3', Dose.excess);
+        expect(acid, contains('bruist'));
+        expect(acid, contains('neerslag lost op'));
 
-      final sulfate = _dissolved('na2so4');
-      expect(_add(sulfate, 'bano3'), contains('wit neerslag'));
-      expect(_add(sulfate, 'hno3', Dose.excess), 'Geen zichtbare verandering.');
-    });
+        final sulfate = _dissolved('na2so4');
+        expect(_add(sulfate, 'bano3'), contains('wit neerslag'));
+        expect(
+          _add(sulfate, 'hno3', Dose.excess),
+          'Geen zichtbare verandering.',
+        );
+      },
+    );
 
     test('hydrogen carbonate gives no barium precipitate in the cold', () {
-      expect(_add(_dissolved('nahco3'), 'bano3'), 'Geen zichtbare verandering.');
+      expect(
+        _add(_dissolved('nahco3'), 'bano3'),
+        'Geen zichtbare verandering.',
+      );
     });
 
     test('silver sulfate stays dissolved at these concentrations', () {
-      expect(_add(_dissolved('na2so4'), 'agno3'), 'Geen zichtbare verandering.');
+      expect(
+        _add(_dissolved('na2so4'), 'agno3'),
+        'Geen zichtbare verandering.',
+      );
     });
 
     test('an insoluble jar substance stays on the bottom', () {
@@ -102,19 +117,25 @@ void main() {
   });
 
   group('hydroxides with sodium hydroxide', () {
-    test('zinc and aluminium hydroxide dissolve in excess, magnesium does not', () {
-      for (final id in ['znso4', 'alcl3']) {
-        final lab = _dissolved(id);
-        expect(_add(lab, 'naoh'), contains('wit neerslag'));
-        expect(_add(lab, 'naoh', Dose.excess), contains('neerslag lost op'));
-      }
-      final mg = _dissolved('mgcl2');
-      expect(_add(mg, 'naoh'), contains('wit neerslag'));
-      expect(_add(mg, 'naoh', Dose.excess), isNot(contains('lost op')));
-    });
+    test(
+      'zinc and aluminium hydroxide dissolve in excess, magnesium does not',
+      () {
+        for (final id in ['znso4', 'alcl3']) {
+          final lab = _dissolved(id);
+          expect(_add(lab, 'naoh'), contains('wit neerslag'));
+          expect(_add(lab, 'naoh', Dose.excess), contains('neerslag lost op'));
+        }
+        final mg = _dissolved('mgcl2');
+        expect(_add(mg, 'naoh'), contains('wit neerslag'));
+        expect(_add(mg, 'naoh', Dose.excess), isNot(contains('lost op')));
+      },
+    );
 
     test('coloured hydroxides', () {
-      expect(_add(_dissolved('cuso4'), 'naoh'), contains('lichtblauw neerslag'));
+      expect(
+        _add(_dissolved('cuso4'), 'naoh'),
+        contains('lichtblauw neerslag'),
+      );
       expect(_add(_dissolved('feso4'), 'naoh'), contains('vuilgroen neerslag'));
       expect(_add(_dissolved('fecl3'), 'naoh'), contains('roodbruin neerslag'));
     });
@@ -147,19 +168,26 @@ void main() {
       );
     });
 
-    test('sulfite smells stinging; thiosulfate also turns cloudy', () {
+    test('sulfite releases a gas that decolourises iodine paper', () {
       final sulfite = _dissolved('na2so3');
       _add(sulfite, 'hcl');
-      expect(sulfite.smell(0).observations.join(), contains('stikkende geur'));
+      sulfite.heat(0);
+      expect(
+        sulfite.gasTest(0, GasTest.iodinePaper).observations.single,
+        contains('bruine kleur op het papier verdwijnt'),
+      );
 
       final thio = _dissolved('na2s2o3');
       expect(_add(thio, 'hcl'), contains('geelwitte troebeling'));
     });
 
-    test('acetate smells of vinegar after adding acid', () {
-      final lab = _dissolved('ch3coona');
+    test('iodine paper stays brown with carbon dioxide', () {
+      final lab = _dissolved('na2co3');
       _add(lab, 'hcl');
-      expect(lab.smell(0).observations.join(), contains('azijn'));
+      expect(
+        lab.gasTest(0, GasTest.iodinePaper).observations.single,
+        contains('blijft bruin'),
+      );
     });
 
     test('heating hydrogen carbonate releases carbon dioxide', () {
@@ -188,8 +216,14 @@ void main() {
 
   group('redox (Binas 48)', () {
     test('acidified permanganate: decolourised by reductors only', () {
-      expect(_add(_dissolved('feso4'), 'kmno4'), contains('paarse kleur verdwijnt'));
-      expect(_add(_dissolved('na2so3'), 'kmno4'), contains('paarse kleur verdwijnt'));
+      expect(
+        _add(_dissolved('feso4'), 'kmno4'),
+        contains('paarse kleur verdwijnt'),
+      );
+      expect(
+        _add(_dissolved('na2so3'), 'kmno4'),
+        contains('paarse kleur verdwijnt'),
+      );
       expect(_add(_dissolved('nai'), 'kmno4'), contains('kleurt bruin'));
       expect(_add(_dissolved('nacl'), 'kmno4'), contains('kleurt paars'));
     });
@@ -213,19 +247,28 @@ void main() {
     });
 
     test('thiosulfate and sulfite decolourise iodine, iodide does not', () {
-      expect(_add(_dissolved('na2s2o3'), 'i2'), contains('bruine kleur verdwijnt'));
-      expect(_add(_dissolved('na2so3'), 'i2'), contains('bruine kleur verdwijnt'));
+      expect(
+        _add(_dissolved('na2s2o3'), 'i2'),
+        contains('bruine kleur verdwijnt'),
+      );
+      expect(
+        _add(_dissolved('na2so3'), 'i2'),
+        contains('bruine kleur verdwijnt'),
+      );
       expect(_add(_dissolved('nai'), 'i2'), contains('kleurt bruin'));
     });
 
-    test('iron(III) and copper(II) oxidise iodide; starch turns blue-black', () {
-      for (final id in ['fecl3', 'cuso4']) {
-        final lab = _dissolved(id);
-        expect(_add(lab, 'ki'), contains('kleurt bruin'));
-        expect(_add(lab, 'starch'), contains('blauwzwart'));
-      }
-      expect(_add(_dissolved('feso4'), 'ki'), 'Geen zichtbare verandering.');
-    });
+    test(
+      'iron(III) and copper(II) oxidise iodide; starch turns blue-black',
+      () {
+        for (final id in ['fecl3', 'cuso4']) {
+          final lab = _dissolved(id);
+          expect(_add(lab, 'ki'), contains('kleurt bruin'));
+          expect(_add(lab, 'starch'), contains('blauwzwart'));
+        }
+        expect(_add(_dissolved('feso4'), 'ki'), 'Geen zichtbare verandering.');
+      },
+    );
 
     test('hydrogen peroxide oxidises iodide even without acid', () {
       final lab = _dissolved('ki');
@@ -233,7 +276,10 @@ void main() {
     });
 
     test('a basic carbonate solution decolourises bromine water', () {
-      expect(_add(_dissolved('na2co3'), 'br2'), contains('gele kleur verdwijnt'));
+      expect(
+        _add(_dissolved('na2co3'), 'br2'),
+        contains('gele kleur verdwijnt'),
+      );
     });
 
     test('thiocyanate shows iron(III), not iron(II)', () {
@@ -267,7 +313,11 @@ void main() {
         final r = solutions[rng.nextInt(solutions.length)];
         lab.addReagent(0, r, rng.nextBool() ? Dose.drops : Dose.excess);
         if (step == 3) lab.heat(0);
-        expect(_charge(lab.tubes[0]).abs(), lessThan(1e-6), reason: '${s.id} + ${r.id}');
+        expect(
+          _charge(lab.tubes[0]).abs(),
+          lessThan(1e-6),
+          reason: '${s.id} + ${r.id}',
+        );
         for (final v in lab.tubes[0].sp.values) {
           expect(v, greaterThan(-1e-9), reason: '${s.id} + ${r.id}');
         }
@@ -276,6 +326,74 @@ void main() {
   });
 
   group('sets', () {
+    test('every photographed booklet group is usable', () {
+      expect(havoBookletSets.map((set) => set.bookletNumber), [
+        for (var number = 1; number <= 40; number++)
+          if (number != 22) number,
+      ]);
+      for (final set in havoBookletSets) {
+        expect(set.ids.toSet(), hasLength(set.ids.length), reason: set.title);
+        expect(distinguishable(set.candidates), isTrue, reason: set.title);
+      }
+    });
+
+    test('each HAVO mock exam draws four distinct booklet groups', () {
+      final seen = <PtaSet>{};
+      for (var seed = 0; seed < 100; seed++) {
+        final sets = examSets(Level.havo, math.Random(seed));
+        seen.addAll(sets);
+        expect(sets.toSet(), hasLength(4));
+        expect(sets.every(havoBookletSets.contains), isTrue);
+        expect(sets.every((set) => set.candidates.length == 4), isTrue);
+      }
+      expect(
+        seen,
+        havoBookletSets.where((set) => set.candidates.length == 4).toSet(),
+      );
+    });
+
+    test(
+      'worked barium group separates by water, acid and fresh-sample pH',
+      () {
+        final nitrate = _dissolved('bano3');
+        final oxide = _dissolved('bao');
+        expect(
+          nitrate.log.last.equations,
+          contains('Ba(NO₃)₂(s) → Ba²⁺(aq) + 2 NO₃⁻(aq)'),
+        );
+        expect(_paper('bano3'), 7);
+        expect(paperFor(phOf(oxide.tubes[0])!).ph, greaterThan(7));
+        for (final id in ['baso4', 'baco3']) {
+          final lab = _dissolved(id);
+          expect(lab.log.last.observations.first, contains('lost niet op'));
+          final acid = _add(lab, 'hcl', Dose.excess);
+          if (id == 'baco3') {
+            expect(acid, contains('gasbelletjes'));
+            expect(acid, contains('lost op'));
+          } else {
+            expect(acid, 'Geen zichtbare verandering.');
+          }
+        }
+      },
+    );
+
+    test('liquid and metallic samples produce distinct test observations', () {
+      final hexane = _dissolved('hexane');
+      expect(
+        hexane.log.last.observations.join(),
+        contains('twee vloeistoflagen'),
+      );
+      final ethanol = PtaLab(substanceById('ethanol'))..addSample(0);
+      expect(ethanol.heat(0).observations.single, contains('78 °C'));
+      final sodium = _dissolved('metal-na');
+      expect(
+        sodium.log.last.equations,
+        contains('2 Na(s) + 2 H₂O(l) → 2 Na⁺(aq) + 2 OH⁻(aq) + H₂(g)'),
+      );
+      final lead = _dissolved('pbno32');
+      expect(_add(lead, 'ki'), contains('geel neerslag'));
+    });
+
     test('every set has four real candidates and can be solved', () {
       for (final set in ptaSets) {
         expect(set.ids.toSet(), hasLength(4), reason: set.id);
@@ -305,7 +423,7 @@ void main() {
     });
   });
 
-  test('exam time adds up per action', () {
+  test('estimated lab time adds up per action', () {
     final lab = PtaLab(substanceById('nacl'));
     lab.addSample(0);
     lab.addWater(0);

@@ -21678,7 +21678,7 @@ class LNl extends L {
 
   @override
   String get schoolPtaIntro =>
-      'Ontdek in een virtueel lab welke van vier willekeurig gekozen stoffen er in het potje zit.';
+      'Oefen het praktische SE kwalitatieve analyse voor havo 5. Kies een stofgroep uit het voorbereidingsboekje of maak een proef-SE met vier onbekende potjes.';
 
   @override
   String get schoolPtaLevel => 'Niveau';
@@ -21704,7 +21704,7 @@ class LNl extends L {
 
   @override
   String get schoolPtaModeExamHint =>
-      '100 minuten op de klok, uitleg pas na het inleveren';
+      'Vier potjes, 120 minuten en feedback na het inleveren';
 
   @override
   String get schoolPtaSet => 'Stoffenset';
@@ -21723,13 +21723,13 @@ class LNl extends L {
   String get schoolPtaAdvancedSettings => 'Geavanceerde instellingen';
 
   @override
-  String get schoolPtaJar => 'Stof X';
+  String get schoolPtaJar => 'Potje';
 
   @override
   String get schoolPtaCandidates => 'Het is een van deze stoffen';
 
   @override
-  String get schoolPtaInspect => 'Bekijken & ruiken';
+  String get schoolPtaInspect => 'Bekijken';
 
   @override
   String get schoolPtaFlame => 'Vlamproef';
@@ -21740,7 +21740,7 @@ class LNl extends L {
   }
 
   @override
-  String get schoolPtaSample => 'Spatelpunt X';
+  String get schoolPtaSample => 'Monster toevoegen';
 
   @override
   String get schoolPtaWater => 'Water';
@@ -21750,9 +21750,6 @@ class LNl extends L {
 
   @override
   String get schoolPtaPaper => 'pH-papier';
-
-  @override
-  String get schoolPtaSmell => 'Ruiken';
 
   @override
   String get schoolPtaRinse => 'Omspoelen';
@@ -21806,7 +21803,7 @@ class LNl extends L {
   }
 
   @override
-  String get schoolPtaTimeUp => 'De tijd is om. Lever je antwoord in.';
+  String get schoolPtaTimeUp => 'De tijd is om. Lever je werk in.';
 
   @override
   String get schoolPtaChooseTitle => 'Welke stof zit in het potje?';
@@ -21822,7 +21819,7 @@ class LNl extends L {
 
   @override
   String schoolPtaItWas(String name) {
-    return 'Stof X was $name.';
+    return 'De juiste stof was $name.';
   }
 
   @override
@@ -21840,7 +21837,7 @@ class LNl extends L {
 
   @override
   String get schoolPtaExpectedHint =>
-      'Gemarkeerde rijen onderscheiden de vier stoffen.';
+      'Gemarkeerde proeven leveren verschillende waarnemingen op.';
 
   @override
   String get schoolPtaTest => 'Proef';
@@ -21863,7 +21860,65 @@ class LNl extends L {
 
   @override
   String get schoolPtaQuitConfirm =>
-      'Dit practicum stoppen? Je logboek gaat verloren.';
+      'Dit practicum stoppen? Je werkbladen en waarnemingen gaan verloren.';
+
+  @override
+  String get schoolPtaWorksheet => 'Werkblad';
+
+  @override
+  String get schoolPtaFormulaHint =>
+      'Noteer voor elke mogelijke stof de formule en de toestandsaanduiding. Maak je vergelijkingen kloppend en schrijf bij redox eerst de halfreacties op.';
+
+  @override
+  String get schoolPtaAddStep => 'Proef toevoegen';
+
+  @override
+  String get schoolPtaRemoveStep => 'Proef verwijderen';
+
+  @override
+  String get schoolPtaAction => 'Handeling';
+
+  @override
+  String get schoolPtaPrediction => 'Voorspelling per mogelijke stof';
+
+  @override
+  String get schoolPtaObservation => 'Waarneming';
+
+  @override
+  String get schoolPtaDeduction => 'Wat sluit je uit of toon je aan?';
+
+  @override
+  String get schoolPtaEquation => 'Reactievergelijking(en)';
+
+  @override
+  String get schoolPtaConclusion =>
+      'Onderbouw je eindconclusie met je waarnemingen.';
+
+  @override
+  String get schoolPtaConfirmTest => 'Bevestigingsproef, als die mogelijk is';
+
+  @override
+  String get schoolPtaNoAnswer => 'Geen antwoord';
+
+  @override
+  String get schoolPtaCorrectJars => 'Potjes juist geïdentificeerd';
+
+  @override
+  String get schoolPtaAnswered => 'Potjes met een eindantwoord';
+
+  @override
+  String get schoolPtaHandInPrompt =>
+      'Wil je de werkbladen inleveren en je resultaten bekijken?';
+
+  @override
+  String get schoolPtaRedoxOnly =>
+      'Gebruik bij deze opgave alleen redoxreacties om je conclusie te onderbouwen.';
+
+  @override
+  String get schoolPtaIodinePaper => 'Filtreerpapier met joodoplossing';
+
+  @override
+  String get schoolPtaTimeLeft => 'Resterende tijd';
 
   @override
   String get schoolPracticeTestSaveTitle => 'Oefentoets opslaan als PDF';

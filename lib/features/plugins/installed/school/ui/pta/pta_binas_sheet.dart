@@ -84,72 +84,72 @@ class _BinasDialogState extends State<_BinasDialog> {
         child: SizedBox(
           width: 880,
           child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: EdgeInsets.fromLTRB(gap, 12, gap - 4, 10),
-              child: Row(
-                children: [
-                  Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      color: luma.accentSubtle,
-                      borderRadius: BorderRadius.circular(10),
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: EdgeInsets.fromLTRB(gap, 12, gap - 4, 10),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: luma.accentSubtle,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(
+                        Icons.menu_book_rounded,
+                        color: luma.accent,
+                        size: 21,
+                      ),
                     ),
-                    child: Icon(
-                      Icons.menu_book_rounded,
-                      color: luma.accent,
-                      size: 21,
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        t.schoolPtaBinas,
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      t.schoolPtaBinas,
-                      style: Theme.of(context).textTheme.titleLarge,
+                    IconButton(
+                      autofocus: true,
+                      tooltip: MaterialLocalizations.of(
+                        context,
+                      ).closeButtonTooltip,
+                      icon: const Icon(Icons.close_rounded),
+                      onPressed: () => Navigator.of(context).pop(),
                     ),
-                  ),
-                  IconButton(
-                    autofocus: true,
-                    tooltip: MaterialLocalizations.of(
-                      context,
-                    ).closeButtonTooltip,
-                    icon: const Icon(Icons.close_rounded),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: EdgeInsets.fromLTRB(gap, 0, gap, 14),
-              child: _TableSelector(
-                sheets: _sheets,
-                active: _active,
-                onSelected: (index) => setState(() => _active = index),
-              ),
-            ),
-            Divider(height: 1, color: luma.border),
-            Flexible(
-              child: _SheetView(
-                key: ValueKey(sheet.code),
-                sheet: sheet,
-                gap: gap,
-              ),
-            ),
-            Divider(height: 1, color: luma.border),
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: gap, vertical: 10),
-              child: Text(
-                t.schoolPtaBinasNote,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: luma.textSecondary,
+                  ],
                 ),
               ),
-            ),
-          ],
-        ),
+              Padding(
+                padding: EdgeInsets.fromLTRB(gap, 0, gap, 14),
+                child: _TableSelector(
+                  sheets: _sheets,
+                  active: _active,
+                  onSelected: (index) => setState(() => _active = index),
+                ),
+              ),
+              Divider(height: 1, color: luma.border),
+              Flexible(
+                child: _SheetView(
+                  key: ValueKey(sheet.code),
+                  sheet: sheet,
+                  gap: gap,
+                ),
+              ),
+              Divider(height: 1, color: luma.border),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: gap, vertical: 10),
+                child: Text(
+                  t.schoolPtaBinasNote,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: luma.textSecondary),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -376,151 +376,156 @@ class _SheetViewState extends State<_SheetView> {
         child: ScrollConfiguration(
           behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
           child: SingleChildScrollView(
-        primary: true,
-        padding: EdgeInsets.fromLTRB(widget.gap, 16, widget.gap, widget.gap),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final gridColumnWidths = [
-              if (grid)
-                for (final column in columns)
-                  math.max(
-                    56.0,
-                    TextPainter.computeWidth(
-                          text: TextSpan(
-                            text: sheet.headers[column],
-                            style: _tableHeaderStyle(context),
-                          ),
-                          textDirection: Directionality.of(context),
-                          textScaler: MediaQuery.textScalerOf(context),
-                        ).ceilToDouble() +
-                        12,
-                  ),
-            ];
-            final gridWidth = gridColumnWidths.fold(0.0, (a, b) => a + b);
-            final scrollsHorizontally =
-                grid && gridWidth > constraints.maxWidth;
-            final table = _ReferenceTable(
-              sheet: sheet,
-              columns: columns,
-              rows: rows,
-              gridColumnWidths: gridColumnWidths,
-              focused: _matrixFocus && scrollsHorizontally,
-            );
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (constraints.maxWidth >= 630)
-                  Row(
-                    children: [
-                      Expanded(child: heading),
-                      const SizedBox(width: 20),
-                      SizedBox(width: 240, child: search),
-                    ],
-                  )
-                else ...[
-                  heading,
-                  const SizedBox(height: 10),
-                  search,
-                ],
-                const SizedBox(height: 14),
-                if (grid && rows.isNotEmpty) ...[
-                  Wrap(
-                    spacing: 14,
-                    runSpacing: 8,
-                    children: [
-                      for (final entry in binasSolubilityLabels.entries)
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            _SolubilityMark(
-                              value: entry.key,
-                              showMeaning: false,
-                            ),
-                            const SizedBox(width: 5),
-                            Flexible(
-                              child: Text(
-                                entry.value,
-                                style: text.bodySmall?.copyWith(
-                                  color: luma.textSecondary,
-                                ),
+            primary: true,
+            padding: EdgeInsets.fromLTRB(
+              widget.gap,
+              16,
+              widget.gap,
+              widget.gap,
+            ),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final gridColumnWidths = [
+                  if (grid)
+                    for (final column in columns)
+                      math.max(
+                        56.0,
+                        TextPainter.computeWidth(
+                              text: TextSpan(
+                                text: sheet.headers[column],
+                                style: _tableHeaderStyle(context),
                               ),
+                              textDirection: Directionality.of(context),
+                              textScaler: MediaQuery.textScalerOf(context),
+                            ).ceilToDouble() +
+                            12,
+                      ),
+                ];
+                final gridWidth = gridColumnWidths.fold(0.0, (a, b) => a + b);
+                final scrollsHorizontally =
+                    grid && gridWidth > constraints.maxWidth;
+                final table = _ReferenceTable(
+                  sheet: sheet,
+                  columns: columns,
+                  rows: rows,
+                  gridColumnWidths: gridColumnWidths,
+                  focused: _matrixFocus && scrollsHorizontally,
+                );
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (constraints.maxWidth >= 630)
+                      Row(
+                        children: [
+                          Expanded(child: heading),
+                          const SizedBox(width: 20),
+                          SizedBox(width: 240, child: search),
+                        ],
+                      )
+                    else ...[
+                      heading,
+                      const SizedBox(height: 10),
+                      search,
+                    ],
+                    const SizedBox(height: 14),
+                    if (grid && rows.isNotEmpty) ...[
+                      Wrap(
+                        spacing: 14,
+                        runSpacing: 8,
+                        children: [
+                          for (final entry in binasSolubilityLabels.entries)
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                _SolubilityMark(
+                                  value: entry.key,
+                                  showMeaning: false,
+                                ),
+                                const SizedBox(width: 5),
+                                Flexible(
+                                  child: Text(
+                                    entry.value,
+                                    style: text.bodySmall?.copyWith(
+                                      color: luma.textSecondary,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    if (rows.isEmpty)
+                      Semantics(
+                        liveRegion: true,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 24),
+                          child: Text(
+                            t.commonNoResults,
+                            textAlign: TextAlign.center,
+                            style: text.bodyMedium?.copyWith(
+                              color: luma.textSecondary,
+                            ),
+                          ),
+                        ),
+                      )
+                    else if (scrollsHorizontally)
+                      Scrollbar(
+                        controller: _horizontal,
+                        thumbVisibility: true,
+                        trackVisibility: true,
+                        interactive: true,
+                        scrollbarOrientation: ScrollbarOrientation.top,
+                        child: SingleChildScrollView(
+                          controller: _horizontal,
+                          scrollDirection: Axis.horizontal,
+                          padding: const EdgeInsets.only(top: 12),
+                          child: FocusableActionDetector(
+                            onShowFocusHighlight: (focused) {
+                              setState(() => _matrixFocus = focused);
+                            },
+                            shortcuts: const {
+                              SingleActivator(LogicalKeyboardKey.arrowLeft):
+                                  ScrollIntent(direction: AxisDirection.left),
+                              SingleActivator(LogicalKeyboardKey.arrowRight):
+                                  ScrollIntent(direction: AxisDirection.right),
+                            },
+                            child: SizedBox(width: gridWidth, child: table),
+                          ),
+                        ),
+                      )
+                    else
+                      table,
+                    const SizedBox(height: 14),
+                    DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: luma.accentSubtle,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(
+                              Icons.info_outline_rounded,
+                              size: 18,
+                              color: luma.accent,
+                            ),
+                            const SizedBox(width: 9),
+                            Expanded(
+                              child: Text(sheet.note, style: text.bodySmall),
                             ),
                           ],
                         ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                ],
-                if (rows.isEmpty)
-                  Semantics(
-                    liveRegion: true,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 24),
-                      child: Text(
-                        t.commonNoResults,
-                        textAlign: TextAlign.center,
-                        style: text.bodyMedium?.copyWith(
-                          color: luma.textSecondary,
-                        ),
                       ),
                     ),
-                  )
-                else if (scrollsHorizontally)
-                  Scrollbar(
-                    controller: _horizontal,
-                    thumbVisibility: true,
-                    trackVisibility: true,
-                    interactive: true,
-                    scrollbarOrientation: ScrollbarOrientation.top,
-                    child: SingleChildScrollView(
-                      controller: _horizontal,
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.only(top: 12),
-                      child: FocusableActionDetector(
-                        onShowFocusHighlight: (focused) {
-                          setState(() => _matrixFocus = focused);
-                        },
-                        shortcuts: const {
-                          SingleActivator(LogicalKeyboardKey.arrowLeft):
-                              ScrollIntent(direction: AxisDirection.left),
-                          SingleActivator(LogicalKeyboardKey.arrowRight):
-                              ScrollIntent(direction: AxisDirection.right),
-                        },
-                        child: SizedBox(width: gridWidth, child: table),
-                      ),
-                    ),
-                  )
-                else
-                  table,
-                const SizedBox(height: 14),
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: luma.accentSubtle,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Icon(
-                          Icons.info_outline_rounded,
-                          size: 18,
-                          color: luma.accent,
-                        ),
-                        const SizedBox(width: 9),
-                        Expanded(
-                          child: Text(sheet.note, style: text.bodySmall),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
-      ),
+                  ],
+                );
+              },
+            ),
+          ),
         ),
       ),
     );

@@ -1,8 +1,15 @@
 # PTA-trainer: practicum kwalitatieve analyse
 
-Oefening voor het schoolexamen scheikunde (havo/vwo) waarin je een potje met
-een onbekende stof krijgt en met proefjes uitzoekt welke van vier gegeven
-stoffen het is.
+Oefening voor het praktische schoolexamen kwalitatieve analyse. In de
+oefenmodus voor havo 5 kies je een stofgroep uit het voorbereidingsboekje.
+Het proef-SE geeft vier onbekende potjes met elk een eigen lijst van
+mogelijke stoffen en één gezamenlijke klok van 120 minuten.
+
+Op het werkblad noteer je per potje formules met toestandsaanduidingen,
+handelingen, voorspellingen, waarnemingen, conclusies en vergelijkingen.
+Na het inleveren zie je per potje de juiste stof, de mogelijke waarnemingen
+en de vergelijkingen bij de uitgevoerde proeven. Je vergelijkt zelf je
+uitwerking met die gegevens.
 
 ## Hoe het werkt
 
@@ -15,8 +22,8 @@ stoffen het is.
   oplossen via het oplosbaarheidsproduct, redoxreacties uit een vaste lijst
   (zodat trage reacties zoals MnO₄⁻ + Cl⁻ niet "zomaar" verlopen), metalen en
   complexen. De pH volgt uit de ladingsbalans met de pKz-waarden.
-- `pta_scenarios.dart` – de vaste stoffensets, de willekeurige set en de
-  standaardproeven voor de tabel "wat elke stof zou laten zien".
+- `pta_scenarios.dart` – de stofgroepen uit het voorbereidingsboekje,
+  selectie voor het proef-SE en de standaardproeven voor de nabespreking.
 - `pta_binas.dart` – de Binas-bladen (45A, 48, 49, 52A, 65A, 65B), gemaakt
   uit dezelfde gegevens als het lab, zodat blad en simulatie nooit verschillen.
 

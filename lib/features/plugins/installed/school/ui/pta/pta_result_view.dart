@@ -3,24 +3,17 @@ import 'package:flutter/material.dart';
 import '../../../../../../app/widgets.dart';
 import '../../../../../../l10n/app_localizations.dart';
 import '../../../../../../theme/luma_theme.dart';
+import '../../logic/pta/pta_attempt.dart';
 import '../../logic/pta/pta_chemistry.dart';
-import '../../logic/pta/pta_lab.dart';
 import '../../logic/pta/pta_scenarios.dart';
+import 'pta_worksheet.dart';
 
 /// After handing in: right or wrong, what every candidate would have shown
 /// in each standard test, and the reactions the student actually saw.
 class PtaResultView extends StatefulWidget {
-  const PtaResultView({
-    super.key,
-    required this.lab,
-    required this.set,
-    required this.choice,
-    required this.onNew,
-  });
+  const PtaResultView({super.key, required this.jars, required this.onNew});
 
-  final PtaLab lab;
-  final PtaSet set;
-  final Substance choice;
+  final List<PtaJarAttempt> jars;
   final VoidCallback onNew;
 
   @override
@@ -28,13 +21,13 @@ class PtaResultView extends StatefulWidget {
 }
 
 class _PtaResultViewState extends State<PtaResultView> {
-  late final List<(String, List<String>)> _table =
-      expectedTable(widget.set.candidates);
+  int _selected = 0;
+  final _tables = <PtaSet, List<(String, List<String>)>>{};
 
-  List<(String, String)> get _reactions {
+  List<(String, String)> _reactions(PtaJarAttempt jar) {
     final seen = <String>{};
     final out = <(String, String)>[];
-    for (final e in widget.lab.log) {
+    for (final e in jar.lab.log) {
       for (final (note, eq) in e.reactions) {
         if (seen.add(eq)) out.add((note, eq));
       }
@@ -46,14 +39,38 @@ class _PtaResultViewState extends State<PtaResultView> {
   Widget build(BuildContext context) {
     final t = L.of(context);
     final luma = context.luma;
-    final unknown = widget.lab.unknown;
-    final correct = widget.choice.id == unknown.id;
-    final candidates = widget.set.candidates;
-    final reactions = _reactions;
+    final jar = widget.jars[_selected];
+    final unknown = jar.lab.unknown;
+    final correct = jar.correct;
+    final choice = jar.choice;
+    final candidates = jar.set.candidates;
+    final reactions = _reactions(jar);
+    final table = _tables.putIfAbsent(jar.set, () => expectedTable(candidates));
+    final score = widget.jars.where((jar) => jar.correct).length;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
       children: [
+        if (widget.jars.length > 1) ...[
+          Text(
+            '$score / ${widget.jars.length} · ${t.schoolPtaCorrectJars}',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            children: [
+              for (final (index, attempt) in widget.jars.indexed)
+                ChoiceChip(
+                  label: Text(attempt.label),
+                  selected: index == _selected,
+                  onSelected: (_) => setState(() => _selected = index),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+        ],
         LumaCard(
           child: Row(
             children: [
@@ -68,26 +85,37 @@ class _PtaResultViewState extends State<PtaResultView> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      correct ? t.schoolPtaCorrect : t.schoolPtaWrong,
+                      '${jar.label} · ${choice == null
+                          ? t.schoolPtaNoAnswer
+                          : correct
+                          ? t.schoolPtaCorrect
+                          : t.schoolPtaWrong}',
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      t.schoolPtaItWas('${unknown.name} (${unknown.formula})'),
-                      style: TextStyle(color: luma.textPrimary),
-                    ),
-                    if (!correct)
+                    if (widget.jars.length > 1)
                       Text(
-                        t.schoolPtaYouChose(
-                          '${widget.choice.name} (${widget.choice.formula})',
-                        ),
+                        jar.set.title,
                         style: TextStyle(color: luma.textSecondary),
                       ),
                     const SizedBox(height: 4),
                     Text(
-                      t.schoolPtaStats(widget.lab.actions, widget.lab.minutes),
-                      style: TextStyle(color: luma.textMuted, fontSize: 12.5),
+                      t.schoolPtaItWas('${unknown.name} · ${unknown.notation}'),
+                      style: TextStyle(color: luma.textPrimary),
                     ),
+                    if (choice != null && !correct)
+                      Text(
+                        t.schoolPtaYouChose(
+                          '${choice.name} · ${choice.notation}',
+                        ),
+                        style: TextStyle(color: luma.textSecondary),
+                      ),
+                    if (widget.jars.length == 1) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        t.schoolPtaStats(jar.lab.actions, jar.lab.minutes),
+                        style: TextStyle(color: luma.textMuted, fontSize: 12.5),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -95,22 +123,33 @@ class _PtaResultViewState extends State<PtaResultView> {
           ),
         ),
         const SizedBox(height: 14),
-        Align(
-          alignment: AlignmentDirectional.centerStart,
-          child: IntrinsicWidth(
-            child: LumaPrimaryButton(
-              label: t.schoolPtaNewPractical,
-              icon: Icons.add_rounded,
-              onTap: widget.onNew,
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            IntrinsicWidth(
+              child: LumaPrimaryButton(
+                label: t.schoolPtaNewPractical,
+                icon: Icons.add_rounded,
+                onTap: widget.onNew,
+              ),
             ),
-          ),
+            LumaGhostButton(
+              label: t.schoolPtaWorksheet,
+              icon: Icons.edit_note_rounded,
+              onTap: () => showPtaWorksheet(context, jar, review: true),
+            ),
+          ],
         ),
         const SizedBox(height: 14),
         LumaCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(t.schoolPtaExpected, style: Theme.of(context).textTheme.titleSmall),
+              Text(
+                t.schoolPtaExpected,
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
               const SizedBox(height: 4),
               Text(
                 t.schoolPtaExpectedHint,
@@ -144,7 +183,7 @@ class _PtaResultViewState extends State<PtaResultView> {
                           ),
                       ],
                     ),
-                    for (final (title, cells) in _table)
+                    for (final (title, cells) in table)
                       _row(title, cells, candidates, unknown, luma),
                   ],
                 ),
@@ -157,10 +196,16 @@ class _PtaResultViewState extends State<PtaResultView> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(t.schoolPtaReactions, style: Theme.of(context).textTheme.titleSmall),
+              Text(
+                t.schoolPtaReactions,
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
               const SizedBox(height: 10),
               if (reactions.isEmpty)
-                Text(t.schoolPtaNoReactions, style: TextStyle(color: luma.textMuted))
+                Text(
+                  t.schoolPtaNoReactions,
+                  style: TextStyle(color: luma.textMuted),
+                )
               else
                 for (final (note, eq) in reactions)
                   Padding(
@@ -223,15 +268,15 @@ class _PtaResultViewState extends State<PtaResultView> {
   }
 
   Widget _cell(String text, LumaPalette luma, {bool header = false}) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
-        child: Text(
-          text,
-          style: TextStyle(
-            color: header ? luma.textPrimary : luma.textSecondary,
-            fontWeight: header ? FontWeight.w600 : FontWeight.w400,
-            fontSize: 12.5,
-            height: 1.3,
-          ),
-        ),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
+    child: Text(
+      text,
+      style: TextStyle(
+        color: header ? luma.textPrimary : luma.textSecondary,
+        fontWeight: header ? FontWeight.w600 : FontWeight.w400,
+        fontSize: 12.5,
+        height: 1.3,
+      ),
+    ),
+  );
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:luma/features/plugins/installed/school/ui/pta/pta_binas_sheet.dart';
@@ -36,19 +37,30 @@ void main() {
       await tester.tap(find.text('Open Binas'));
       await tester.pumpAndSettle();
 
+      final search = find.byType(TextField);
       if (label == 'phone') {
-        final horizontal = find.byWidgetPredicate(
-          (widget) =>
-              widget is Scrollable &&
-              widget.axisDirection == AxisDirection.right,
+        final horizontal = find.descendant(
+          of: find.byWidgetPredicate(
+            (widget) =>
+                widget is Scrollbar &&
+                widget.scrollbarOrientation == ScrollbarOrientation.top,
+          ),
+          matching: find.byType(Scrollable),
         );
         final position = tester.state<ScrollableState>(horizontal).position;
+        await tester.tap(search);
+        await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+        await tester.pumpAndSettle();
+        expect(position.pixels, greaterThan(0));
+        position.jumpTo(0);
+        await tester.pump();
+
         await tester.drag(find.text('OH⁻'), const Offset(-180, 0));
         await tester.pumpAndSettle();
         expect(position.pixels, greaterThan(0));
       }
 
-      final search = find.byType(TextField);
       await tester.enterText(search, 'SO4');
       await tester.pumpAndSettle();
       expect(find.text('SO₄²⁻'), findsOneWidget);
