@@ -1096,6 +1096,23 @@
   "assistantSettingsChat": "Chat",
   "assistantSettingsMemory": "Memory",
   "assistantSettingsUser": "User",
+  "assistantSettingsApi": "API",
+  "assistantApiIntro": "Chat with your own key from Claude, OpenAI, OpenRouter or Google. Keys are encrypted on this device and only ever sent to that provider.",
+  "assistantApiModel": "Model",
+  "assistantApiModelHint": "Default: {model}",
+  "@assistantApiModelHint": {
+    "placeholders": {
+      "model": {
+        "type": "String"
+      }
+    }
+  },
+  "assistantApiNoKey": "No key saved",
+  "assistantApiUseInChat": "Use in chat",
+  "assistantApiInUse": "In use",
+  "assistantApiGetKey": "Get a key",
+  "assistantApiManage": "Manage API keys",
+  "aiSettingsApiKeysMoved": "API keys for Claude, OpenAI, OpenRouter and Google are managed in the Assistant, under Settings → API.",
   "assistantSettingsLanguage": "Response language",
   "assistantSettingsLanguageHint": "The language the assistant answers you in.",
   "assistantSettingsLanguageAuto": "Match my language",
@@ -13567,6 +13584,105 @@
   "schoolTabStudyTimer": "Study timer",
   "schoolTabGpa": "GPA",
   "schoolTabCitations": "Citations",
+  "schoolTabPta": "PTA trainer",
+  "schoolPtaTitle": "Practical: qualitative analysis",
+  "schoolPtaIntro": "You get a jar with one unknown substance and a list of four candidates. Find out which one it is with acid–base, redox and precipitation tests, the pH and Binas tables 45, 48, 49 and 65. The practical itself is in Dutch.",
+  "schoolPtaLevel": "Level",
+  "schoolPtaHavo": "HAVO",
+  "schoolPtaVwo": "VWO",
+  "schoolPtaMode": "Mode",
+  "schoolPtaModePractice": "Practice",
+  "schoolPtaModePracticeHint": "An explanation and reaction equation after every test",
+  "schoolPtaModeExam": "Exam",
+  "schoolPtaModeExamHint": "100 minutes on the clock, explanations only after you hand in",
+  "schoolPtaSet": "Substance set",
+  "schoolPtaRandomSet": "Random set",
+  "schoolPtaRandomSetHint": "Four random substances that can be told apart",
+  "schoolPtaStart": "Start practical",
+  "schoolPtaJar": "Substance X",
+  "schoolPtaCandidates": "It is one of these",
+  "schoolPtaInspect": "Look & smell",
+  "schoolPtaFlame": "Flame test",
+  "schoolPtaTube": "Tube {n}",
+  "@schoolPtaTube": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "schoolPtaSample": "Spatula of X",
+  "schoolPtaWater": "Water",
+  "schoolPtaHeat": "Heat",
+  "schoolPtaPaper": "pH paper",
+  "schoolPtaSmell": "Smell",
+  "schoolPtaRinse": "Rinse",
+  "schoolPtaGasTests": "Gas tests",
+  "schoolPtaLimewater": "Limewater",
+  "schoolPtaLitmus": "Moist red litmus",
+  "schoolPtaGlowingSplint": "Glowing splint",
+  "schoolPtaBurningSplint": "Burning splint",
+  "schoolPtaReagents": "Reagents",
+  "schoolPtaMetals": "Metals",
+  "schoolPtaDrops": "A few drops",
+  "schoolPtaExcess": "In excess",
+  "schoolPtaLog": "Lab journal",
+  "schoolPtaLogEmpty": "Your observations appear here.",
+  "schoolPtaBinas": "Binas",
+  "schoolPtaBinasNote": "A summary of the data for practice. Use your own Binas during the exam.",
+  "schoolPtaHandIn": "Hand in answer",
+  "schoolPtaMinutes": "{used} / {total} min",
+  "@schoolPtaMinutes": {
+    "placeholders": {
+      "used": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "schoolPtaTimeUp": "Time is up. Hand in your answer.",
+  "schoolPtaChooseTitle": "Which substance is in the jar?",
+  "schoolPtaConfirm": "Hand in",
+  "schoolPtaCorrect": "Correct!",
+  "schoolPtaWrong": "Not quite",
+  "schoolPtaItWas": "Substance X was {name}.",
+  "@schoolPtaItWas": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "schoolPtaYouChose": "You chose {name}.",
+  "@schoolPtaYouChose": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "schoolPtaStats": "{actions} actions · {minutes} minutes",
+  "@schoolPtaStats": {
+    "placeholders": {
+      "actions": {
+        "type": "int"
+      },
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "schoolPtaExpected": "What each substance would show",
+  "schoolPtaExpectedHint": "Marked rows tell the four substances apart.",
+  "schoolPtaTest": "Test",
+  "schoolPtaReactions": "Reactions in your practical",
+  "schoolPtaNoReactions": "No reactions took place in your tests.",
+  "schoolPtaNewPractical": "New practical",
+  "schoolPtaSameSet": "Same set again",
+  "schoolPtaQuit": "Stop",
+  "schoolPtaQuitConfirm": "Stop this practical? Your journal is lost.",
   "schoolPracticeTestSaveTitle": "Save practice test as PDF",
   "schoolPdfSaveUnsupported": "Saving PDFs is not supported on this device.",
   "schoolPriorityLow": "Low",

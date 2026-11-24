@@ -260,15 +260,18 @@ class _GpaRecordDialogState extends State<_GpaRecordDialog> {
               ],
               onChanged: (v) => setState(() => _subjectId = v!),
             ),
+            const SizedBox(height: 12),
             TextField(
               controller: _termController,
               decoration: InputDecoration(labelText: t.schoolGpaTermLabel),
             ),
+            const SizedBox(height: 12),
             TextField(
               controller: _creditsController,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               decoration: InputDecoration(labelText: t.schoolGpaCreditHours),
             ),
+            const SizedBox(height: 12),
             TextField(
               controller: _gradeController,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -417,7 +420,7 @@ class _GradeCalculatorSectionState extends State<_GradeCalculatorSection> {
                               controller: _targetController,
                               keyboardType: const TextInputType.numberWithOptions(decimal: true),
                               onChanged: (_) => setState(() {}),
-                              decoration: const InputDecoration(isDense: true, border: InputBorder.none),
+                              decoration: const InputDecoration(isDense: true, border: InputBorder.none, filled: false),
                               style: TextStyle(
                                   color: luma.textPrimary, fontSize: 26, fontWeight: FontWeight.w700),
                             ),
@@ -566,6 +569,7 @@ class _GradeComponentDialogState extends State<_GradeComponentDialog> {
               autofocus: true,
               decoration: InputDecoration(labelText: t.schoolGradeNameLabel),
             ),
+            const SizedBox(height: 12),
             TextField(
               controller: _weightController,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),

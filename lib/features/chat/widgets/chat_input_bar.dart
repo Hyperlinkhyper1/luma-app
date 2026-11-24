@@ -222,6 +222,7 @@ class _ChatInputBarState extends State<ChatInputBar> {
                           : widget.hintText ?? t.assistantReplyHint,
                       hintStyle: TextStyle(color: luma.textMuted),
                       border: InputBorder.none,
+                      filled: false,
                     ),
                   ),
                 ),

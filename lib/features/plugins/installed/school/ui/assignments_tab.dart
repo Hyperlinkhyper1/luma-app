@@ -278,6 +278,7 @@ class _AssignmentDialogState extends State<_AssignmentDialog> {
               ],
               onChanged: (v) => setState(() => _priority = v!),
             ),
+            const SizedBox(height: 12),
             TextField(
               controller: _notesController,
               decoration: InputDecoration(labelText: t.cardWalletNotesOptional),

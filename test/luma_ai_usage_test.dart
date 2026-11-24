@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:luma/features/chat/providers/ai_client.dart';
 import 'package:luma/features/chat/providers/anthropic_client.dart';
+import 'package:luma/features/chat/providers/google_client.dart';
 import 'package:luma/features/chat/providers/openai_client.dart';
 import 'package:luma/features/plugins/installed/ai_usage/ai_usage_format.dart';
 import 'package:luma/features/plugins/installed/ai_usage/ai_usage_pricing.dart';
@@ -211,7 +212,10 @@ void main() {
     test('every provider the Assistant can use is priced', () {
       for (final model in [
         'anthropic/claude-3-5-haiku-20241022',
+        'anthropic/${AnthropicClient.defaultModel}',
         'openai/gpt-4o-mini',
+        'openai/${OpenAiClient.defaultModelId}',
+        'gemini/${GeminiClient.defaultModelId}',
         'mistral/mistral-small-latest',
         'google/gemini-flash-lite-latest',
         'google/gemini-flash-latest',

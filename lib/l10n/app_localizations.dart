@@ -3569,6 +3569,66 @@ abstract class L {
   /// **'User'**
   String get assistantSettingsUser;
 
+  /// No description provided for @assistantSettingsApi.
+  ///
+  /// In en, this message translates to:
+  /// **'API'**
+  String get assistantSettingsApi;
+
+  /// No description provided for @assistantApiIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Chat with your own key from Claude, OpenAI, OpenRouter or Google. Keys are encrypted on this device and only ever sent to that provider.'**
+  String get assistantApiIntro;
+
+  /// No description provided for @assistantApiModel.
+  ///
+  /// In en, this message translates to:
+  /// **'Model'**
+  String get assistantApiModel;
+
+  /// No description provided for @assistantApiModelHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Default: {model}'**
+  String assistantApiModelHint(String model);
+
+  /// No description provided for @assistantApiNoKey.
+  ///
+  /// In en, this message translates to:
+  /// **'No key saved'**
+  String get assistantApiNoKey;
+
+  /// No description provided for @assistantApiUseInChat.
+  ///
+  /// In en, this message translates to:
+  /// **'Use in chat'**
+  String get assistantApiUseInChat;
+
+  /// No description provided for @assistantApiInUse.
+  ///
+  /// In en, this message translates to:
+  /// **'In use'**
+  String get assistantApiInUse;
+
+  /// No description provided for @assistantApiGetKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Get a key'**
+  String get assistantApiGetKey;
+
+  /// No description provided for @assistantApiManage.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage API keys'**
+  String get assistantApiManage;
+
+  /// No description provided for @aiSettingsApiKeysMoved.
+  ///
+  /// In en, this message translates to:
+  /// **'API keys for Claude, OpenAI, OpenRouter and Google are managed in the Assistant, under Settings → API.'**
+  String get aiSettingsApiKeysMoved;
+
   /// No description provided for @assistantSettingsLanguage.
   ///
   /// In en, this message translates to:
@@ -35122,6 +35182,354 @@ abstract class L {
   /// In en, this message translates to:
   /// **'Citations'**
   String get schoolTabCitations;
+
+  /// No description provided for @schoolTabPta.
+  ///
+  /// In en, this message translates to:
+  /// **'PTA trainer'**
+  String get schoolTabPta;
+
+  /// No description provided for @schoolPtaTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Practical: qualitative analysis'**
+  String get schoolPtaTitle;
+
+  /// No description provided for @schoolPtaIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'You get a jar with one unknown substance and a list of four candidates. Find out which one it is with acid–base, redox and precipitation tests, the pH and Binas tables 45, 48, 49 and 65. The practical itself is in Dutch.'**
+  String get schoolPtaIntro;
+
+  /// No description provided for @schoolPtaLevel.
+  ///
+  /// In en, this message translates to:
+  /// **'Level'**
+  String get schoolPtaLevel;
+
+  /// No description provided for @schoolPtaHavo.
+  ///
+  /// In en, this message translates to:
+  /// **'HAVO'**
+  String get schoolPtaHavo;
+
+  /// No description provided for @schoolPtaVwo.
+  ///
+  /// In en, this message translates to:
+  /// **'VWO'**
+  String get schoolPtaVwo;
+
+  /// No description provided for @schoolPtaMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Mode'**
+  String get schoolPtaMode;
+
+  /// No description provided for @schoolPtaModePractice.
+  ///
+  /// In en, this message translates to:
+  /// **'Practice'**
+  String get schoolPtaModePractice;
+
+  /// No description provided for @schoolPtaModePracticeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'An explanation and reaction equation after every test'**
+  String get schoolPtaModePracticeHint;
+
+  /// No description provided for @schoolPtaModeExam.
+  ///
+  /// In en, this message translates to:
+  /// **'Exam'**
+  String get schoolPtaModeExam;
+
+  /// No description provided for @schoolPtaModeExamHint.
+  ///
+  /// In en, this message translates to:
+  /// **'100 minutes on the clock, explanations only after you hand in'**
+  String get schoolPtaModeExamHint;
+
+  /// No description provided for @schoolPtaSet.
+  ///
+  /// In en, this message translates to:
+  /// **'Substance set'**
+  String get schoolPtaSet;
+
+  /// No description provided for @schoolPtaRandomSet.
+  ///
+  /// In en, this message translates to:
+  /// **'Random set'**
+  String get schoolPtaRandomSet;
+
+  /// No description provided for @schoolPtaRandomSetHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Four random substances that can be told apart'**
+  String get schoolPtaRandomSetHint;
+
+  /// No description provided for @schoolPtaStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start practical'**
+  String get schoolPtaStart;
+
+  /// No description provided for @schoolPtaJar.
+  ///
+  /// In en, this message translates to:
+  /// **'Substance X'**
+  String get schoolPtaJar;
+
+  /// No description provided for @schoolPtaCandidates.
+  ///
+  /// In en, this message translates to:
+  /// **'It is one of these'**
+  String get schoolPtaCandidates;
+
+  /// No description provided for @schoolPtaInspect.
+  ///
+  /// In en, this message translates to:
+  /// **'Look & smell'**
+  String get schoolPtaInspect;
+
+  /// No description provided for @schoolPtaFlame.
+  ///
+  /// In en, this message translates to:
+  /// **'Flame test'**
+  String get schoolPtaFlame;
+
+  /// No description provided for @schoolPtaTube.
+  ///
+  /// In en, this message translates to:
+  /// **'Tube {n}'**
+  String schoolPtaTube(int n);
+
+  /// No description provided for @schoolPtaSample.
+  ///
+  /// In en, this message translates to:
+  /// **'Spatula of X'**
+  String get schoolPtaSample;
+
+  /// No description provided for @schoolPtaWater.
+  ///
+  /// In en, this message translates to:
+  /// **'Water'**
+  String get schoolPtaWater;
+
+  /// No description provided for @schoolPtaHeat.
+  ///
+  /// In en, this message translates to:
+  /// **'Heat'**
+  String get schoolPtaHeat;
+
+  /// No description provided for @schoolPtaPaper.
+  ///
+  /// In en, this message translates to:
+  /// **'pH paper'**
+  String get schoolPtaPaper;
+
+  /// No description provided for @schoolPtaSmell.
+  ///
+  /// In en, this message translates to:
+  /// **'Smell'**
+  String get schoolPtaSmell;
+
+  /// No description provided for @schoolPtaRinse.
+  ///
+  /// In en, this message translates to:
+  /// **'Rinse'**
+  String get schoolPtaRinse;
+
+  /// No description provided for @schoolPtaGasTests.
+  ///
+  /// In en, this message translates to:
+  /// **'Gas tests'**
+  String get schoolPtaGasTests;
+
+  /// No description provided for @schoolPtaLimewater.
+  ///
+  /// In en, this message translates to:
+  /// **'Limewater'**
+  String get schoolPtaLimewater;
+
+  /// No description provided for @schoolPtaLitmus.
+  ///
+  /// In en, this message translates to:
+  /// **'Moist red litmus'**
+  String get schoolPtaLitmus;
+
+  /// No description provided for @schoolPtaGlowingSplint.
+  ///
+  /// In en, this message translates to:
+  /// **'Glowing splint'**
+  String get schoolPtaGlowingSplint;
+
+  /// No description provided for @schoolPtaBurningSplint.
+  ///
+  /// In en, this message translates to:
+  /// **'Burning splint'**
+  String get schoolPtaBurningSplint;
+
+  /// No description provided for @schoolPtaReagents.
+  ///
+  /// In en, this message translates to:
+  /// **'Reagents'**
+  String get schoolPtaReagents;
+
+  /// No description provided for @schoolPtaMetals.
+  ///
+  /// In en, this message translates to:
+  /// **'Metals'**
+  String get schoolPtaMetals;
+
+  /// No description provided for @schoolPtaDrops.
+  ///
+  /// In en, this message translates to:
+  /// **'A few drops'**
+  String get schoolPtaDrops;
+
+  /// No description provided for @schoolPtaExcess.
+  ///
+  /// In en, this message translates to:
+  /// **'In excess'**
+  String get schoolPtaExcess;
+
+  /// No description provided for @schoolPtaLog.
+  ///
+  /// In en, this message translates to:
+  /// **'Lab journal'**
+  String get schoolPtaLog;
+
+  /// No description provided for @schoolPtaLogEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Your observations appear here.'**
+  String get schoolPtaLogEmpty;
+
+  /// No description provided for @schoolPtaBinas.
+  ///
+  /// In en, this message translates to:
+  /// **'Binas'**
+  String get schoolPtaBinas;
+
+  /// No description provided for @schoolPtaBinasNote.
+  ///
+  /// In en, this message translates to:
+  /// **'A summary of the data for practice. Use your own Binas during the exam.'**
+  String get schoolPtaBinasNote;
+
+  /// No description provided for @schoolPtaHandIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Hand in answer'**
+  String get schoolPtaHandIn;
+
+  /// No description provided for @schoolPtaMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{used} / {total} min'**
+  String schoolPtaMinutes(int used, int total);
+
+  /// No description provided for @schoolPtaTimeUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Time is up. Hand in your answer.'**
+  String get schoolPtaTimeUp;
+
+  /// No description provided for @schoolPtaChooseTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Which substance is in the jar?'**
+  String get schoolPtaChooseTitle;
+
+  /// No description provided for @schoolPtaConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Hand in'**
+  String get schoolPtaConfirm;
+
+  /// No description provided for @schoolPtaCorrect.
+  ///
+  /// In en, this message translates to:
+  /// **'Correct!'**
+  String get schoolPtaCorrect;
+
+  /// No description provided for @schoolPtaWrong.
+  ///
+  /// In en, this message translates to:
+  /// **'Not quite'**
+  String get schoolPtaWrong;
+
+  /// No description provided for @schoolPtaItWas.
+  ///
+  /// In en, this message translates to:
+  /// **'Substance X was {name}.'**
+  String schoolPtaItWas(String name);
+
+  /// No description provided for @schoolPtaYouChose.
+  ///
+  /// In en, this message translates to:
+  /// **'You chose {name}.'**
+  String schoolPtaYouChose(String name);
+
+  /// No description provided for @schoolPtaStats.
+  ///
+  /// In en, this message translates to:
+  /// **'{actions} actions · {minutes} minutes'**
+  String schoolPtaStats(int actions, int minutes);
+
+  /// No description provided for @schoolPtaExpected.
+  ///
+  /// In en, this message translates to:
+  /// **'What each substance would show'**
+  String get schoolPtaExpected;
+
+  /// No description provided for @schoolPtaExpectedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Marked rows tell the four substances apart.'**
+  String get schoolPtaExpectedHint;
+
+  /// No description provided for @schoolPtaTest.
+  ///
+  /// In en, this message translates to:
+  /// **'Test'**
+  String get schoolPtaTest;
+
+  /// No description provided for @schoolPtaReactions.
+  ///
+  /// In en, this message translates to:
+  /// **'Reactions in your practical'**
+  String get schoolPtaReactions;
+
+  /// No description provided for @schoolPtaNoReactions.
+  ///
+  /// In en, this message translates to:
+  /// **'No reactions took place in your tests.'**
+  String get schoolPtaNoReactions;
+
+  /// No description provided for @schoolPtaNewPractical.
+  ///
+  /// In en, this message translates to:
+  /// **'New practical'**
+  String get schoolPtaNewPractical;
+
+  /// No description provided for @schoolPtaSameSet.
+  ///
+  /// In en, this message translates to:
+  /// **'Same set again'**
+  String get schoolPtaSameSet;
+
+  /// No description provided for @schoolPtaQuit.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop'**
+  String get schoolPtaQuit;
+
+  /// No description provided for @schoolPtaQuitConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop this practical? Your journal is lost.'**
+  String get schoolPtaQuitConfirm;
 
   /// No description provided for @schoolPracticeTestSaveTitle.
   ///

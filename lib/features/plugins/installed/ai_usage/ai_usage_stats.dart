@@ -767,8 +767,9 @@ String _resolveCompany(AiUsageSource source, String model) {
       return switch (splitLumaModel(model)?.$1) {
         'anthropic' => 'Anthropic',
         'openai' => 'OpenAI',
-        'google' => 'Google',
+        'google' || 'gemini' => 'Google',
         'mistral' => 'Mistral',
+        'openrouter' => 'OpenRouter',
         _ => currentL.commonOther,
       };
   }

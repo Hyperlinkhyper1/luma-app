@@ -90,6 +90,7 @@ class SettingsController extends ChangeNotifier {
     required String aiProviderId,
     required String aiMode,
     String pictureTier = 'standard',
+    Map<String, String> aiModels = const {},
     required Map<String, int> modelUsage,
     required List<String> navOrder,
     required List<String> visitedCountries,
@@ -114,6 +115,7 @@ class SettingsController extends ChangeNotifier {
        _aiProviderId = aiProviderId,
        _aiMode = aiMode,
        _pictureTier = pictureTier,
+       _aiModels = aiModels,
        _modelUsage = modelUsage,
        _navOrder = navOrder,
        _visitedCountries = visitedCountries,
@@ -162,6 +164,7 @@ class SettingsController extends ChangeNotifier {
   String? _aiCallsResetDate;
   String _aiProviderId;
   String _aiMode;
+  Map<String, String> _aiModels;
   String _pictureTier;
 
   /// Lifetime successful-message count per model, keyed by
@@ -356,6 +359,23 @@ class SettingsController extends ChangeNotifier {
     _changed();
   }
 
+  /// The model the user picked on the API screen for a bring-your-own-key
+  /// provider, or null to use that provider's default. Local to this device,
+  /// like the keys themselves.
+  String? aiModelFor(String providerId) => _aiModels[providerId];
+
+  void setAiModel(String providerId, String? model) {
+    final value = model?.trim() ?? '';
+    if ((_aiModels[providerId] ?? '') == value) return;
+    _aiModels = Map.of(_aiModels);
+    if (value.isEmpty) {
+      _aiModels.remove(providerId);
+    } else {
+      _aiModels[providerId] = value;
+    }
+    _changed();
+  }
+
   /// Lifetime successful-message count per model (see [_modelUsage]).
   Map<String, int> get modelUsage => Map.unmodifiable(_modelUsage);
 
@@ -544,9 +564,10 @@ class SettingsController extends ChangeNotifier {
     _planExpiresAt = null;
     _aiCallsToday = 0;
     _aiCallsResetDate = null;
-    _aiProviderId = 'anthropic';
+    _aiProviderId = 'google';
     _aiMode = 'normal';
     _pictureTier = 'standard';
+    _aiModels = const {};
     _modelUsage = const {};
     _navOrder = const [];
     _visitedCountries = const [];
@@ -643,6 +664,7 @@ class SettingsController extends ChangeNotifier {
           'aiProviderId': _aiProviderId,
           'aiMode': _aiMode,
           'pictureTier': _pictureTier,
+          'aiModels': _aiModels,
           'modelUsage': _modelUsage,
           'trackBackendAiUsage': _trackBackendAiUsage,
           'navOrder': _navOrder,
@@ -701,12 +723,13 @@ class SettingsController extends ChangeNotifier {
       aiCallsResetDate: data['aiCallsResetDate'] as String?,
       // Luma Support (mistral) was retired from the pickers; land its
       // former users on Luma AI rather than a provider they can't see.
-      aiProviderId: switch (data['aiProviderId'] as String? ?? 'anthropic') {
+      aiProviderId: switch (data['aiProviderId'] as String? ?? 'google') {
         'mistral' => 'google',
         final id => id,
       },
       aiMode: data['aiMode'] as String? ?? 'normal',
       pictureTier: data['pictureTier'] == 'pro' ? 'pro' : 'standard',
+      aiModels: _parseStringMap(data['aiModels']),
       modelUsage: _parseModelUsage(data['modelUsage']),
       navOrder: _parseNavOrder(data['navOrder']),
       visitedCountries: _parseStringList(data['visitedCountries']),
@@ -743,6 +766,15 @@ class SettingsController extends ChangeNotifier {
   static int _parseAccentIndex(Object? raw) {
     if (raw is int && raw >= 0 && raw < kAccentPresets.length) return raw;
     return 0;
+  }
+
+  static Map<String, String> _parseStringMap(Object? raw) {
+    if (raw is! Map) return const {};
+    return {
+      for (final entry in raw.entries)
+        if (entry.key is String && entry.value is String)
+          entry.key as String: entry.value as String,
+    };
   }
 
   static Map<String, int> _parseModelUsage(Object? raw) {

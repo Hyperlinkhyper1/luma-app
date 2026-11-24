@@ -41,10 +41,6 @@ class MapMakerSavesView extends StatelessWidget {
           style: TextStyle(color: luma.textPrimary),
           decoration: InputDecoration(
             labelText: t.mapMakerCityName,
-            labelStyle: TextStyle(color: luma.textSecondary),
-            focusedBorder: UnderlineInputBorder(
-              borderSide: BorderSide(color: luma.accent),
-            ),
           ),
           onSubmitted: (_) => Navigator.of(ctx).pop(true),
         ),

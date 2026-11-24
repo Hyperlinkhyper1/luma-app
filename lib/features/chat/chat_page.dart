@@ -252,6 +252,7 @@ class _ChatBodyState extends State<_ChatBody> {
     widget.settings.addListener(_onSettingsChanged);
     LocalModelStore.instance.addListener(_onLocalModelChanged);
     widget.syncService.addListener(_onSyncChanged);
+    AiKeyStore.changes.addListener(_recheckKey);
   }
 
   @override
@@ -259,6 +260,7 @@ class _ChatBodyState extends State<_ChatBody> {
     widget.settings.removeListener(_onSettingsChanged);
     LocalModelStore.instance.removeListener(_onLocalModelChanged);
     widget.syncService.removeListener(_onSyncChanged);
+    AiKeyStore.changes.removeListener(_recheckKey);
     super.dispose();
   }
 
@@ -344,7 +346,9 @@ class _ChatBodyState extends State<_ChatBody> {
                 : _NoKeyState(
                     settings: widget.settings,
                     localModel: _providerId == AiProviderId.local.name,
-                    onOpenSettings: widget.onOpenSettings,
+                    onOpenSettings: isApiKeyProvider(_providerId)
+                        ? () => showAssistantPanel(context, AssistantPanel.api)
+                        : widget.onOpenSettings,
                     onRecheck: _recheckKey,
                   ),
           ),
@@ -2187,10 +2191,13 @@ List<_ModelChoice> _lumaModelsFor(
     _ModelChoice('Luma Assistant', AiProviderId.local.name),
 ];
 
-final List<_ModelChoice> _apiKeyModels = [
-  _ModelChoice('Anthropic Claude', AiProviderId.anthropic.name),
-  _ModelChoice('OpenAI', AiProviderId.openai.name),
+List<_ModelChoice> get _apiKeyModels => [
+  for (final provider in kApiKeyProviders)
+    _ModelChoice(provider.displayName, provider.id.name),
 ];
+
+/// The model picker's last row: opens the API screen instead of picking.
+const _manageApiKeys = _ModelChoice('', '');
 
 /// Claude-style model picker: a small pill under the typing bar showing the
 /// active model's name; tapping it expands a menu of every model — the four
@@ -2426,10 +2433,28 @@ class _ModelSelectorState extends State<_ModelSelector> {
         const PopupMenuDivider(height: 10),
         header(t.assistantApiKeyHeader),
         ..._apiKeyModels.map(item),
+        PopupMenuItem<_ModelChoice>(
+          value: _manageApiKeys,
+          height: 38,
+          child: Row(
+            children: [
+              Icon(Icons.key_rounded, size: 15, color: luma.textMuted),
+              const SizedBox(width: 8),
+              Text(
+                t.assistantApiManage,
+                style: TextStyle(color: luma.textSecondary, fontSize: 12.5),
+              ),
+            ],
+          ),
+        ),
       ],
     );
 
-    if (picked == null) return;
+    if (picked == null || !mounted) return;
+    if (identical(picked, _manageApiKeys)) {
+      await showAssistantPanel(context, AssistantPanel.api);
+      return;
+    }
     settings.setAiProviderId(picked.providerId);
     if (picked.mode != null) settings.setAiMode(picked.mode!);
   }

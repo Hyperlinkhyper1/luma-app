@@ -709,6 +709,7 @@ class _RecipePickerDialogState extends State<_RecipePickerDialog> {
                 hintText: t.recipeSearchHint,
                 hintStyle: TextStyle(color: luma.textMuted, fontSize: 14),
                 border: InputBorder.none,
+                filled: false,
                 isDense: true,
                 contentPadding: EdgeInsets.zero,
               ),

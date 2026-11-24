@@ -21,13 +21,29 @@ class _RawResponse {
 /// Talks to Anthropic's Messages API directly from the device using the
 /// user's own API key — never proxied through any luma server.
 class AnthropicClient implements AiClient {
+  AnthropicClient({this.model = defaultModel});
+
   static const _baseUrl = 'https://api.anthropic.com/v1/messages';
   static const _apiVersion = '2023-06-01';
 
-  /// Easy to bump to a more capable model later.
-  static const defaultModel = 'claude-3-5-haiku-20241022';
-  static const _maxOutputTokens = 1024;
+  /// Used when the user hasn't picked a model on the API screen.
+  static const defaultModel = 'claude-opus-5-5';
+
+  /// Current models think before answering, and that thinking counts
+  /// against this cap, so it has to leave room for both.
+  static const _maxOutputTokens = 16000;
   static const _maxToolHops = 5;
+
+  /// Models that accept the server-side fallback for refused requests.
+  static const _fallbackModels = {
+    'claude-fable-5-2',
+    'claude-fable-5-1',
+    'claude-opus-5-5',
+    'claude-opus-5',
+    'claude-sonnet-5-5',
+  };
+
+  final String model;
 
   @override
   Future<AiChatResult> chat({
@@ -119,9 +135,11 @@ class AnthropicClient implements AiClient {
     required String systemPrompt,
     required List<Map<String, dynamic>> tools,
   }) async {
+    final fallback = _fallbackModels.contains(model);
     final body = <String, dynamic>{
-      'model': defaultModel,
+      'model': model,
       'max_tokens': _maxOutputTokens,
+      if (fallback) 'fallbacks': 'default',
       'messages': messages,
       if (systemPrompt.isNotEmpty) 'system': systemPrompt,
       if (tools.isNotEmpty) 'tools': tools,
@@ -135,11 +153,12 @@ class AnthropicClient implements AiClient {
             headers: {
               'x-api-key': apiKey,
               'anthropic-version': _apiVersion,
+              if (fallback) 'anthropic-beta': 'server-side-fallback-2026-07-01',
               'content-type': 'application/json',
             },
             body: jsonEncode(body),
           )
-          .timeout(const Duration(seconds: 30));
+          .timeout(const Duration(minutes: 3));
     } catch (e) {
       throw AiNetworkError(currentL.aiClientUnreachable('Anthropic', '$e'));
     }
@@ -184,13 +203,13 @@ class AnthropicClient implements AiClient {
     );
   }
 
-  static AiTokenUsage? _usageFrom(Map<String, dynamic> decoded) {
+  AiTokenUsage? _usageFrom(Map<String, dynamic> decoded) {
     final usage = decoded['usage'];
     if (usage is! Map) return null;
     int count(String key) => (usage[key] as num?)?.toInt() ?? 0;
-    final model = decoded['model'];
+    final reported = decoded['model'];
     return AiTokenUsage(
-      model: model is String && model.isNotEmpty ? model : defaultModel,
+      model: reported is String && reported.isNotEmpty ? reported : model,
       inputTokens: count('input_tokens'),
       outputTokens: count('output_tokens'),
       cacheReadTokens: count('cache_read_input_tokens'),

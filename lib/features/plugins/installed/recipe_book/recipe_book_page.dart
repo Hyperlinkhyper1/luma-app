@@ -529,6 +529,7 @@ class _SearchBarState extends State<_SearchBar> {
                 hintText: t.recipeBookSearchHint,
                 hintStyle: TextStyle(color: luma.textMuted, fontSize: 14),
                 border: InputBorder.none,
+                filled: false,
                 isDense: true,
                 contentPadding: EdgeInsets.zero,
               ),

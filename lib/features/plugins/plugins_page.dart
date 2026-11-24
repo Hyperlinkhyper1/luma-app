@@ -343,6 +343,7 @@ class _SearchField extends StatelessWidget {
               decoration: InputDecoration(
                 isDense: true,
                 border: InputBorder.none,
+                filled: false,
                 hintText: L.of(context).marketplaceSearchHint,
                 hintStyle: TextStyle(color: luma.textMuted, fontSize: 14),
               ),

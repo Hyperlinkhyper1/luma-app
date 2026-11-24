@@ -295,7 +295,7 @@ class _NoteContent extends StatelessWidget {
         TextFormField(
           initialValue: record.title,
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87),
-          decoration: InputDecoration(border: InputBorder.none, hintText: L.of(context).commonTitle),
+          decoration: InputDecoration(border: InputBorder.none, filled: false, hintText: L.of(context).commonTitle),
           onChanged: (val) => onUpdate(record.copyWith(title: val)),
         ),
         Expanded(
@@ -304,7 +304,7 @@ class _NoteContent extends StatelessWidget {
             maxLines: null,
             expands: true,
             style: const TextStyle(fontSize: 14, color: Colors.black87),
-            decoration: InputDecoration(border: InputBorder.none, hintText: L.of(context).bulletinBoardNoteContentHint),
+            decoration: InputDecoration(border: InputBorder.none, filled: false, hintText: L.of(context).bulletinBoardNoteContentHint),
             onChanged: (val) => onUpdate(record.copyWith(content: val)),
           ),
         ),
@@ -330,7 +330,7 @@ class _IdeaContent extends StatelessWidget {
             initialValue: record.content,
             maxLines: null,
             style: const TextStyle(fontSize: 15, color: Colors.black87),
-            decoration: InputDecoration(border: InputBorder.none, hintText: L.of(context).bulletinBoardQuickIdeaHint),
+            decoration: InputDecoration(border: InputBorder.none, filled: false, hintText: L.of(context).bulletinBoardQuickIdeaHint),
             onChanged: (val) => onUpdate(record.copyWith(content: val)),
           ),
         ),
@@ -356,7 +356,7 @@ class _ChecklistContent extends StatelessWidget {
         TextFormField(
           initialValue: record.title,
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87),
-          decoration: InputDecoration(border: InputBorder.none, hintText: L.of(context).bulletinBoardChecklist),
+          decoration: InputDecoration(border: InputBorder.none, filled: false, hintText: L.of(context).bulletinBoardChecklist),
           onChanged: (val) => onUpdate(record.copyWith(title: val)),
         ),
         Expanded(
@@ -389,7 +389,7 @@ class _ChecklistContent extends StatelessWidget {
                         decoration: item['done'] ? TextDecoration.lineThrough : null,
                         color: Colors.black87,
                       ),
-                      decoration: const InputDecoration(border: InputBorder.none),
+                      decoration: const InputDecoration(border: InputBorder.none, filled: false),
                       onChanged: (val) {
                         item['text'] = val;
                         onUpdate(record.copyWith(content: jsonEncode(items)));

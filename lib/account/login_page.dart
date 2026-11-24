@@ -1787,6 +1787,7 @@ class _LoginFieldState extends State<_LoginField> {
                   fontWeight: FontWeight.w600,
                 ),
                 border: InputBorder.none,
+                filled: false,
                 enabledBorder: InputBorder.none,
                 focusedBorder: InputBorder.none,
                 isDense: true,

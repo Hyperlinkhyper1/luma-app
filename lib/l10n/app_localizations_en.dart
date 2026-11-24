@@ -2033,6 +2033,40 @@ class LEn extends L {
   String get assistantSettingsUser => 'User';
 
   @override
+  String get assistantSettingsApi => 'API';
+
+  @override
+  String get assistantApiIntro =>
+      'Chat with your own key from Claude, OpenAI, OpenRouter or Google. Keys are encrypted on this device and only ever sent to that provider.';
+
+  @override
+  String get assistantApiModel => 'Model';
+
+  @override
+  String assistantApiModelHint(String model) {
+    return 'Default: $model';
+  }
+
+  @override
+  String get assistantApiNoKey => 'No key saved';
+
+  @override
+  String get assistantApiUseInChat => 'Use in chat';
+
+  @override
+  String get assistantApiInUse => 'In use';
+
+  @override
+  String get assistantApiGetKey => 'Get a key';
+
+  @override
+  String get assistantApiManage => 'Manage API keys';
+
+  @override
+  String get aiSettingsApiKeysMoved =>
+      'API keys for Claude, OpenAI, OpenRouter and Google are managed in the Assistant, under Settings → API.';
+
+  @override
   String get assistantSettingsLanguage => 'Response language';
 
   @override
@@ -21481,6 +21515,197 @@ class LEn extends L {
 
   @override
   String get schoolTabCitations => 'Citations';
+
+  @override
+  String get schoolTabPta => 'PTA trainer';
+
+  @override
+  String get schoolPtaTitle => 'Practical: qualitative analysis';
+
+  @override
+  String get schoolPtaIntro =>
+      'You get a jar with one unknown substance and a list of four candidates. Find out which one it is with acid–base, redox and precipitation tests, the pH and Binas tables 45, 48, 49 and 65. The practical itself is in Dutch.';
+
+  @override
+  String get schoolPtaLevel => 'Level';
+
+  @override
+  String get schoolPtaHavo => 'HAVO';
+
+  @override
+  String get schoolPtaVwo => 'VWO';
+
+  @override
+  String get schoolPtaMode => 'Mode';
+
+  @override
+  String get schoolPtaModePractice => 'Practice';
+
+  @override
+  String get schoolPtaModePracticeHint =>
+      'An explanation and reaction equation after every test';
+
+  @override
+  String get schoolPtaModeExam => 'Exam';
+
+  @override
+  String get schoolPtaModeExamHint =>
+      '100 minutes on the clock, explanations only after you hand in';
+
+  @override
+  String get schoolPtaSet => 'Substance set';
+
+  @override
+  String get schoolPtaRandomSet => 'Random set';
+
+  @override
+  String get schoolPtaRandomSetHint =>
+      'Four random substances that can be told apart';
+
+  @override
+  String get schoolPtaStart => 'Start practical';
+
+  @override
+  String get schoolPtaJar => 'Substance X';
+
+  @override
+  String get schoolPtaCandidates => 'It is one of these';
+
+  @override
+  String get schoolPtaInspect => 'Look & smell';
+
+  @override
+  String get schoolPtaFlame => 'Flame test';
+
+  @override
+  String schoolPtaTube(int n) {
+    return 'Tube $n';
+  }
+
+  @override
+  String get schoolPtaSample => 'Spatula of X';
+
+  @override
+  String get schoolPtaWater => 'Water';
+
+  @override
+  String get schoolPtaHeat => 'Heat';
+
+  @override
+  String get schoolPtaPaper => 'pH paper';
+
+  @override
+  String get schoolPtaSmell => 'Smell';
+
+  @override
+  String get schoolPtaRinse => 'Rinse';
+
+  @override
+  String get schoolPtaGasTests => 'Gas tests';
+
+  @override
+  String get schoolPtaLimewater => 'Limewater';
+
+  @override
+  String get schoolPtaLitmus => 'Moist red litmus';
+
+  @override
+  String get schoolPtaGlowingSplint => 'Glowing splint';
+
+  @override
+  String get schoolPtaBurningSplint => 'Burning splint';
+
+  @override
+  String get schoolPtaReagents => 'Reagents';
+
+  @override
+  String get schoolPtaMetals => 'Metals';
+
+  @override
+  String get schoolPtaDrops => 'A few drops';
+
+  @override
+  String get schoolPtaExcess => 'In excess';
+
+  @override
+  String get schoolPtaLog => 'Lab journal';
+
+  @override
+  String get schoolPtaLogEmpty => 'Your observations appear here.';
+
+  @override
+  String get schoolPtaBinas => 'Binas';
+
+  @override
+  String get schoolPtaBinasNote =>
+      'A summary of the data for practice. Use your own Binas during the exam.';
+
+  @override
+  String get schoolPtaHandIn => 'Hand in answer';
+
+  @override
+  String schoolPtaMinutes(int used, int total) {
+    return '$used / $total min';
+  }
+
+  @override
+  String get schoolPtaTimeUp => 'Time is up. Hand in your answer.';
+
+  @override
+  String get schoolPtaChooseTitle => 'Which substance is in the jar?';
+
+  @override
+  String get schoolPtaConfirm => 'Hand in';
+
+  @override
+  String get schoolPtaCorrect => 'Correct!';
+
+  @override
+  String get schoolPtaWrong => 'Not quite';
+
+  @override
+  String schoolPtaItWas(String name) {
+    return 'Substance X was $name.';
+  }
+
+  @override
+  String schoolPtaYouChose(String name) {
+    return 'You chose $name.';
+  }
+
+  @override
+  String schoolPtaStats(int actions, int minutes) {
+    return '$actions actions · $minutes minutes';
+  }
+
+  @override
+  String get schoolPtaExpected => 'What each substance would show';
+
+  @override
+  String get schoolPtaExpectedHint =>
+      'Marked rows tell the four substances apart.';
+
+  @override
+  String get schoolPtaTest => 'Test';
+
+  @override
+  String get schoolPtaReactions => 'Reactions in your practical';
+
+  @override
+  String get schoolPtaNoReactions => 'No reactions took place in your tests.';
+
+  @override
+  String get schoolPtaNewPractical => 'New practical';
+
+  @override
+  String get schoolPtaSameSet => 'Same set again';
+
+  @override
+  String get schoolPtaQuit => 'Stop';
+
+  @override
+  String get schoolPtaQuitConfirm =>
+      'Stop this practical? Your journal is lost.';
 
   @override
   String get schoolPracticeTestSaveTitle => 'Save practice test as PDF';

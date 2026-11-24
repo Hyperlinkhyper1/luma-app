@@ -7,13 +7,29 @@ import 'openai_compatible_client.dart';
 /// Gemini's OpenAI-compat layer.
 class GoogleClient extends OpenAiCompatibleClient {
   GoogleClient({AiMode mode = AiMode.normal})
-      : super(
-          baseUrl:
-              'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
-          defaultModel: mode.geminiModel,
-          providerLabel: 'Luma AI',
-          reasoningEffort: mode.reasoningEffort,
-        );
+    : super(
+        baseUrl:
+            'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
+        defaultModel: mode.geminiModel,
+        providerLabel: 'Luma AI',
+        reasoningEffort: mode.reasoningEffort,
+      );
+}
+
+/// Google Gemini with the user's own AI Studio key, picked from the API
+/// screen. Unlike [GoogleClient] it is not wearing luma branding and the
+/// user chooses the model.
+class GeminiClient extends OpenAiCompatibleClient {
+  GeminiClient({String model = defaultModelId})
+    : super(
+        baseUrl:
+            'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
+        defaultModel: model,
+        providerLabel: 'Google Gemini',
+        maxOutputTokens: 8192,
+      );
+
+  static const defaultModelId = 'gemini-flash-latest';
 }
 
 /// Talks to Google through the sync server's proxy (POST
@@ -26,17 +42,17 @@ class GoogleClient extends OpenAiCompatibleClient {
 /// sync bearer token, not a Google key.
 class GoogleProxyClient extends OpenAiCompatibleClient {
   GoogleProxyClient({required String serverUrl, AiMode mode = AiMode.normal})
-      : super(
-          baseUrl: _proxyUrl(serverUrl),
-          defaultModel: mode.name,
-          providerLabel: 'Luma AI',
-          // The server forwards whatever's in the request body (beyond the
-          // model/max_tokens it overrides itself) straight to Google, so
-          // sending this here is enough — no server-side mode→effort
-          // mapping needed alongside its existing mode→model one.
-          reasoningEffort: mode.reasoningEffort,
-          viaLumaServer: true,
-        );
+    : super(
+        baseUrl: _proxyUrl(serverUrl),
+        defaultModel: mode.name,
+        providerLabel: 'Luma AI',
+        // The server forwards whatever's in the request body (beyond the
+        // model/max_tokens it overrides itself) straight to Google, so
+        // sending this here is enough — no server-side mode→effort
+        // mapping needed alongside its existing mode→model one.
+        reasoningEffort: mode.reasoningEffort,
+        viaLumaServer: true,
+      );
 
   static String _proxyUrl(String serverUrl) {
     var url = serverUrl.trim();

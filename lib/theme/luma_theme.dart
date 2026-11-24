@@ -644,8 +644,10 @@ class LumaTheme {
       outlineVariant: p.border,
     );
 
-    // Every non-default style restyles the Material components below; the
-    // default keeps Material's own so it stays byte-identical.
+    // Every non-default style restyles the Material components below. The
+    // default keeps Material's own for most of them, but its dialogs, fields
+    // and buttons take luma's surface, border and corner radius so a stock
+    // AlertDialog doesn't read as a different app.
     final styled = decor.style != LumaThemeStyle.standard;
     final isDark = brightness == Brightness.dark;
     final fieldBorder = OutlineInputBorder(
@@ -729,33 +731,72 @@ class LumaTheme {
                     )
                   : null,
             )
-          : base.dialogTheme,
-      inputDecorationTheme: styled
-          ? InputDecorationThemeData(
-              filled: true,
-              fillColor: p.surfaceHover.withValues(
-                alpha: isDark ? 0.72 : 0.88,
+          : DialogThemeData(
+              backgroundColor: p.surface,
+              surfaceTintColor: Colors.transparent,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(decor.cardRadius + 4),
+                side: BorderSide(color: p.border, width: decor.borderWidth),
               ),
-              labelStyle: TextStyle(color: p.textSecondary),
-              hintStyle: TextStyle(color: p.textMuted),
-              prefixIconColor: p.textSecondary,
-              suffixIconColor: p.textSecondary,
-              border: fieldBorder,
-              enabledBorder: fieldBorder,
-              focusedBorder: fieldBorder.copyWith(
-                borderSide: BorderSide(
-                  color: p.accent,
-                  width: decor.notched ? 2.4 : 1.6,
-                ),
+              titleTextStyle: TextStyle(
+                color: p.textPrimary,
+                fontSize: 19,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.2,
               ),
-              errorBorder: fieldBorder.copyWith(
-                borderSide: BorderSide(color: p.danger),
+              contentTextStyle: TextStyle(
+                color: p.textSecondary,
+                fontSize: 14,
+                height: 1.45,
               ),
-              focusedErrorBorder: fieldBorder.copyWith(
-                borderSide: BorderSide(color: p.danger, width: 1.6),
-              ),
-            )
-          : base.inputDecorationTheme,
+              actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+            ),
+      // Every style gets luma's filled, outlined field. The border is a
+      // state-resolving `border` rather than enabledBorder/focusedBorder:
+      // a theme's enabledBorder beats a field's own `border:
+      // InputBorder.none`, which drew a box around every borderless search
+      // bar and inline editor.
+      inputDecorationTheme: InputDecorationThemeData(
+        filled: true,
+        fillColor: p.surfaceHover.withValues(alpha: isDark ? 0.72 : 0.88),
+        labelStyle: TextStyle(color: p.textSecondary),
+        floatingLabelStyle: WidgetStateTextStyle.resolveWith(
+          (states) => TextStyle(
+            color: states.contains(WidgetState.error)
+                ? p.danger
+                : states.contains(WidgetState.focused)
+                ? p.accent
+                : p.textSecondary,
+          ),
+        ),
+        hintStyle: TextStyle(color: p.textMuted),
+        helperStyle: TextStyle(color: p.textMuted),
+        counterStyle: TextStyle(color: p.textMuted, fontSize: 11),
+        prefixIconColor: p.textSecondary,
+        suffixIconColor: p.textSecondary,
+        alignLabelWithHint: true,
+        hoverColor: p.surfaceHover.withValues(alpha: 0.4),
+        border: WidgetStateInputBorder.resolveWith(
+          (states) => fieldBorder.copyWith(
+            borderSide: states.contains(WidgetState.error)
+                ? BorderSide(
+                    color: p.danger,
+                    width: states.contains(WidgetState.focused) ? 1.6 : 1,
+                  )
+                : states.contains(WidgetState.focused)
+                ? BorderSide(
+                    color: p.accent,
+                    width: decor.notched ? 2.4 : 1.6,
+                  )
+                : states.contains(WidgetState.disabled)
+                ? BorderSide(
+                    color: p.border.withValues(alpha: 0.5),
+                    width: decor.borderWidth,
+                  )
+                : null,
+          ),
+        ),
+      ),
       filledButtonTheme: styled
           ? FilledButtonThemeData(
               style: ButtonStyle(
@@ -769,7 +810,18 @@ class LumaTheme {
                 shape: WidgetStatePropertyAll(decor.buttonShape()),
               ),
             )
-          : base.filledButtonTheme,
+          : FilledButtonThemeData(
+              style: ButtonStyle(
+                minimumSize: const WidgetStatePropertyAll(Size(0, 42)),
+                padding: const WidgetStatePropertyAll(
+                  EdgeInsets.symmetric(horizontal: 20),
+                ),
+                textStyle: const WidgetStatePropertyAll(
+                  TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                ),
+                shape: WidgetStatePropertyAll(decor.buttonShape()),
+              ),
+            ),
       elevatedButtonTheme: decor.notched
           ? ElevatedButtonThemeData(
               style: ButtonStyle(
@@ -800,7 +852,19 @@ class LumaTheme {
                 shape: WidgetStatePropertyAll(decor.buttonShape()),
               ),
             )
-          : base.outlinedButtonTheme,
+          : OutlinedButtonThemeData(
+              style: ButtonStyle(
+                minimumSize: const WidgetStatePropertyAll(Size(0, 42)),
+                foregroundColor: WidgetStatePropertyAll(p.textPrimary),
+                side: WidgetStatePropertyAll(
+                  BorderSide(color: p.border, width: decor.borderWidth),
+                ),
+                textStyle: const WidgetStatePropertyAll(
+                  TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                ),
+                shape: WidgetStatePropertyAll(decor.buttonShape()),
+              ),
+            ),
       textButtonTheme: styled
           ? TextButtonThemeData(
               style: ButtonStyle(
@@ -812,7 +876,17 @@ class LumaTheme {
                 shape: WidgetStatePropertyAll(decor.buttonShape()),
               ),
             )
-          : base.textButtonTheme,
+          : TextButtonThemeData(
+              style: ButtonStyle(
+                padding: const WidgetStatePropertyAll(
+                  EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                ),
+                textStyle: const WidgetStatePropertyAll(
+                  TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                ),
+                shape: WidgetStatePropertyAll(decor.buttonShape()),
+              ),
+            ),
       appBarTheme: styled
           ? AppBarThemeData(
               backgroundColor: p.background,

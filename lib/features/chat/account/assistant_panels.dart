@@ -7,7 +7,8 @@ import 'assistant_settings_view.dart';
 import 'assistant_usage_view.dart';
 
 /// The screens behind the account menu at the foot of the chat sidebar.
-enum AssistantPanel { usage, settings, agents }
+/// [api] is the Settings panel opened straight on its API section.
+enum AssistantPanel { usage, settings, agents, api }
 
 /// Opens the Claude-style account menu just above the sidebar footer —
 /// [footerRect] is the footer's global rect — and then the picked panel.
@@ -99,7 +100,7 @@ Future<void> showAssistantAccountMenu(
 Future<void> showAssistantPanel(
   BuildContext context,
   AssistantPanel panel, {
-  required ValueChanged<String> onOpenPlugin,
+  ValueChanged<String>? onOpenPlugin,
 }) {
   return showDialog<void>(
     context: context,
@@ -111,14 +112,15 @@ Future<void> showAssistantPanel(
         AssistantPanel.usage => AssistantUsageView(
           onOpenPlugin: (id) {
             Navigator.of(dialogContext).pop();
-            onOpenPlugin(id);
+            onOpenPlugin?.call(id);
           },
         ),
         AssistantPanel.settings => const AssistantSettingsView(),
+        AssistantPanel.api => const AssistantSettingsView(openApi: true),
         AssistantPanel.agents => AssistantAgentsView(
           onOpenPlugin: (id) {
             Navigator.of(dialogContext).pop();
-            onOpenPlugin(id);
+            onOpenPlugin?.call(id);
           },
         ),
       };

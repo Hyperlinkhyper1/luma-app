@@ -2045,6 +2045,40 @@ class LNl extends L {
   String get assistantSettingsUser => 'Gebruiker';
 
   @override
+  String get assistantSettingsApi => 'API';
+
+  @override
+  String get assistantApiIntro =>
+      'Chat met je eigen sleutel van Claude, OpenAI, OpenRouter of Google. Sleutels worden versleuteld op dit apparaat bewaard en alleen naar die aanbieder gestuurd.';
+
+  @override
+  String get assistantApiModel => 'Model';
+
+  @override
+  String assistantApiModelHint(String model) {
+    return 'Standaard: $model';
+  }
+
+  @override
+  String get assistantApiNoKey => 'Geen sleutel opgeslagen';
+
+  @override
+  String get assistantApiUseInChat => 'Gebruiken in chat';
+
+  @override
+  String get assistantApiInUse => 'In gebruik';
+
+  @override
+  String get assistantApiGetKey => 'Sleutel aanvragen';
+
+  @override
+  String get assistantApiManage => 'API-sleutels beheren';
+
+  @override
+  String get aiSettingsApiKeysMoved =>
+      'API-sleutels voor Claude, OpenAI, OpenRouter en Google beheer je in de Assistent, onder Instellingen → API.';
+
+  @override
   String get assistantSettingsLanguage => 'Taal van antwoorden';
 
   @override
@@ -21635,6 +21669,198 @@ class LNl extends L {
 
   @override
   String get schoolTabCitations => 'Citaten';
+
+  @override
+  String get schoolTabPta => 'PTA-trainer';
+
+  @override
+  String get schoolPtaTitle => 'Practicum kwalitatieve analyse';
+
+  @override
+  String get schoolPtaIntro =>
+      'Je krijgt een potje met een onbekende stof en een lijst met vier mogelijke stoffen. Zoek uit welke het is met zuur-base-, redox- en neerslagreacties, de pH en Binas-tabel 45, 48, 49 en 65.';
+
+  @override
+  String get schoolPtaLevel => 'Niveau';
+
+  @override
+  String get schoolPtaHavo => 'HAVO';
+
+  @override
+  String get schoolPtaVwo => 'VWO';
+
+  @override
+  String get schoolPtaMode => 'Modus';
+
+  @override
+  String get schoolPtaModePractice => 'Oefenen';
+
+  @override
+  String get schoolPtaModePracticeHint =>
+      'Na elke proef uitleg en een reactievergelijking';
+
+  @override
+  String get schoolPtaModeExam => 'Examen';
+
+  @override
+  String get schoolPtaModeExamHint =>
+      '100 minuten op de klok, uitleg pas na het inleveren';
+
+  @override
+  String get schoolPtaSet => 'Stoffenset';
+
+  @override
+  String get schoolPtaRandomSet => 'Willekeurige set';
+
+  @override
+  String get schoolPtaRandomSetHint =>
+      'Vier willekeurige stoffen die je kunt onderscheiden';
+
+  @override
+  String get schoolPtaStart => 'Start practicum';
+
+  @override
+  String get schoolPtaJar => 'Stof X';
+
+  @override
+  String get schoolPtaCandidates => 'Het is een van deze stoffen';
+
+  @override
+  String get schoolPtaInspect => 'Bekijken & ruiken';
+
+  @override
+  String get schoolPtaFlame => 'Vlamproef';
+
+  @override
+  String schoolPtaTube(int n) {
+    return 'Buis $n';
+  }
+
+  @override
+  String get schoolPtaSample => 'Spatelpunt X';
+
+  @override
+  String get schoolPtaWater => 'Water';
+
+  @override
+  String get schoolPtaHeat => 'Verwarmen';
+
+  @override
+  String get schoolPtaPaper => 'pH-papier';
+
+  @override
+  String get schoolPtaSmell => 'Ruiken';
+
+  @override
+  String get schoolPtaRinse => 'Omspoelen';
+
+  @override
+  String get schoolPtaGasTests => 'Gastesten';
+
+  @override
+  String get schoolPtaLimewater => 'Kalkwater';
+
+  @override
+  String get schoolPtaLitmus => 'Vochtig rood lakmoes';
+
+  @override
+  String get schoolPtaGlowingSplint => 'Gloeiend houtje';
+
+  @override
+  String get schoolPtaBurningSplint => 'Brandend houtje';
+
+  @override
+  String get schoolPtaReagents => 'Reagentia';
+
+  @override
+  String get schoolPtaMetals => 'Metalen';
+
+  @override
+  String get schoolPtaDrops => 'Enkele druppels';
+
+  @override
+  String get schoolPtaExcess => 'Overmaat';
+
+  @override
+  String get schoolPtaLog => 'Logboek';
+
+  @override
+  String get schoolPtaLogEmpty => 'Hier komen je waarnemingen.';
+
+  @override
+  String get schoolPtaBinas => 'Binas';
+
+  @override
+  String get schoolPtaBinasNote =>
+      'Samenvatting van de gegevens om mee te oefenen. Gebruik op het examen je eigen Binas.';
+
+  @override
+  String get schoolPtaHandIn => 'Antwoord inleveren';
+
+  @override
+  String schoolPtaMinutes(int used, int total) {
+    return '$used / $total min';
+  }
+
+  @override
+  String get schoolPtaTimeUp => 'De tijd is om. Lever je antwoord in.';
+
+  @override
+  String get schoolPtaChooseTitle => 'Welke stof zit in het potje?';
+
+  @override
+  String get schoolPtaConfirm => 'Inleveren';
+
+  @override
+  String get schoolPtaCorrect => 'Goed!';
+
+  @override
+  String get schoolPtaWrong => 'Helaas, fout';
+
+  @override
+  String schoolPtaItWas(String name) {
+    return 'Stof X was $name.';
+  }
+
+  @override
+  String schoolPtaYouChose(String name) {
+    return 'Jij koos $name.';
+  }
+
+  @override
+  String schoolPtaStats(int actions, int minutes) {
+    return '$actions handelingen · $minutes minuten';
+  }
+
+  @override
+  String get schoolPtaExpected => 'Wat elke stof zou laten zien';
+
+  @override
+  String get schoolPtaExpectedHint =>
+      'Gemarkeerde rijen onderscheiden de vier stoffen.';
+
+  @override
+  String get schoolPtaTest => 'Proef';
+
+  @override
+  String get schoolPtaReactions => 'Reacties in jouw practicum';
+
+  @override
+  String get schoolPtaNoReactions =>
+      'Er verliepen geen reacties in jouw proeven.';
+
+  @override
+  String get schoolPtaNewPractical => 'Nieuw practicum';
+
+  @override
+  String get schoolPtaSameSet => 'Zelfde set opnieuw';
+
+  @override
+  String get schoolPtaQuit => 'Stoppen';
+
+  @override
+  String get schoolPtaQuitConfirm =>
+      'Dit practicum stoppen? Je logboek gaat verloren.';
 
   @override
   String get schoolPracticeTestSaveTitle => 'Oefentoets opslaan als PDF';

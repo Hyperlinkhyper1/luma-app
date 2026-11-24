@@ -1488,6 +1488,7 @@ class _CityMapEditorViewState extends State<CityMapEditorView> {
                               labelText: t.mapMakerCityPlanner,
                               isDense: true,
                               border: InputBorder.none,
+                              filled: false,
                               contentPadding: const EdgeInsets.symmetric(
                                 vertical: 5,
                               ),

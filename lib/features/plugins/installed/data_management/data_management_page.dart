@@ -474,6 +474,7 @@ class _DatasetEditorViewState extends State<_DatasetEditorView> {
                       ),
                       decoration: const InputDecoration(
                         border: InputBorder.none,
+                        filled: false,
                         isDense: true,
                         contentPadding: EdgeInsets.zero,
                       ),
@@ -1642,6 +1643,7 @@ class _EditableCellState extends State<_EditableCell> {
                 : TextInputType.text,
             decoration: const InputDecoration(
               border: InputBorder.none,
+              filled: false,
               isDense: true,
               contentPadding: EdgeInsets.zero,
             ),

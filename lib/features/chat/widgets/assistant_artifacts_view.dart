@@ -166,10 +166,6 @@ class _AssistantArtifactsViewState extends State<AssistantArtifactsView> {
                         decoration: InputDecoration(
                           prefixIcon: const Icon(Icons.search_rounded),
                           hintText: 'Search artifacts',
-                          fillColor: surface,
-                          enabledBorder: UnderlineInputBorder(
-                            borderSide: BorderSide(color: border),
-                          ),
                         ),
                       ),
                     ),

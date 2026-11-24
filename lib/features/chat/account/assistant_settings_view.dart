@@ -7,23 +7,27 @@ import '../../../theme/luma_theme.dart';
 import '../memory/assistant_memory_repository.dart';
 import '../memory/assistant_memory_scope.dart';
 import '../widgets/chat_markdown.dart';
+import 'assistant_api_view.dart';
 import 'assistant_memory_editor.dart';
 import 'assistant_panels.dart';
 
-enum _Section { chat, memory, user }
+enum _Section { chat, memory, user, api }
 
 /// The assistant's settings, laid out like the Claude app's: a side list of
-/// sections — Chat, Memory, User — and the chosen section beside it. On a
-/// phone the side list becomes a row of pills over the content.
+/// sections — Chat, Memory, User, API — and the chosen section beside it. On
+/// a phone the side list becomes a row of pills over the content.
 class AssistantSettingsView extends StatefulWidget {
-  const AssistantSettingsView({super.key});
+  const AssistantSettingsView({super.key, this.openApi = false});
+
+  /// Opens on the API section instead of Chat.
+  final bool openApi;
 
   @override
   State<AssistantSettingsView> createState() => _AssistantSettingsViewState();
 }
 
 class _AssistantSettingsViewState extends State<AssistantSettingsView> {
-  _Section _section = _Section.chat;
+  late _Section _section = widget.openApi ? _Section.api : _Section.chat;
 
   @override
   Widget build(BuildContext context) {
@@ -38,11 +42,16 @@ class _AssistantSettingsViewState extends State<AssistantSettingsView> {
       ),
       (_Section.memory, Icons.psychology_outlined, t.assistantSettingsMemory),
       (_Section.user, Icons.person_outline_rounded, t.assistantSettingsUser),
+      (_Section.api, Icons.key_rounded, t.assistantSettingsApi),
     ];
     final Widget content = switch (_section) {
       _Section.chat => _ChatSection(repo: repo),
       _Section.memory => _MemorySection(repo: repo),
       _Section.user => _UserSection(repo: repo),
+      _Section.api => _SectionScaffold(
+        title: t.assistantSettingsApi,
+        children: const [AssistantApiKeys()],
+      ),
     };
 
     return LayoutBuilder(

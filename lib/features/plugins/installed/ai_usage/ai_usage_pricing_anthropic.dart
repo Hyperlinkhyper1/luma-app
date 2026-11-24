@@ -13,6 +13,7 @@ const Map<String, AiPricingRates> kAnthropicPricing = {
   'claude-opus-4-7': AiPricingRates(input: 5.00, output: 25.00, cacheWrite: 6.25, cacheRead: 0.50),
   'claude-opus-4-6': AiPricingRates(input: 5.00, output: 25.00, cacheWrite: 6.25, cacheRead: 0.50),
   'claude-opus-4-5': AiPricingRates(input: 5.00, output: 25.00, cacheWrite: 6.25, cacheRead: 0.50),
+  'claude-opus-5-5': AiPricingRates(input: 4.00, output: 20.00, cacheWrite: 5.00, cacheRead: 0.20),
   'claude-opus-5': AiPricingRates(input: 5.00, output: 25.00, cacheWrite: 6.25, cacheRead: 0.50),
   // Sonnet 5 launched Jun 30 2026 at an introductory $2/$10 due to rise Sep 1;
   // Anthropic made that permanent (~Aug 10 2026), so $2/$10 is the rate.
@@ -23,7 +24,7 @@ const Map<String, AiPricingRates> kAnthropicPricing = {
   'claude-haiku-4-7': AiPricingRates(input: 1.00, output: 5.00, cacheWrite: 1.25, cacheRead: 0.10),
   'claude-haiku-4-6': AiPricingRates(input: 1.00, output: 5.00, cacheWrite: 1.25, cacheRead: 0.10),
   'claude-haiku-4-5': AiPricingRates(input: 1.00, output: 5.00, cacheWrite: 1.25, cacheRead: 0.10),
-  // luma's own Assistant default (AnthropicClient.defaultModel).
+  // luma's Assistant default before it moved to Opus 5.5.
   'claude-3-5-haiku': AiPricingRates(input: 0.80, output: 4.00, cacheWrite: 1.00, cacheRead: 0.08),
 };
 

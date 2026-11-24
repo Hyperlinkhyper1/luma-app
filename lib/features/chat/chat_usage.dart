@@ -108,6 +108,8 @@ int contextWindowFor(String providerId) =>
       AiProviderId.anthropic => 200000,
       AiProviderId.openai => 128000,
       AiProviderId.mistral => 128000,
+      AiProviderId.openrouter => 128000,
+      AiProviderId.gemini => 1048576,
       null => 128000,
     };
 
