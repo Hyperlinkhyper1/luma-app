@@ -21678,7 +21678,7 @@ class LNl extends L {
 
   @override
   String get schoolPtaIntro =>
-      'Je krijgt een potje met een onbekende stof en een lijst met vier mogelijke stoffen. Zoek uit welke het is met zuur-base-, redox- en neerslagreacties, de pH en Binas-tabel 45, 48, 49 en 65.';
+      'Ontdek in een virtueel lab welke van vier willekeurig gekozen stoffen er in het potje zit.';
 
   @override
   String get schoolPtaLevel => 'Niveau';
@@ -21718,6 +21718,9 @@ class LNl extends L {
 
   @override
   String get schoolPtaStart => 'Start practicum';
+
+  @override
+  String get schoolPtaAdvancedSettings => 'Geavanceerde instellingen';
 
   @override
   String get schoolPtaJar => 'Stof X';

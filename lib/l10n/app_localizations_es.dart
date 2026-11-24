@@ -21710,7 +21710,7 @@ class LEs extends L {
 
   @override
   String get schoolPtaIntro =>
-      'Recibes un frasco con una sustancia desconocida y una lista de cuatro candidatas. Averigua cuál es con reacciones ácido-base, redox y de precipitación, el pH y las tablas Binas 45, 48, 49 y 65. La práctica en sí está en neerlandés.';
+      'Identifica una sustancia desconocida entre cuatro candidatas elegidas al azar en un laboratorio virtual. La práctica está en neerlandés.';
 
   @override
   String get schoolPtaLevel => 'Nivel';
@@ -21750,6 +21750,9 @@ class LEs extends L {
 
   @override
   String get schoolPtaStart => 'Empezar la práctica';
+
+  @override
+  String get schoolPtaAdvancedSettings => 'Ajustes avanzados';
 
   @override
   String get schoolPtaJar => 'Sustancia X';

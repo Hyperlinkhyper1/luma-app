@@ -20528,8 +20528,7 @@ class LZh extends L {
   String get schoolPtaTitle => '实验：定性分析';
 
   @override
-  String get schoolPtaIntro =>
-      '你会拿到一瓶未知物质和四种候选物质的清单。利用酸碱反应、氧化还原反应、沉淀反应、pH 以及 Binas 表 45、48、49 和 65 找出它是哪一种。实验内容本身为荷兰语。';
+  String get schoolPtaIntro => '在虚拟实验室中，从随机抽取的四种候选物质里找出未知物质。实验内容为荷兰语。';
 
   @override
   String get schoolPtaLevel => '级别';
@@ -20566,6 +20565,9 @@ class LZh extends L {
 
   @override
   String get schoolPtaStart => '开始实验';
+
+  @override
+  String get schoolPtaAdvancedSettings => '高级设置';
 
   @override
   String get schoolPtaJar => '物质 X';

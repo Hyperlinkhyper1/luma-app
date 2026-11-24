@@ -22,6 +22,13 @@ const binasAnions = [
   Sp.oh, Sp.cl, Sp.br, Sp.i, Sp.no3, Sp.so4, Sp.co3, Sp.po4, Sp.so3, Sp.s2o3, Sp.c2o4, Sp.ac, //
 ];
 
+const binasSolubilityLabels = {
+  'g': 'Goed oplosbaar',
+  'm': 'Matig oplosbaar',
+  's': 'Slecht oplosbaar',
+  '-': 'Bestaat niet of reageert',
+};
+
 /// Combinations the lab never mixes, filled in from the literature so the
 /// table is complete. "-" means: does not exist, or reacts with water or by
 /// a redox reaction.
@@ -145,8 +152,7 @@ List<BinasSheet> binasSheets() {
         for (final c in binasCations)
           [c.formula, for (final a in binasAnions) solubility(c, a)],
       ],
-      'g = goed oplosbaar · m = matig oplosbaar · s = slecht oplosbaar · '
-          '- = bestaat niet of reageert (met water of als redoxreactie). '
+      'Bij een streepje bestaat het zout niet of reageert het met water of in een redoxreactie. '
           'Slecht oplosbaar betekent: er ontstaat een neerslag als je de ionen samenvoegt.',
     ),
     BinasSheet(

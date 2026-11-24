@@ -15,14 +15,12 @@ class PtaResultView extends StatefulWidget {
     required this.lab,
     required this.set,
     required this.choice,
-    required this.onSameSet,
     required this.onNew,
   });
 
   final PtaLab lab;
   final PtaSet set;
   final Substance choice;
-  final VoidCallback onSameSet;
   final VoidCallback onNew;
 
   @override
@@ -97,25 +95,15 @@ class _PtaResultViewState extends State<PtaResultView> {
           ),
         ),
         const SizedBox(height: 14),
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: [
-            IntrinsicWidth(
-              child: LumaPrimaryButton(
-                label: t.schoolPtaSameSet,
-                icon: Icons.replay_rounded,
-                onTap: widget.onSameSet,
-              ),
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: IntrinsicWidth(
+            child: LumaPrimaryButton(
+              label: t.schoolPtaNewPractical,
+              icon: Icons.add_rounded,
+              onTap: widget.onNew,
             ),
-            IntrinsicWidth(
-              child: LumaGhostButton(
-                label: t.schoolPtaNewPractical,
-                icon: Icons.add_rounded,
-                onTap: widget.onNew,
-              ),
-            ),
-          ],
+          ),
         ),
         const SizedBox(height: 14),
         LumaCard(

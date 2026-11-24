@@ -35198,7 +35198,7 @@ abstract class L {
   /// No description provided for @schoolPtaIntro.
   ///
   /// In en, this message translates to:
-  /// **'You get a jar with one unknown substance and a list of four candidates. Find out which one it is with acid–base, redox and precipitation tests, the pH and Binas tables 45, 48, 49 and 65. The practical itself is in Dutch.'**
+  /// **'Identify an unknown substance from four randomly selected candidates in a virtual lab. The practical is in Dutch.'**
   String get schoolPtaIntro;
 
   /// No description provided for @schoolPtaLevel.
@@ -35272,6 +35272,12 @@ abstract class L {
   /// In en, this message translates to:
   /// **'Start practical'**
   String get schoolPtaStart;
+
+  /// No description provided for @schoolPtaAdvancedSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Advanced settings'**
+  String get schoolPtaAdvancedSettings;
 
   /// No description provided for @schoolPtaJar.
   ///

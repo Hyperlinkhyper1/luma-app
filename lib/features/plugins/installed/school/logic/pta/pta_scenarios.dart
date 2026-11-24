@@ -220,20 +220,24 @@ String _signature(Substance s) => _signatures.putIfAbsent(
 bool distinguishable(List<Substance> candidates) =>
     {for (final c in candidates) _signature(c)}.length == candidates.length;
 
-/// Four random candidates for [level] that the standard tests can tell
-/// apart, plus the one in the jar.
+/// Four random candidates for [level] that the standard tests can tell apart.
 PtaSet randomSet(Level level, math.Random rng) {
   final pool = [
     for (final s in substances)
       if (s.candidate && (level == Level.vwo || s.level == Level.havo)) s,
-  ];
-  for (var attempt = 0; attempt < 200; attempt++) {
-    pool.shuffle(rng);
-    final pick = pool.take(4).toList();
-    if (distinguishable(pick)) {
-      return PtaSet('random', 'Willekeurige set', level,
-          [for (final s in pick) s.id], 'Vier willekeurige stoffen');
-    }
+  ]..shuffle(rng);
+  final signatures = <String>{};
+  final ids = <String>[];
+  for (final substance in pool) {
+    if (!signatures.add(_signature(substance))) continue;
+    ids.add(substance.id);
+    if (ids.length == 4) break;
   }
-  return setsFor(level).first;
+  return PtaSet(
+    'random',
+    'Willekeurige set',
+    level,
+    ids,
+    'Vier willekeurige stoffen',
+  );
 }

@@ -21524,7 +21524,7 @@ class LEn extends L {
 
   @override
   String get schoolPtaIntro =>
-      'You get a jar with one unknown substance and a list of four candidates. Find out which one it is with acid–base, redox and precipitation tests, the pH and Binas tables 45, 48, 49 and 65. The practical itself is in Dutch.';
+      'Identify an unknown substance from four randomly selected candidates in a virtual lab. The practical is in Dutch.';
 
   @override
   String get schoolPtaLevel => 'Level';
@@ -21564,6 +21564,9 @@ class LEn extends L {
 
   @override
   String get schoolPtaStart => 'Start practical';
+
+  @override
+  String get schoolPtaAdvancedSettings => 'Advanced settings';
 
   @override
   String get schoolPtaJar => 'Substance X';

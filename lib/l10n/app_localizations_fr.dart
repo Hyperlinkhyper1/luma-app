@@ -21769,7 +21769,7 @@ class LFr extends L {
 
   @override
   String get schoolPtaIntro =>
-      'Vous recevez un pot contenant une substance inconnue et une liste de quatre candidates. Identifiez-la par des réactions acide-base, redox et de précipitation, le pH et les tables Binas 45, 48, 49 et 65. Le TP lui-même est en néerlandais.';
+      'Identifiez une substance inconnue parmi quatre candidates tirées au sort dans un laboratoire virtuel. Le TP est en néerlandais.';
 
   @override
   String get schoolPtaLevel => 'Niveau';
@@ -21809,6 +21809,9 @@ class LFr extends L {
 
   @override
   String get schoolPtaStart => 'Commencer le TP';
+
+  @override
+  String get schoolPtaAdvancedSettings => 'Paramètres avancés';
 
   @override
   String get schoolPtaJar => 'Substance X';
