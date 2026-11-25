@@ -1,4 +1,4 @@
-Artwork for the AI Usage plugin's Tests tiles.
+Artwork for the AI Tools and Data plugin's Tests tiles.
 
 Drop the source image in here UNEDITED — no purple band, no gradient, no text
 burned into the pixels. LumaHeroTile paints all of that at runtime.

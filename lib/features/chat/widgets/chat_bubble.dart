@@ -14,10 +14,12 @@ import 'assistant_effort_menu.dart';
 import '../assistant_compose_mode.dart';
 import '../assistant_files.dart';
 import '../chat_usage.dart';
+import '../chat_turn_activity.dart';
 import '../memory/assistant_memory_repository.dart';
 import '../memory/assistant_memory_scope.dart';
 import '../data/chat_repository.dart';
 import 'chat_markdown.dart';
+import 'chat_activity_timeline.dart';
 import 'compose_mode_menu.dart';
 import 'assistant_artifacts_view.dart';
 
@@ -65,6 +67,9 @@ class _ChatBubbleState extends State<ChatBubble> {
       'error' => _errorNotice(context),
       _ => _assistantReply(context),
     };
+    final activity = role == 'user'
+        ? const <ChatTurnActivity>[]
+        : ChatTurnActivity.fromMetadata(widget.message.metadataJson);
     return MouseRegion(
       onEnter: (_) => setState(() => _hovering = true),
       onExit: (_) => setState(() => _hovering = false),
@@ -73,7 +78,16 @@ class _ChatBubbleState extends State<ChatBubble> {
           top: role == 'user' ? 18 : 10,
           bottom: role == 'user' ? 10 : 6,
         ),
-        child: body,
+        child: activity.isEmpty
+            ? body
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ChatActivityTimeline(entries: activity),
+                  const SizedBox(height: 8),
+                  body,
+                ],
+              ),
       ),
     );
   }

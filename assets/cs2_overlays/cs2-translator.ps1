@@ -7,13 +7,11 @@
 param(
     [string]$LogPath = "",
     [string]$TargetLang = "en",
-    [int]$NetconPort = 2121,
     [int]$HideAfterSeconds = 20,
     [int]$MaxLines = 8,
     [int]$OverlayX = 20,
     [int]$OverlayY = -1,       # -1 = automatic (bottom-left, above the chat area)
     [string]$Snapshot = "",    # render the overlay with sample lines to a PNG and exit (for checking the look)
-    [string]$VoiceInbox = "",
     [switch]$NoOverlay,
     [switch]$Test
 )
@@ -153,23 +151,6 @@ function Parse-Line([string]$line) {
 function Format-Plain($item) {
     if ($item.Trans) { return "$($item.Name): $($item.Trans)  (translated from $($item.Lang))" }
     return "$($item.Name): $($item.Msg)"
-}
-
-# --- netcon (optional echo of translations into the CS2 console) ---
-$script:netcon = $null
-function Send-Netcon([string]$line) {
-    try {
-        if (-not $script:netcon -or -not $script:netcon.Connected) {
-            $script:netcon = New-Object System.Net.Sockets.TcpClient
-            $script:netcon.Connect("127.0.0.1", $NetconPort)
-        }
-        # Strip characters that would break the console command
-        $safe = $line -replace '[";\r\n]', ''
-        $bytes = [System.Text.Encoding]::UTF8.GetBytes("echo `"$safe`"`n")
-        $script:netcon.GetStream().Write($bytes, 0, $bytes.Length)
-    } catch {
-        $script:netcon = $null
-    }
 }
 
 # --- console.log tailing ---
@@ -406,7 +387,6 @@ function Add-ChatLine($item) {
 
 function Show-Line($item) {
     Write-Host (Format-Plain $item)
-    if ($item.Trans) { Send-Netcon (Format-Plain $item) }
     if ($script:overlay) { Add-ChatLine $item }
 }
 
@@ -414,17 +394,6 @@ function Update-Chat {
     foreach ($line in Read-NewLines) {
         $item = Parse-Line $line
         if ($item) { Show-Line $item }
-    }
-    if ($VoiceInbox -and [IO.Directory]::Exists($VoiceInbox)) {
-        foreach ($file in Get-ChildItem -LiteralPath $VoiceInbox -Filter '*.json' | Sort-Object Name) {
-            try {
-                $voice = Get-Content -LiteralPath $file.FullName -Raw -Encoding UTF8 | ConvertFrom-Json
-                if ($voice.transcript -and $voice.translation) {
-                    $translated = if ($voice.translation -ne $voice.transcript) { $voice.translation } else { $null }
-                    Show-Line @{ Team = 'VOICE'; Dot = $false; Dead = $false; Name = 'Teammate audio'; Loc = ''; Msg = $voice.transcript; Trans = $translated; Lang = 'voice' }
-                }
-            } finally { Remove-Item -LiteralPath $file.FullName -Force -ErrorAction SilentlyContinue }
-        }
     }
     if ($script:overlay) { $script:overlay.Expire($HideAfterSeconds) }
 }
@@ -456,7 +425,7 @@ if (-not $LogPath) {
     exit 1
 }
 Write-Host "Watching $LogPath"
-Write-Host "Make sure CS2 launch options include: -condebug -netconport $NetconPort"
+Write-Host "Make sure CS2 launch options include: -condebug"
 Write-Host "Press Ctrl+C in this window to quit (or right-click the dot on the overlay)."
 
 if ($NoOverlay) {

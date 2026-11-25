@@ -8,7 +8,7 @@ import '../../plugins/installed/ai_usage/ai_workbench_models.dart';
 import '../../plugins/installed/ai_usage/ai_workbench_scope.dart';
 import 'assistant_panels.dart';
 
-/// Every agent built in the AI Usage plugin's agent builder. Read-only for
+/// Every agent built in the AI Tools and Data plugin's agent builder. Read-only for
 /// now: running an agent from the assistant comes later.
 class AssistantAgentsView extends StatelessWidget {
   const AssistantAgentsView({super.key, required this.onOpenPlugin});

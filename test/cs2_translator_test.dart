@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:luma/features/plugins/installed/game_tools/cs2_translator/cs2_translator_service.dart';
+import 'package:luma/features/plugins/installed/game_tools/cs2_overlays/cs2_translator_service.dart';
 
 void main() {
   group('Cs2TranslatorOptions.toArgs', () {

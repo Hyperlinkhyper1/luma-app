@@ -15,6 +15,7 @@ import 'assistant_effort.dart';
 import 'assistant_ultra_reasoning.dart';
 import 'assistant_files.dart';
 import 'ai_tools.dart';
+import 'chat_turn_activity.dart';
 import 'chat_usage.dart';
 import 'memory/assistant_memory_repository.dart';
 import 'office/assistant_workbench.dart';
@@ -88,7 +89,7 @@ class ChatController extends ChangeNotifier {
   final SettingsController _settings;
   final SyncService? _syncService;
 
-  /// Where each reply's token usage is logged for the AI Usage plugin.
+  /// Where each reply's token usage is logged for the AI Tools and Data plugin.
   final AiUsageRepository? _aiUsage;
 
   /// The user's profile, memory and reply language, folded into the system
@@ -276,12 +277,21 @@ class ChatController extends ChangeNotifier {
   /// What a deep research or picture turn is busy with, while it runs.
   final ValueNotifier<AssistantActivity?> activity = ValueNotifier(null);
 
+  final ValueNotifier<List<ChatTurnActivity>> turnActivity = ValueNotifier(
+    const [],
+  );
+
+  List<Map<String, String>> _savedTurnActivity() => [
+    for (final entry in turnActivity.value) entry.toJson(),
+  ];
+
   @override
   void dispose() {
     workbench.removeListener(_onWorkbenchChanged);
     workbench.dispose();
     draftReply.dispose();
     activity.dispose();
+    turnActivity.dispose();
     super.dispose();
   }
 
@@ -316,6 +326,7 @@ class ChatController extends ChangeNotifier {
       workbench.modelActive = false;
       draftReply.value = '';
       activity.value = null;
+      turnActivity.value = const [];
       notifyListeners();
     }
   }
@@ -486,6 +497,15 @@ class ChatController extends ChangeNotifier {
       return;
     }
 
+    Future<void> saveError(String message) => _repository.addMessage(
+      conversationId,
+      'error',
+      message,
+      metadataJson: turnActivity.value.isEmpty
+          ? null
+          : jsonEncode({'activity': _savedTurnActivity()}),
+    );
+
     try {
       await _memory?.ready;
       final project = await _repository.projectForConversation(conversationId);
@@ -518,7 +538,7 @@ class ChatController extends ChangeNotifier {
       ];
       final generated = <Map<String, dynamic>>[];
 
-      Future<Map<String, dynamic>> executeTool(
+      Future<Map<String, dynamic>> runTool(
         String name,
         Map<String, dynamic> input,
       ) async {
@@ -587,6 +607,26 @@ class ChatController extends ChangeNotifier {
         return result;
       }
 
+      Future<Map<String, dynamic>> executeTool(
+        String name,
+        Map<String, dynamic> input,
+      ) async {
+        final index = turnActivity.value.length;
+        turnActivity.value = [
+          ...turnActivity.value,
+          ChatToolActivity(name, ChatToolState.running),
+        ];
+        var state = ChatToolState.failed;
+        try {
+          final result = await runTool(name, input);
+          state = ChatToolState.fromResult(result);
+          return result;
+        } finally {
+          turnActivity.value = [...turnActivity.value]
+            ..[index] = ChatToolActivity(name, state);
+        }
+      }
+
       final AiChatResult result;
       UltraReasoningResult? ultraResult;
       final effortPrompt = effortSupported(providerId) ? effort.prompt : null;
@@ -604,7 +644,10 @@ class ChatController extends ChangeNotifier {
               if (tool.name == 'web_search') tool,
           ],
           executeTool: executeTool,
-          onActivity: (value) => activity.value = value,
+          onActivity: (value) {
+            if (value.reviewing) draftReply.value = '';
+            activity.value = value;
+          },
           onText: (text) => draftReply.value = text,
         ).run(turns);
         result = ultraResult.result;
@@ -638,6 +681,9 @@ class ChatController extends ChangeNotifier {
             _fullSystemPrompt(toolSchemas, project),
             ?effortPrompt,
             if (planning) kPlanModePrompt,
+            if (!planning && !usingLocalModel)
+              'When a tool is needed, you may briefly tell the user what '
+                  'you are about to do before calling it.',
             if (artifactType != null &&
                 assistantOfficeArtifactTypes.contains(artifactType))
               'Create a .$artifactType file for this request: start it with create_office_file, '
@@ -651,6 +697,9 @@ class ChatController extends ChangeNotifier {
           executeTool: executeTool,
           metadataFor: AiToolRegistry.metadataFor,
           onText: (text) => draftReply.value = text,
+          onCommentary: (text) {
+            turnActivity.value = [...turnActivity.value, ChatCommentary(text)];
+          },
         );
       }
 
@@ -661,6 +710,9 @@ class ChatController extends ChangeNotifier {
           );
       final metadata =
           jsonDecode(result.metadataJson ?? '{}') as Map<String, dynamic>;
+      if (turnActivity.value.isNotEmpty) {
+        metadata['activity'] = _savedTurnActivity();
+      }
       if (generated.isNotEmpty) metadata['artifacts'] = generated;
       if (ultraResult != null) {
         metadata['ultra'] = {
@@ -701,13 +753,9 @@ class ChatController extends ChangeNotifier {
         );
       }
     } on AiError catch (e) {
-      await _repository.addMessage(conversationId, 'error', e.message);
+      await saveError(e.message);
     } catch (e) {
-      await _repository.addMessage(
-        conversationId,
-        'error',
-        currentL.commonErrorDetail('$e'),
-      );
+      await saveError(currentL.commonErrorDetail('$e'));
     }
   }
 

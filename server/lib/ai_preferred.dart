@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'ai_image.dart';
 import 'ai_mode_routing.dart';
-import 'cs2_voice_translate.dart';
 import 'util.dart';
 
 /// Every model selector on the Assistant tab: the three chat modes, the AI
@@ -16,8 +15,6 @@ final kAiModelSelectors = List<String>.unmodifiable([
   'bookreview',
   'classroom',
   ...kAiImageSelectors,
-  kCs2TranscribeSelector,
-  kCs2TranslateSelector
 ]);
 
 const _preferredSuffix = '.preferred';
@@ -34,8 +31,7 @@ String aiSelectorOf(String key) => isAiPreferredKey(key)
 
 /// Upstreams [selector] can run on; only some of them can draw.
 bool aiSelectorAccepts(String selector, AiUpstream upstream) =>
-    (!isAiImageSelector(selector) || kAiImageUpstreams.contains(upstream)) &&
-    cs2VoiceAccepts(selector, upstream);
+    !isAiImageSelector(selector) || kAiImageUpstreams.contains(upstream);
 
 /// The operator's "if possible" model per selector, kept in
 /// `ai_preferred_models.json`. A request goes to it whenever its provider

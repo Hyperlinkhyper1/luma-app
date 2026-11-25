@@ -30,6 +30,7 @@ class _FakeResearchClient extends AiClient {
     required AiToolExecutor executeTool,
     required AiToolMetadata metadataFor,
     AiTextProgress? onText,
+    AiTextProgress? onCommentary,
   }) async {
     calls.add(history);
     systemPrompts.add(systemPrompt);

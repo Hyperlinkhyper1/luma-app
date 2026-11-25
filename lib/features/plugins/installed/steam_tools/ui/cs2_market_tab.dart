@@ -12,14 +12,16 @@ import '../cs2_market_scope.dart';
 import '../cs2_models.dart';
 import 'cs2_inventory_dialog.dart';
 import 'cs2_item_detail_page.dart';
+import 'cs2_selling_calculator_tab.dart';
 import 'cs2_shared.dart';
 import 'cs2_steam_session_browser.dart';
 import 'cs2_tracked_tab.dart';
 
 /// The CS2 Market tool's own internal views — Browse is the whole catalog,
-/// Tracked is only what's being watched. Private to this file: nothing
-/// outside the tool needs to know which one is showing.
-enum _Cs2MarketView { browse, tracked }
+/// Tracked is only what's being watched, Sell works out what a sale nets
+/// after Steam's fees. Private to this file: nothing outside the tool needs
+/// to know which one is showing.
+enum _Cs2MarketView { browse, tracked, sell }
 
 /// The CS2 Market tool: every CS2 item, browsable A–Z or narrowed by name,
 /// rarity or case, with a pin to keep favourites at the top and a way into
@@ -211,7 +213,9 @@ class _Cs2MarketTabState extends State<Cs2MarketTab> {
           builder: (context, _) => _PriceStatusLine(repository: repository),
         ),
         Expanded(
-          child: tracked
+          child: _view == _Cs2MarketView.sell
+              ? const Cs2SellingCalculatorTab()
+              : tracked
               // Tracked listings live entirely in the local database, not the
               // catalog fetch — this view works immediately, even before
               // `catalogLoaded` is true.
@@ -463,7 +467,11 @@ class _Toolbar extends StatelessWidget {
             children: [
               Expanded(
                 child: LumaSegmentedTabs(
-                  tabs: [t.cs2MarketBrowse, t.cs2MarketTracked],
+                  tabs: [
+                    t.cs2MarketBrowse,
+                    t.cs2MarketTracked,
+                    t.cs2MarketSellCalculator,
+                  ],
                   selectedIndex: view.index,
                   onSelect: (i) => onViewChanged(_Cs2MarketView.values[i]),
                 ),
@@ -478,6 +486,7 @@ class _Toolbar extends StatelessWidget {
               ],
             ],
           ),
+          if (view != _Cs2MarketView.sell) ...[
           const SizedBox(height: 14),
           SizedBox(
             height: 40,
@@ -514,6 +523,7 @@ class _Toolbar extends StatelessWidget {
               ),
             ),
           ),
+          ],
         ],
       ),
     );

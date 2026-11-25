@@ -33,6 +33,7 @@ import 'local_model_store.dart';
 import 'ai_tools.dart';
 import 'web_search_client.dart';
 import 'chat_controller.dart';
+import 'chat_turn_activity.dart';
 import 'clipboard_files.dart';
 import 'chat_scope.dart';
 import 'chat_usage.dart';
@@ -687,6 +688,7 @@ class _ChatLayoutState extends State<_ChatLayout> {
                               _pendingConversationId == activeId,
                           draft: widget.controller.draftReply,
                           activity: widget.controller.activity,
+                          turnActivity: widget.controller.turnActivity,
                           composer: composer,
                           compact: !wide,
                           onOpenPlugin: widget.onOpenPlugin,
@@ -1912,6 +1914,7 @@ class _ConversationThread extends StatelessWidget {
     required this.thinking,
     required this.draft,
     required this.activity,
+    required this.turnActivity,
     required this.composer,
     required this.onOpenPlugin,
     this.compact = false,
@@ -1921,6 +1924,7 @@ class _ConversationThread extends StatelessWidget {
   final bool thinking;
   final ValueListenable<String> draft;
   final ValueListenable<AssistantActivity?> activity;
+  final ValueListenable<List<ChatTurnActivity>> turnActivity;
   final Widget composer;
   final ValueChanged<String> onOpenPlugin;
 
@@ -1939,6 +1943,7 @@ class _ConversationThread extends StatelessWidget {
             thinking: thinking,
             draft: draft,
             activity: activity,
+            turnActivity: turnActivity,
             onOpenQrPlugin: () => onOpenPlugin('qr-code-generator'),
           ),
         ),

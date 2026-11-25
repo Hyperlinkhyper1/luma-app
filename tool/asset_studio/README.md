@@ -1,6 +1,6 @@
 # Asset studio thumbnails
 
-The gallery in the AI Usage plugin's **Assets** section shows a baked
+The gallery in the AI Tools and Data plugin's **Assets** section shows a baked
 isometric render of each model (`assets/asset_studio/thumbs/<id>.png`,
 480×320, transparent background) instead of running WebGL per card.
 

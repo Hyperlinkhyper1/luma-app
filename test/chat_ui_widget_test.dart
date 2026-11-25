@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:luma/features/chat/chat_turn_activity.dart';
 import 'package:luma/features/chat/chat_usage.dart';
 import 'package:luma/features/chat/data/chat_repository.dart';
 import 'package:luma/features/chat/providers/ai_client.dart';
@@ -25,6 +26,79 @@ Widget _host(Widget child) => MaterialApp(
 );
 
 void main() {
+  testWidgets('tool activity stays in order when the reply is saved', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(340, 650);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final messages = StreamController<List<ChatMessageRecord>>();
+    final activity = ValueNotifier<List<ChatTurnActivity>>(const []);
+    addTearDown(messages.close);
+    addTearDown(activity.dispose);
+
+    await tester.pumpWidget(
+      _host(
+        ChatMessageList(
+          stream: messages.stream,
+          onOpenQrPlugin: () {},
+          thinking: true,
+          turnActivity: activity,
+        ),
+      ),
+    );
+    final prompt = ChatMessageRecord(
+      id: 1,
+      conversationId: 1,
+      role: 'user',
+      content: 'Find my notes about the weekend and make a plan.',
+      createdAt: DateTime(2026),
+    );
+    messages.add([prompt]);
+    await tester.pump();
+    expect(find.text('Thinking…'), findsOneWidget);
+
+    const commentary = ChatCommentary('I’ll check the notes first.');
+    activity.value = [
+      commentary,
+      const ChatToolActivity('search_notes', ChatToolState.running),
+    ];
+    await tester.pump();
+    expect(find.text('Thinking…'), findsNothing);
+    expect(find.text('Search notes'), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+
+    activity.value = [
+      commentary,
+      const ChatToolActivity('search_notes', ChatToolState.completed),
+      const ChatToolActivity('create_note', ChatToolState.needsInfo),
+    ];
+    messages.add([
+      prompt,
+      ChatMessageRecord(
+        id: 2,
+        conversationId: 1,
+        role: 'assistant',
+        content: 'Which day should I plan for?',
+        createdAt: DateTime(2026),
+        metadataJson: jsonEncode({
+          'activity': [for (final entry in activity.value) entry.toJson()],
+        }),
+      ),
+    ]);
+    await tester.pumpAndSettle();
+    final update = find.text('I’ll check the notes first.', findRichText: true);
+    final tool = find.text('Search notes');
+    final reply = find.text('Which day should I plan for?', findRichText: true);
+    expect(update, findsOneWidget);
+    expect(tool, findsOneWidget);
+    expect(find.text('Write a note · More information needed'), findsOneWidget);
+    expect(tester.getTopLeft(update).dy, lessThan(tester.getTopLeft(tool).dy));
+    expect(tester.getTopLeft(tool).dy, lessThan(tester.getTopLeft(reply).dy));
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('desktop composer keeps model picker and send on the far right', (
     tester,
   ) async {

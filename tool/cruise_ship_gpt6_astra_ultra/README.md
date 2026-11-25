@@ -1,6 +1,6 @@
 # MSC Virtuosa — GPT 6 Astra (Ultra)
 
-Independent cruise ship contestant for Luma's AI Usage → Tests → Cruise Ship Test.
+Independent cruise ship contestant for Luma's AI Tools and Data → Tests → Cruise Ship Test.
 All geometry, materials, sounds and weather are authored here. The Opus scene is a separate project.
 
 ## Build and preview

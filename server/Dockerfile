@@ -1,3 +1,8 @@
+FROM golang:1.26-bookworm AS replay-build
+WORKDIR /replay
+COPY tool/cs2_replay/ ./
+RUN CGO_ENABLED=0 go build -mod=readonly -trimpath -o /tmp/luma-cs2-replay .
+
 # Build stage: compile the server to a self-contained bundle.
 FROM dart:stable AS build
 # sqlite3 ships its native library via Dart build hooks, which compile C
@@ -7,6 +12,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY pubspec.yaml pubspec.lock* ./
+COPY packages/cs2_dataset/ packages/cs2_dataset/
 RUN dart pub get
 COPY . .
 # NB: `dart compile exe` refuses to run when any dependency has a build hook
@@ -38,6 +44,8 @@ COPY tool/check_syntax.mjs tool/shot_control.mjs /app/tool/
 ENV LUMA_PREVIEW_TOOL=/app/tool/render_previews.mjs
 
 COPY --from=build /tmp/build-output/bundle/ /app/bundle/
+COPY --from=replay-build /tmp/luma-cs2-replay /usr/local/bin/luma-cs2-replay
+ENV LUMA_CS2_REPLAY_PARSER=/usr/local/bin/luma-cs2-replay
 
 # The AI benchmark scenes the app downloads on demand (see
 # server/benchmarks/README.md). Baked in read-only; the /data volume holds

@@ -1,7 +1,7 @@
 # Hero tile — the purple-wash layout
 
 The spec for `LumaHeroTile` (`hero_tile.dart`), the artwork button used by the
-AI Usage plugin's **Tests** section. Read this before adding a second tile or
+AI Tools and Data plugin's **Tests** section. Read this before adding a second tile or
 touching the gradient; the whole point of the recipe is that every tile made
 from it looks like it came from the same set.
 

@@ -157,6 +157,9 @@ abstract class AiClient {
   /// [onText] is called with the partial reply while it is generated, by
   /// clients that can stream it; the others ignore it and only return the
   /// finished reply.
+  ///
+  /// [onCommentary] receives public assistant text from a tool-call round
+  /// before its tools execute. Provider reasoning fields stay out of it.
   Future<AiChatResult> chat({
     required String apiKey,
     required List<AiTurn> history,
@@ -165,5 +168,6 @@ abstract class AiClient {
     required AiToolExecutor executeTool,
     required AiToolMetadata metadataFor,
     AiTextProgress? onText,
+    AiTextProgress? onCommentary,
   });
 }

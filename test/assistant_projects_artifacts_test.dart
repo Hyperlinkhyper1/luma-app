@@ -83,6 +83,7 @@ class _Client extends AiClient {
     required AiToolExecutor executeTool,
     required AiToolMetadata metadataFor,
     AiTextProgress? onText,
+    AiTextProgress? onCommentary,
   }) async {
     calls++;
     prompt = systemPrompt;

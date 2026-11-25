@@ -43,6 +43,7 @@ class _ScriptedClient extends AiClient {
     required AiToolExecutor executeTool,
     required AiToolMetadata metadataFor,
     AiTextProgress? onText,
+    AiTextProgress? onCommentary,
   }) async {
     prompts.add(systemPrompt);
     final String text;

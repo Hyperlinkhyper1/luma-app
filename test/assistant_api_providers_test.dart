@@ -35,6 +35,63 @@ const _openAiReply = {
 };
 
 void main() {
+  test('Luma AI emits public progress before a tool executes', () async {
+    final events = <String>[];
+    var requests = 0;
+    final mock = MockClient((request) async {
+      final response = requests++ == 0
+          ? {
+              'choices': [
+                {
+                  'message': {
+                    'role': 'assistant',
+                    'content': 'I’ll check your notes.',
+                    'reasoning_content': 'Private reasoning',
+                    'tool_calls': [
+                      {
+                        'id': 'call_notes',
+                        'type': 'function',
+                        'function': {'name': 'search_notes', 'arguments': '{}'},
+                      },
+                    ],
+                  },
+                },
+              ],
+            }
+          : _openAiReply;
+      return http.Response(
+        jsonEncode(response),
+        200,
+        headers: {'content-type': 'application/json; charset=utf-8'},
+      );
+    });
+
+    final result = await http.runWithClient(
+      () => aiClientFor('google').chat(
+        apiKey: 'key',
+        history: const [AiTurn(role: 'user', text: 'Find my notes')],
+        systemPrompt: '',
+        tools: const [
+          AiToolDefinition(
+            name: 'search_notes',
+            description: 'Find notes',
+            parameters: {},
+          ),
+        ],
+        executeTool: (name, _) async {
+          events.add(name);
+          return {'status': 'ok'};
+        },
+        metadataFor: (_, _) => null,
+        onCommentary: events.add,
+      ),
+      () => mock,
+    );
+
+    expect(events, ['I’ll check your notes.', 'search_notes']);
+    expect(result.text, 'Hello');
+  });
+
   test('the API screen lists Claude, OpenAI, OpenRouter and Google', () {
     expect(kApiKeyProviders.map((p) => p.id), [
       AiProviderId.anthropic,

@@ -178,6 +178,64 @@ void main() {
         'authKey': base64Encode(authKeyFor(password)),
       });
 
+  test('CS2 publishes the allocated rounds and gates the download by plan',
+      () async {
+    const adminPath = '/admin/databases/cs2';
+    const appPath = '/api/v1/datasets/cs2';
+    final token = await register('datasets@example.com', 'test-password');
+    final user = store.usersById[store.userIdByEmail['datasets@example.com']]!;
+    expect((await call('GET', appPath))['httpStatus'], 401);
+    expect(
+        (await call('POST', '$adminPath/publish',
+            token: token, json: {'caseCount': 3}))['httpStatus'],
+        302);
+
+    for (final (map, outcomes) in [
+      ('de_ancient', ['a', 'a']),
+      ('de_mirage', ['b', 'a', 'b', 'a']),
+    ]) {
+      final response = await call('POST', '$adminPath/cases',
+          admin: true, json: {'map': map, 'outcomes': outcomes});
+      expect(response['httpStatus'], 200);
+      expect(response['published'], 0);
+    }
+    final invalid = await call('POST', '$adminPath/publish',
+        admin: true, json: {'caseCount': 7});
+    expect(invalid['httpStatus'], 400);
+    final result = await call('POST', '$adminPath/publish',
+        admin: true, json: {'caseCount': 3});
+    expect(result['httpStatus'], 200);
+    expect(result['staged'], 6);
+    expect(result['published'], 3);
+
+    handler = await buildHandler();
+    final baseline = await call('GET', '$appPath/prediction?map=de_mirage',
+        token: token);
+    expect(baseline['counts'], [2, 1, 0]);
+    final afterA = await call(
+        'GET', '$appPath/prediction?map=de_mirage&previous=a',
+        token: token);
+    expect(afterA['counts'], [0, 1, 0]);
+    expect(afterA['conditioned'], true);
+    final afterOther = await call(
+        'GET', '$appPath/prediction?map=de_mirage&previous=other',
+        token: token);
+    expect(afterOther['counts'], [2, 1, 0]);
+    expect(afterOther['conditioned'], false);
+
+    expect((await call('GET', '$appPath/download', token: token))['httpStatus'],
+        403);
+    for (final plan in ['orbit', 'nova']) {
+      user.planId = plan;
+      final download = await call('GET', '$appPath/download', token: token);
+      expect(download['httpStatus'], 200);
+      expect(download['version'], 1);
+      final maps = download['maps'] as Map;
+      expect(maps.keys, ['de_mirage']);
+      expect(maps['de_mirage'], [2, 1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0]);
+    }
+  });
+
   test('dashboard model changes publish persistent versions to the app',
       () async {
     final token = await register('versions@example.com', 'test-password');

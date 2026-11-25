@@ -1,6 +1,6 @@
 # MSC Virtuosa — Opus 5.5 (Ultracode)
 
-Cruise Ship Test contestant for luma's AI Usage → Tests → Cruise Ship Test.
+Cruise Ship Test contestant for luma's AI Tools and Data → Tests → Cruise Ship Test.
 A true-scale MSC Virtuosa on an open sea, rendered with three.js WebGPU
 (WebGL 2 fallback). Independent of the GPT 6 Astra scene in
 `tool/cruise_ship_gpt6_astra_ultra`.

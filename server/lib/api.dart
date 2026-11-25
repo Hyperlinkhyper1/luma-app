@@ -5,6 +5,7 @@ import 'assistant_files.dart';
 import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart' as c;
+import 'package:cs2_dataset/cs2_dataset.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
 
@@ -30,13 +31,15 @@ import 'benchmark_prompts.dart';
 import 'benchmark_repair.dart';
 import 'chat_store.dart';
 import 'classroom.dart';
+import 'cs2_dataset_store.dart';
 import 'cs2_offline_store.dart';
-import 'cs2_voice_translate.dart';
+import 'cs2_replay.dart';
 import 'decider_test.dart';
 import 'tts_test.dart';
 import 'wiki_search_test.dart';
 import 'deploy_console.dart';
 import 'power_console.dart';
+import 'admin_databases.dart';
 import 'admin_projects.dart';
 import 'admin_totp.dart';
 import 'admin_fish_library.dart';
@@ -65,7 +68,7 @@ import 'web_search.dart';
 part 'api_benchmark_generate.dart';
 part 'api_benchmark_repair.dart';
 part 'api_classroom.dart';
-part 'api_cs2_voice_translate.dart';
+part 'api_cs2_datasets.dart';
 part 'api_decider_tests.dart';
 part 'api_meal_chef.dart';
 part 'api_tts_tests.dart';
@@ -447,7 +450,6 @@ class Api {
       PreviewRenderService? previewRenders,
       this.benchmarkRepairPrice,
       this.benchmarkRepairCall,
-      this.cs2VoiceCall,
       this.mealChefCall,
       BenchmarkGithubPublisher? benchmarkGithub})
       : _oauthClient = oauthClient ?? OAuthClient(),
@@ -522,6 +524,9 @@ class Api {
   final RecipeStore recipeStore;
   final AiModelCatalogStore aiCatalog;
   final AiBenchmarkStore aiBenchmarks;
+  late final _cs2Datasets = Cs2DatasetStore(config.dataDir);
+  late final _cs2ReplayImporter = Cs2ReplayImporter(
+      Platform.environment['LUMA_CS2_REPLAY_PARSER'] ?? 'luma-cs2-replay');
 
   /// Renders benchmark banners for the dashboard's Control panel. Tests
   /// substitute one with a fake renderer process.
@@ -545,11 +550,6 @@ class Api {
   /// one with a fake transport.
   final BenchmarkGithubPublisher benchmarkGithub;
   final Cs2OfflineStore? cs2OfflineStore;
-  final Future<(int, String)> Function(AiModeRoute, Map<String, dynamic>)?
-      cs2VoiceCall;
-  late final Cs2VoiceConfigStore cs2VoiceConfig =
-      Cs2VoiceConfigStore(config.dataDir);
-  final Set<String> _cs2VoicePending = {};
 
   /// Stands in for the upstream call in the meal chef tests.
   final Future<(int, String)> Function(AiModeRoute, Map<String, dynamic>)?
@@ -749,7 +749,10 @@ class Api {
       ..post('/api/v1/steam/itad/overview', _requireAuth(_itadOverviewProxy))
       ..get('/api/v1/steam/cs2/offline', _requireAuth(_cs2OfflineGet))
       ..put('/api/v1/steam/cs2/offline', _requireAuth(_cs2OfflinePut))
-      ..post('/api/v1/cs2/voice-translate', _requireAuth(_cs2VoiceTranslate))
+      ..get('/api/v1/datasets/cs2', _requireAuth(_cs2Catalog))
+      ..get('/api/v1/datasets/cs2/prediction', _requireAuth(_cs2Prediction))
+      ..get('/api/v1/datasets/cs2/download', _requireAuth(_cs2Download))
+      ..post('/api/v1/datasets/cs2/replay', _requireAuth(_cs2PrivateReplay))
       ..get('/api/v1/sync/<collection>', _requireAuth(_getBlob))
       ..put('/api/v1/sync/<collection>', _requireAuth(_putBlob))
       ..delete('/api/v1/sync/<collection>', _requireAuth(_deleteBlobHandler))
@@ -877,6 +880,10 @@ class Api {
       ..post('/admin/logout', _adminLogout)
       ..post('/admin/logout-all', _requireAdmin(_adminLogoutAll))
       ..get('/admin', _requireAdmin(_adminDashboard))
+      ..get('/admin/databases/cs2', _requireAdmin(_adminCs2Datasets))
+      ..post('/admin/databases/cs2/cases', _requireAdmin(_adminCs2Cases))
+      ..post('/admin/databases/cs2/replay', _requireAdmin(_adminCs2Replay))
+      ..post('/admin/databases/cs2/publish', _requireAdmin(_adminCs2Publish))
       ..get('/admin/users', _requireAdmin(_adminUsers))
       ..get('/admin/fishing-waters/state', _requireAdmin(fishingWaters.state))
       ..post('/admin/fishing-waters/weather',
@@ -967,7 +974,6 @@ class Api {
       ..post('/admin/ai-detector', _requireAdmin(_adminAiDetectorSave))
       ..post('/admin/ai-book-review', _requireAdmin(_adminAiBookReviewSave))
       ..post('/admin/ai-classroom', _requireAdmin(_adminAiClassroomSave))
-      ..post('/admin/ai-cs2-voice', _requireAdmin(_adminCs2VoiceSave))
       ..get('/admin/school-tests', _requireAdmin(_adminSchoolTestsState))
       ..get('/admin/school-tests/runs/<id>',
           _requireAdmin(_adminSchoolTestsRunDetail))
@@ -1267,8 +1273,7 @@ class Api {
                 path == 'api/v1/ai/book-review' ||
                 path == 'api/v1/ai/meal-chef')) ||
         path == 'api/v1/classroom/question' ||
-        path == 'api/v1/classroom/review' ||
-        path == 'api/v1/cs2/voice-translate') {
+        path == 'api/v1/classroom/review') {
       return ('ai', _aiChatLimiter);
     }
     if (path == 'api/v1/ai/image') {
@@ -3441,8 +3446,6 @@ class Api {
       'classroom' => _aiClassroomRoute(),
       kAiImageSelector || kAiImageProSelector =>
         aiImageConfig.resolve(config.configuredAiUpstreams, mode),
-      kCs2TranscribeSelector || kCs2TranslateSelector =>
-        cs2VoiceConfig.resolve(mode, config.configuredAiUpstreams),
       _ => aiModeRoutes.resolve(mode, config.configuredAiUpstreams),
     };
   }
@@ -3454,8 +3457,6 @@ class Api {
       'classroom' => 'Classroom tutor',
       kAiImageSelector => 'Picture model',
       kAiImageProSelector => 'Pro picture model',
-      kCs2TranscribeSelector => 'CS2 voice transcription',
-      kCs2TranslateSelector => 'CS2 voice translation',
       final selector => aiModeRoutes.displayName(selector),
     };
     return isAiPreferredKey(mode) ? '$label (if possible)' : label;
@@ -3612,11 +3613,6 @@ class Api {
                 upstream.name: aiModeRoutes
                     .resolve('smarter', config.configuredAiUpstreams)
                     ?.model,
-            },
-          kCs2TranscribeSelector || kCs2TranslateSelector => {
-              for (final upstream in AiUpstream.values)
-                if (cs2VoiceAccepts(mode, upstream))
-                  upstream.name: cs2VoiceDefaultModel(mode, upstream),
             },
           _ => {
               for (final upstream in kDefaultAiModeModels.entries)
@@ -4230,9 +4226,7 @@ class Api {
         (!kAiModeNames.containsKey(mode) &&
             mode != 'detector' &&
             mode != 'bookreview' &&
-            mode != 'classroom' &&
-            mode != kCs2TranscribeSelector &&
-            mode != kCs2TranslateSelector)) {
+            mode != 'classroom')) {
       return errorResponse(400, 'bad_request', 'Unknown mode.');
     }
     // The detector and the book reviewer follow Nebula until a model is set.
@@ -4251,7 +4245,7 @@ class Api {
       final modelInput = body['model'];
       if (!aiSelectorAccepts(mode, selectedUpstream)) {
         return errorResponse(400, 'unsupported_provider',
-            'Choose Google AI Studio or OpenRouter for audio transcription.');
+            'This provider cannot run that model.');
       }
       if (modelInput is! String) {
         return errorResponse(400, 'bad_request', 'Model must be text.');
@@ -4261,9 +4255,7 @@ class Api {
           : null;
       final upstream = nebulaRoute?.upstream ?? selectedUpstream;
       final model = modelInput.trim().isEmpty
-          ? (mode == kCs2TranscribeSelector || mode == kCs2TranslateSelector)
-              ? cs2VoiceDefaultModel(mode, upstream)
-              : nebulaRoute?.model ??
+          ? nebulaRoute?.model ??
               kDefaultAiModeModels[upstream]![followsNebula ? 'smarter' : mode]!
           : modelInput.trim();
       if (!isValidAiModelId(model)) {
@@ -4292,8 +4284,6 @@ class Api {
         'detector' => _aiDetectorRoute(),
         'bookreview' => _aiBookReviewRoute(),
         'classroom' => _aiClassroomRoute(),
-        kCs2TranscribeSelector || kCs2TranslateSelector =>
-          cs2VoiceConfig.resolve(mode, config.configuredAiUpstreams),
         _ => aiModeRoutes.resolve(mode, config.configuredAiUpstreams),
       };
     }
@@ -4306,23 +4296,14 @@ class Api {
       // One overall deadline, well inside Cloudflare's 100 s origin timeout:
       // a slow model plus the 429 retry could otherwise outlast it, and the
       // dashboard would get Cloudflare's HTML error page instead of JSON.
-      final voiceTest = mode == kCs2TranscribeSelector ||
-          mode == kCs2TranslateSelector;
-      final testMessages = mode == kCs2TranscribeSelector
-          ? cs2VoiceTranscriptionMessages(cs2VoiceTestAudio())
-          : <Map<String, dynamic>>[
-              {'role': 'user', 'content': 'Reply with just the word OK.'}
-            ];
-      final testBody = voiceTest
-          ? _cs2VoiceRequestBody(mode, route, testMessages)
-          : _aiUpstreamBody({
-            'messages': testMessages,
-            'max_tokens': 256,
-          }, route);
-      final (status, responseBody) = await (voiceTest
-              ? _callCs2VoiceUpstream(mode, route, testBody)
-              : _callAiUpstream(route, testBody))
-          .timeout(_aiTestDeadline);
+      final testBody = _aiUpstreamBody({
+        'messages': [
+          {'role': 'user', 'content': 'Reply with just the word OK.'}
+        ],
+        'max_tokens': 256,
+      }, route);
+      final (status, responseBody) =
+          await _callAiUpstream(route, testBody).timeout(_aiTestDeadline);
       final ms = DateTime.now().difference(started).inMilliseconds;
       String? reply;
       String? error;
@@ -4330,11 +4311,7 @@ class Api {
         final rawDecoded = jsonDecode(responseBody);
         if (rawDecoded is Map) {
           final decoded = Map<String, dynamic>.from(rawDecoded);
-          if (cs2VoiceUsesTranscriptionEndpoint(mode, route)) {
-            reply = decoded['text'] is String ? decoded['text'] as String : null;
-          } else {
-            reply = decoded['choices']?[0]?['message']?['content'] as String?;
-          }
+          reply = decoded['choices']?[0]?['message']?['content'] as String?;
           if (status != HttpStatus.ok) {
             final upstreamError = decoded['error'];
             if (upstreamError is Map) {
@@ -4364,10 +4341,6 @@ class Api {
               ? '${responseBody.substring(0, 500)}…'
               : responseBody;
         }
-      }
-      if (status == HttpStatus.ok &&
-          cs2VoiceUsesTranscriptionEndpoint(mode, route) && reply == null) {
-        error = 'The transcription endpoint did not return a text field.';
       }
       if (status != HttpStatus.ok && error == null) {
         error = switch (status) {
@@ -12225,7 +12198,7 @@ syncToolbar();
         '<meta name="viewport" content="width=device-width, initial-scale=1">'
         '$_adminFavicon'
         '<title>luma admin</title>'
-        '<style>$_adminCss$_bannersCss$_bmCss$_adminPolishCss$_bgCss${PowerConsole.css}${AdminProjects.css}${AdminFishLibrary.css}</style>'
+        '<style>$_adminCss$_bannersCss$_bmCss$_adminPolishCss$_bgCss${PowerConsole.css}${AdminProjects.css}${AdminFishLibrary.css}${AdminDatabases.css}</style>'
         '</head><body class="no-js"><div class="wrap admin-wrap">'
         '<header class="top">${AdminProjects.switcherHtml}'
         '<div style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end">'
@@ -12259,10 +12232,12 @@ syncToolbar();
         '<button class="tab-btn" data-tab="plugins">Plugins</button>'
         '<button class="tab-btn" data-tab="metrics">Metrics</button>'
         '<button class="tab-btn" data-tab="assistant">Assistant</button>'
+        '<button class="tab-btn" data-tab="databases">Databases</button>'
         '<button class="tab-btn" data-tab="tests">Tests</button>'
         '<button class="tab-btn" data-tab="control">Maintenance</button>'
         '</div>'
         '${_adminAssistantPanel(googleModels, mistralModels)}'
+        '${AdminDatabases.html}'
         '<div class="tab-panel" id="panel-users">'
         '<div class="card table-card users-table-card">'
         '<table class="users-table"><thead><tr><th>Email</th><th>Status</th><th>Plan</th>'
@@ -12566,6 +12541,7 @@ syncToolbar();
         '${AdminProjects.fishingWatersHtml}'
         '<script>$_adminMenuScript</script>'
         '<script>$_adminTabScript</script>'
+        '<script>${AdminDatabases.script}</script>'
         '<script>$_adminUsageScript</script>'
         '<script>$_adminMetricsScript</script>'
         '<script>$_adminGroceriesScript</script>'
@@ -12750,7 +12726,6 @@ syncToolbar();
       ('ai-sec-classroom', 'cap', 'Classroom tutor'),
       ('ai-sec-picture', 'image', 'Pictures'),
       ('ai-sec-picture_pro', 'image', 'Pro pictures'),
-      ('ai-sec-cs2voice', 'sparkles', 'Voice translate'),
     ];
     final subnav = '<nav class="subnav" aria-label="Assistant sections">'
         '${sections.map((s) => '<a href="#${s.$1}">${_ico(s.$2)}${s.$3}</a>').join()}'
@@ -12875,7 +12850,6 @@ syncToolbar();
         '${_adminAiClassroomCard(configured)}'
         '${_adminAiImageCard(configured, kAiImageSelector)}'
         '${_adminAiImageCard(configured, kAiImageProSelector)}'
-        '${_adminCs2VoiceCards(configured)}'
         '</div>';
   }
 
@@ -14696,6 +14670,7 @@ window.lumaAskReason = function (form, message) {
     plugins: document.getElementById('panel-plugins'),
     metrics: document.getElementById('panel-metrics'),
     assistant: document.getElementById('panel-assistant'),
+    databases: document.getElementById('panel-databases'),
     tests: document.getElementById('panel-tests'),
     control: document.getElementById('panel-control'),
   };

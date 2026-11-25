@@ -12,6 +12,7 @@ import 'package:luma/features/chat/assistant_auto_router.dart';
 import 'package:luma/features/chat/assistant_compose_mode.dart';
 import 'package:luma/features/chat/assistant_files.dart';
 import 'package:luma/features/chat/chat_controller.dart';
+import 'package:luma/features/chat/chat_turn_activity.dart';
 import 'package:luma/features/chat/chat_usage.dart';
 import 'package:luma/features/chat/data/chat_database.dart';
 import 'package:luma/features/chat/data/chat_repository.dart';
@@ -77,9 +78,11 @@ class _Client extends AiClient {
     required AiToolExecutor executeTool,
     required AiToolMetadata metadataFor,
     AiTextProgress? onText,
+    AiTextProgress? onCommentary,
   }) async {
     prompts.add(systemPrompt);
     if (systemPrompt.contains('Create a .pdf file')) {
+      onCommentary?.call('I’ll create the PDF.');
       await executeTool(AssistantArtifactStore.toolName, {
         'name': 'week',
         'type': 'pdf',
@@ -207,12 +210,30 @@ void main() {
   test('a file named in the prompt is created directly', () async {
     settings.setAdminPlan('orbit');
     final chat = await repo.createConversation();
+    final toolStates = <ChatToolState>[];
+    controller.turnActivity.addListener(() {
+      for (final entry
+          in controller.turnActivity.value.whereType<ChatToolActivity>()) {
+        toolStates.add(entry.state);
+      }
+    });
     await controller.sendMessage(chat, 'make me a pdf of my week');
     expect(client.prompts.last, contains('Create a .pdf file'));
     final reply = (await repo.loadMessages(chat)).last;
     expect(reply.role, 'assistant');
     expect((await repo.watchArtifacts().first).single.name, endsWith('.pdf'));
     expect(chatAutoRouteOf(reply.metadataJson)?.kind, AutoRouteKind.file);
+    expect(toolStates, [ChatToolState.running, ChatToolState.completed]);
+    expect(controller.turnActivity.value, isEmpty);
+    expect(
+      ChatTurnActivity.fromMetadata(
+        reply.metadataJson,
+      ).map((entry) => entry.toJson()),
+      [
+        {'commentary': 'I’ll create the PDF.'},
+        {'tool': AssistantArtifactStore.toolName, 'state': 'completed'},
+      ],
+    );
   });
 
   test('deep research runs on the best model on Nova', () async {

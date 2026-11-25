@@ -2,7 +2,7 @@ import 'package:flutter/widgets.dart';
 
 import 'ai_workbench_repository.dart';
 
-/// Exposes the local Markdown and agent store to the AI Usage plugin tabs.
+/// Exposes the local Markdown and agent store to the AI Tools and Data plugin tabs.
 class AiWorkbenchScope extends InheritedNotifier<AiWorkbenchRepository> {
   const AiWorkbenchScope({
     super.key,

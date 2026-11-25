@@ -2298,17 +2298,17 @@ class LNl extends L {
 
   @override
   String get assistantAgentsSubtitle =>
-      'Agents die je in de AI Usage-plugin hebt gemaakt. Ze vanuit de assistent gebruiken komt binnenkort.';
+      'Agents die je in de AI Tools and Data-plugin hebt gemaakt. Ze vanuit de assistent gebruiken komt binnenkort.';
 
   @override
   String get assistantAgentsEmpty => 'Nog geen agents';
 
   @override
   String get assistantAgentsEmptyHint =>
-      'Maak er een op het tabblad Agents van de AI Usage-plugin en hij verschijnt hier.';
+      'Maak er een op het tabblad Agents van de AI Tools and Data-plugin en hij verschijnt hier.';
 
   @override
-  String get assistantAgentsOpenBuilder => 'AI Usage openen';
+  String get assistantAgentsOpenBuilder => 'AI Tools and Data openen';
 
   @override
   String get assistantAgentsNoDescription => 'Geen beschrijving';
@@ -3031,6 +3031,39 @@ class LNl extends L {
 
   @override
   String get assistantResearchWriting => 'Antwoord uitschrijven…';
+
+  @override
+  String get assistantActivityThinking => 'Aan het nadenken…';
+
+  @override
+  String get assistantActivitySearchWeb => 'Zoeken op internet';
+
+  @override
+  String get assistantActivitySearchNotes => 'Notities zoeken';
+
+  @override
+  String get assistantActivityWriteNote => 'Een notitie schrijven';
+
+  @override
+  String get assistantActivityCreateFile => 'Een bestand maken';
+
+  @override
+  String get assistantActivityEditFile => 'Een bestand bewerken';
+
+  @override
+  String get assistantActivityReadFile => 'Een bestand lezen';
+
+  @override
+  String get assistantActivityInstallPlugin => 'Een plug-in installeren';
+
+  @override
+  String get assistantActivityNeedsInfo => 'Meer informatie nodig';
+
+  @override
+  String get assistantActivityUnavailable => 'Niet beschikbaar';
+
+  @override
+  String get assistantActivityTool => 'Tool';
 
   @override
   String get assistantPictureDrawing => 'Je afbeelding tekenen…';
@@ -4033,7 +4066,7 @@ class LNl extends L {
   String get pluginNameAiDetector => 'AI-detector';
 
   @override
-  String get pluginNameAiUsage => 'AI-gebruik';
+  String get pluginNameAiUsage => 'AI-tools en gegevens';
 
   @override
   String get pluginNameAirlineTycoon => 'Luchtvaartmagnaat';
@@ -12152,6 +12185,151 @@ class LNl extends L {
   String get aiUsageSectionAssetsBlurb => 'Vrij te gebruiken';
 
   @override
+  String get aiUsageSectionDatasets => 'Datasets';
+
+  @override
+  String get aiUsageSectionDatasetsBlurb => 'Databases van apps en games';
+
+  @override
+  String get cs2DatasetSubtitle => 'T-kantpatronen';
+
+  @override
+  String get cs2DatasetDescription =>
+      'Vergelijk bomlocatie A, bomlocatie B en overige rondes. Bij replays telt de voltooide plaatsing of de laatste poging.';
+
+  @override
+  String get cs2DatasetPublished => 'Gepubliceerde database';
+
+  @override
+  String get cs2DatasetPrivate => 'Mijn privédatabase';
+
+  @override
+  String get cs2DatasetMap => 'Map';
+
+  @override
+  String get cs2DatasetPrevious => 'Wat deed T in de vorige ronde?';
+
+  @override
+  String get cs2DatasetAny => 'Elke vorige uitkomst';
+
+  @override
+  String get cs2DatasetNext => 'Meest waarschijnlijke volgende ronde';
+
+  @override
+  String get cs2DatasetNoSites =>
+      'Deze map heeft geen bomlocaties om te vergelijken.';
+
+  @override
+  String get cs2DatasetNoRounds =>
+      'Er zijn nog geen rondes vastgelegd voor deze map.';
+
+  @override
+  String cs2DatasetSample(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Gebaseerd op $count vastgelegde rondes',
+      one: 'Gebaseerd op 1 vastgelegde ronde',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get cs2DatasetFallback =>
+      'Nog geen passende overgangen. Je ziet de algemene kansen voor deze map.';
+
+  @override
+  String get cs2DatasetOffline => 'Gedownloade database in gebruik';
+
+  @override
+  String get cs2DatasetSignIn =>
+      'Log in met een goedgekeurd Luma-account om de gepubliceerde database te bekijken.';
+
+  @override
+  String get cs2DatasetReplaySignIn =>
+      'Log in met een goedgekeurd Luma-account om replays te importeren.';
+
+  @override
+  String get cs2DatasetOpenFailed =>
+      'De database kon niet worden geopend op dit apparaat.';
+
+  @override
+  String get cs2DatasetLoadFailed =>
+      'De gepubliceerde database kon niet worden geladen.';
+
+  @override
+  String get cs2DatasetRetry => 'Opnieuw proberen';
+
+  @override
+  String get cs2DatasetManual => 'Rondes toevoegen';
+
+  @override
+  String get cs2DatasetUpload => 'Replay uploaden';
+
+  @override
+  String get cs2DatasetReplayPrivacy =>
+      'De server analyseert je replay tijdelijk. De uitgelezen rondes worden op dit apparaat opgeslagen.';
+
+  @override
+  String get cs2DatasetReplayFormats =>
+      'Kies een .dem- of .dem.bz2-replay van maximaal 95 MiB.';
+
+  @override
+  String get cs2DatasetRoundsSaved => 'Rondes opgeslagen in je privédatabase.';
+
+  @override
+  String get cs2DatasetReplayDuplicate =>
+      'Deze replay staat al in je privédatabase.';
+
+  @override
+  String get cs2DatasetDownload => 'Downloaden voor offline gebruik';
+
+  @override
+  String get cs2DatasetExport => 'Bestandskopie opslaan';
+
+  @override
+  String get cs2DatasetDownloaded =>
+      'Database gedownload voor offline gebruik.';
+
+  @override
+  String get cs2DatasetPaidDownload =>
+      'Elk betaald abonnement geeft toegang tot databasedownloads.';
+
+  @override
+  String get cs2DatasetActionFailed =>
+      'De actie is mislukt. Probeer het opnieuw.';
+
+  @override
+  String get cs2DatasetSiteA => 'Bomlocatie A';
+
+  @override
+  String get cs2DatasetSiteB => 'Bomlocatie B';
+
+  @override
+  String get cs2DatasetOther => 'Overig / geen locatie';
+
+  @override
+  String get cs2DatasetManualHelp =>
+      'Voer opeenvolgende rondes van één T-helft in. Scheid A, B en Other met komma’s of spaties.';
+
+  @override
+  String get cs2DatasetMapId => 'CS2-map-ID';
+
+  @override
+  String get cs2DatasetInvalidMap =>
+      'Gebruik een map-ID voor bomontmanteling, zoals de_mirage.';
+
+  @override
+  String get cs2DatasetRounds => 'Ronde-uitkomsten';
+
+  @override
+  String get cs2DatasetInvalidRounds =>
+      'Voer 1 tot 500 uitkomsten in met A, B of Other.';
+
+  @override
+  String get cs2DatasetSave => 'Rondes opslaan';
+
+  @override
   String get aiUsageSidebarExpand => 'Zijbalk uitklappen';
 
   @override
@@ -18306,29 +18484,14 @@ class LNl extends L {
   String get gameToolsCs2MarketBlurb => 'Skins, geprijsd en in grafieken';
 
   @override
-  String get gameToolsSellingCalculatorLabel => 'Verkoopcalculator';
-
-  @override
-  String get gameToolsSellingCalculatorBlurb => 'Schat de CS2-verkoopopbrengst';
-
-  @override
   String get gameToolsMafiaBlurb => 'Rollen tellen';
 
   @override
-  String get gameToolsChatTranslatorLabel => 'Chatvertaler';
-
-  @override
-  String get gameToolsChatTranslatorBlurb => 'CS2-chat vertaald in een overlay';
-
-  @override
-  String get cs2TrTitle => 'CS2-chatvertaler';
+  String get cs2TrTitle => 'Chatvertaler';
 
   @override
   String get cs2TrSubtitle =>
-      'Vertaalt chat in andere talen en toont die in kleur in een transparante overlay boven de game. Het leest alleen het console.log-bestand dat CS2 schrijft, raakt de game zelf nooit aan en is dus VAC-veilig.';
-
-  @override
-  String get cs2TrSetupTitle => 'Eenmalige instelling';
+      'Toont chat in kleur in een overlay en vertaalt berichten in andere talen. Leest alleen het console.log-bestand dat CS2 schrijft.';
 
   @override
   String get cs2TrSetupLaunchOptions =>
@@ -18336,7 +18499,7 @@ class LNl extends L {
 
   @override
   String get cs2TrSetupWindowed =>
-      'Zet de weergavemodus van CS2 op Volledig scherm in venster, zodat de overlay boven de game kan staan.';
+      'Zet de weergavemodus van CS2 op Volledig scherm in venster, zodat overlays boven de game kunnen staan.';
 
   @override
   String get cs2TrCopy => 'Kopiëren';
@@ -18405,7 +18568,7 @@ class LNl extends L {
 
   @override
   String get cs2TrHowItWorks =>
-      'Elk bericht in een andere taal krijgt een label \"(translated from …)\". Eerst wordt Google Translate geprobeerd, met MyMemory als terugval. Korte woorden in Latijns schrift zoals \"gg\" worden overgeslagen, omdat taaldetectie daar vaak naast zit. Vertaalde regels worden ook in de CS2-console gezet.';
+      'Elk bericht in een andere taal krijgt een label \"(translated from …)\". Eerst wordt Google Translate geprobeerd, met MyMemory als terugval. Korte woorden in Latijns schrift zoals \"gg\" worden overgeslagen, omdat taaldetectie daar vaak naast zit.';
 
   @override
   String get cs2TrOutputTitle => 'Uitvoer';
@@ -18413,10 +18576,6 @@ class LNl extends L {
   @override
   String get cs2TrOutputEmpty =>
       'Nog niets. Chat en vertalingen verschijnen hier zodra de vertaler draait.';
-
-  @override
-  String get cs2TrWindowsOnly =>
-      'De chatvertaler werkt alleen op Windows, waar CS2 en de overlay draaien.';
 
   @override
   String gameToolsComingSoonTitle(String game) {
@@ -27414,9 +27573,6 @@ class LNl extends L {
   String steamRepoRefreshFailed(String error) {
     return 'Kan je bibliotheek niet vernieuwen: $error';
   }
-
-  @override
-  String get cs2CalcTitle => 'CS2-verkoopcalculator';
 
   @override
   String get cs2CalcSubtitle =>
@@ -41524,94 +41680,6 @@ class LNl extends L {
   String get cmdDashErrorPort => 'Voer een poort tussen 1 en 65535 in.';
 
   @override
-  String get gameToolsVoiceTranslateLabel => 'Spraakvertaler';
-
-  @override
-  String get gameToolsVoiceTranslateBlurb =>
-      'Spreek en stuur vertaalde CS2-chat';
-
-  @override
-  String get cs2VoiceTitle => 'CS2-spraakvertaler';
-
-  @override
-  String get cs2VoiceSubtitle =>
-      'Spreek, vertaal en verstuur het resultaat automatisch naar de algemene CS2-chat.';
-
-  @override
-  String get cs2VoiceEnable => 'Spraakvertaler inschakelen';
-
-  @override
-  String get cs2VoiceEnableHint =>
-      'Werkt zolang luma open is, ook terwijl je CS2 speelt. Als je luma sluit, worden de microfoon en sneltoets uitgeschakeld.';
-
-  @override
-  String get cs2VoiceTargetLanguage => 'Vertalen naar';
-
-  @override
-  String get cs2VoiceCustomLanguage => 'Een andere taal kiezen…';
-
-  @override
-  String get cs2VoiceLanguageHint => 'Bijvoorbeeld: Fins';
-
-  @override
-  String get cs2VoiceLanguageRequired => 'Voer een taal in.';
-
-  @override
-  String get cs2VoiceHotkeyTitle => 'Opnamesneltoets';
-
-  @override
-  String get cs2VoiceHotkeyHint =>
-      'Druk op je eigen sneltoets en daarna op Opslaan. Hiermee start en stop je opnames zolang luma open is.';
-
-  @override
-  String get cs2VoiceChangeHotkey => 'Sneltoets instellen';
-
-  @override
-  String get cs2VoiceRecordingHint =>
-      'Druk eenmaal om op te nemen met je standaardmicrofoon en nogmaals om te vertalen en versturen. De opname stopt na 30 seconden. Annuleren verwijdert de opname.';
-
-  @override
-  String get cs2VoiceAllowanceHint =>
-      'Een volledige wekelijkse AI-toelage biedt gratis 10 min, Orbit 30 min of Nova 2 uur spraakvertaling. Gedeeld met chat; alleen de weekbalk wordt gebruikt, nooit de 5-uursbalk.';
-
-  @override
-  String get cs2VoiceStopAndSend => 'Stoppen, vertalen en versturen';
-
-  @override
-  String get cs2VoiceRecord => 'Opname starten';
-
-  @override
-  String get cs2VoiceCancel => 'Opname / verzoek annuleren';
-
-  @override
-  String get cs2VoiceLoading => 'Spraakinstellingen laden…';
-
-  @override
-  String get cs2VoiceRetry => 'Opnieuw proberen';
-
-  @override
-  String get cs2VoiceTranscript => 'Wat je zei';
-
-  @override
-  String get cs2VoiceTranscriptEmpty =>
-      'Je transcriptie verschijnt hier na de opname.';
-
-  @override
-  String get cs2VoiceTranslation => 'Vertaald bericht';
-
-  @override
-  String get cs2VoiceTranslationEmpty =>
-      'Je laatste vertaalde bericht verschijnt hier.';
-
-  @override
-  String get cs2VoiceSetup =>
-      'Eenmalig instellen: open de CS2-ontwikkelaarsconsole (~) en voer deze opdracht uit. Druk na elke vertaling in CS2 op Enter van het numerieke toetsenblok om hem in de chat te sturen:';
-
-  @override
-  String get cs2VoiceAdminRouting =>
-      'Gebruikt je provider-API-sleutel en de modellen uit Beheer → Assistant → Spraakvertaler. Log in met een goedgekeurd Luma-account.';
-
-  @override
   String get mapMakerCityLayers => 'Lagen';
 
   @override
@@ -41718,37 +41786,6 @@ class LNl extends L {
   String mapMakerCityConnectedCount(int connected, int total) {
     return 'Toegang: $connected/$total gebouwen';
   }
-
-  @override
-  String get cs2TeammateVoiceTitle => 'Spraak van teamgenoten vertalen';
-
-  @override
-  String get cs2TeammateVoiceDescription =>
-      'Leid de CS2-spraak naar een Windows-opnamebron, zoals een virtuele audiokabel of Stereo Mix, en selecteer die bron. Luma toont de transcriptie en vertaling in de chatoverlay. Spelers kunnen niet worden herkend.';
-
-  @override
-  String get cs2TeammateVoicePrivacy =>
-      'Audio van de geselecteerde bron wordt naar de ingestelde Luma-server en AI-aanbieders verzonden en gebruikt je wekelijkse spraaklimiet. Ook andere audio op die bron kan worden verzonden. Stille audio kan worden overgeslagen.';
-
-  @override
-  String get cs2TeammateVoiceSource => 'Opnamebron';
-
-  @override
-  String get cs2TeammateVoiceFindSources => 'Opnamebronnen zoeken';
-
-  @override
-  String get cs2TeammateVoiceStart => 'Luisteren starten';
-
-  @override
-  String get cs2TeammateVoiceStop => 'Luisteren stoppen';
-
-  @override
-  String get cs2TeammateVoiceRunning =>
-      'Luistert en vertaalt naar de doeltaal van de chatvertaler.';
-
-  @override
-  String get cs2TeammateVoiceIdle =>
-      'Start de chatvertaler en kies een bron om te beginnen.';
 
   @override
   String get mapMakerCityInfiniteCanvas => 'Oneindig canvas';
@@ -42656,4 +42693,130 @@ class LNl extends L {
     );
     return '$_temp0';
   }
+
+  @override
+  String get gameToolsOverlaysLabel => 'Overlays';
+
+  @override
+  String get gameToolsOverlaysBlurb => 'Chatvertaler en bomtimer';
+
+  @override
+  String get cs2OverlaysTitle => 'CS2-overlays';
+
+  @override
+  String get cs2OverlaysSubtitle =>
+      'Transparante vensters boven de game. Ze lezen alleen wat CS2 zelf wegschrijft, raken de game dus nooit aan en zijn VAC-veilig.';
+
+  @override
+  String get cs2OverlaysWindowsOnly =>
+      'Overlays hebben Windows nodig, waar CS2 draait.';
+
+  @override
+  String get cs2OverlayRunning => 'Actief';
+
+  @override
+  String get cs2OverlayOff => 'Uit';
+
+  @override
+  String get cs2BombTitle => 'Bomtimer';
+
+  @override
+  String get cs2BombDescription =>
+      'Telt de C4 in seconden af vanaf het moment dat hij geplant is. De kleur laat zien of ontmantelen nog kan: wit voor iedereen, oranje alleen met een kit, rood als het te laat is.';
+
+  @override
+  String get cs2BombSetupStep =>
+      'Installeer de game-state-config één keer en start CS2 daarna opnieuw. De game leest die alleen bij het opstarten.';
+
+  @override
+  String get cs2BombInstall => 'Config installeren';
+
+  @override
+  String get cs2BombReinstall => 'Opnieuw installeren';
+
+  @override
+  String get cs2BombInstalled => 'Config staat in de cfg-map van CS2.';
+
+  @override
+  String get cs2BombNotInstalled => 'Nog niet geïnstalleerd.';
+
+  @override
+  String get cs2BombCs2Missing =>
+      'CS2 is niet gevonden in je Steam-bibliotheken, dus de config kan niet worden geïnstalleerd.';
+
+  @override
+  String cs2BombInstallFailed(String error) {
+    return 'Kon de config niet installeren: $error';
+  }
+
+  @override
+  String get cs2BombStart => 'Bomtimer starten';
+
+  @override
+  String get cs2BombStop => 'Bomtimer stoppen';
+
+  @override
+  String get cs2BombTry => 'Plant uitproberen';
+
+  @override
+  String get cs2BombMove => 'Overlay verplaatsen';
+
+  @override
+  String get cs2BombResetPosition => 'Positie herstellen';
+
+  @override
+  String get cs2BombWaiting =>
+      'Wachten op CS2. Was de game al open, start hem dan opnieuw zodat hij de config laadt.';
+
+  @override
+  String get cs2BombConnected => 'Verbonden met CS2.';
+
+  @override
+  String get cs2BombIdle => 'Geen bom geplant.';
+
+  @override
+  String get cs2BombAnyone => 'Te ontmantelen zonder kit';
+
+  @override
+  String get cs2BombKitOnly => 'Alleen met kit';
+
+  @override
+  String get cs2BombTooLate => 'Te laat';
+
+  @override
+  String get cs2BombDefused => 'Ontmanteld';
+
+  @override
+  String get cs2BombExploded => 'Ontploft';
+
+  @override
+  String get cs2BombDragHint => 'Sleep om te verplaatsen';
+
+  @override
+  String get cs2BombFuse => 'Lont (seconden)';
+
+  @override
+  String get cs2BombFuseHint =>
+      '40 in competitive en premier. Pas dit alleen aan voor communityservers met een andere mp_c4timer.';
+
+  @override
+  String cs2BombPortInUse(int port) {
+    return 'Een ander programma gebruikt poort $port al, dus CS2 kan luma niet bereiken.';
+  }
+
+  @override
+  String cs2BombStartFailed(String error) {
+    return 'Kon de bomtimer niet starten: $error';
+  }
+
+  @override
+  String get cs2BombRunningHint =>
+      'Sleep de timer om hem te verplaatsen; klik er met rechts op om hem te sluiten.';
+
+  @override
+  String get cs2BombHowItWorks =>
+      'Gebruikt Game State Integration van CS2, de eigen functie van Valve voor overlays en uitzenders: de game stuurt de rondestatus naar luma op deze computer. Niets leest het geheugen van de game.';
+
+  @override
+  String get cs2MarketSellCalculator => 'Verkoopcalculator';
 }

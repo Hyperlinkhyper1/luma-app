@@ -2309,17 +2309,17 @@ class LFr extends L {
 
   @override
   String get assistantAgentsSubtitle =>
-      'Les agents que vous avez créés dans le plugin AI Usage. Les lancer depuis l\'assistant arrive bientôt.';
+      'Les agents que vous avez créés dans le plugin AI Tools and Data. Les lancer depuis l\'assistant arrive bientôt.';
 
   @override
   String get assistantAgentsEmpty => 'Pas encore d\'agents';
 
   @override
   String get assistantAgentsEmptyHint =>
-      'Créez-en un dans l\'onglet Agents du plugin AI Usage et il apparaîtra ici.';
+      'Créez-en un dans l\'onglet Agents du plugin AI Tools and Data et il apparaîtra ici.';
 
   @override
-  String get assistantAgentsOpenBuilder => 'Ouvrir AI Usage';
+  String get assistantAgentsOpenBuilder => 'Ouvrir AI Tools and Data';
 
   @override
   String get assistantAgentsNoDescription => 'Aucune description';
@@ -3044,6 +3044,39 @@ class LFr extends L {
 
   @override
   String get assistantResearchWriting => 'Rédaction de la réponse…';
+
+  @override
+  String get assistantActivityThinking => 'Réflexion en cours…';
+
+  @override
+  String get assistantActivitySearchWeb => 'Rechercher sur le Web';
+
+  @override
+  String get assistantActivitySearchNotes => 'Rechercher dans les notes';
+
+  @override
+  String get assistantActivityWriteNote => 'Écrire une note';
+
+  @override
+  String get assistantActivityCreateFile => 'Créer un fichier';
+
+  @override
+  String get assistantActivityEditFile => 'Modifier un fichier';
+
+  @override
+  String get assistantActivityReadFile => 'Lire un fichier';
+
+  @override
+  String get assistantActivityInstallPlugin => 'Installer une extension';
+
+  @override
+  String get assistantActivityNeedsInfo => 'Plus d’informations nécessaires';
+
+  @override
+  String get assistantActivityUnavailable => 'Indisponible';
+
+  @override
+  String get assistantActivityTool => 'Outil';
 
   @override
   String get assistantPictureDrawing => 'Création de votre image…';
@@ -4049,7 +4082,7 @@ class LFr extends L {
   String get pluginNameAiDetector => 'Détecteur d\'IA';
 
   @override
-  String get pluginNameAiUsage => 'Utilisation de l\'IA';
+  String get pluginNameAiUsage => 'Outils d\'IA et données';
 
   @override
   String get pluginNameAirlineTycoon => 'Magnat de l\'aviation';
@@ -12197,6 +12230,152 @@ class LFr extends L {
   String get aiUsageSectionAssetsBlurb => 'Libre d\'utilisation';
 
   @override
+  String get aiUsageSectionDatasets => 'Jeux de données';
+
+  @override
+  String get aiUsageSectionDatasetsBlurb =>
+      'Bases de données d’applis et de jeux';
+
+  @override
+  String get cs2DatasetSubtitle => 'Tendances du côté T';
+
+  @override
+  String get cs2DatasetDescription =>
+      'Comparez les sites A et B et les autres manches. L’import retient la pose terminée ou la dernière tentative.';
+
+  @override
+  String get cs2DatasetPublished => 'Base publiée';
+
+  @override
+  String get cs2DatasetPrivate => 'Ma base privée';
+
+  @override
+  String get cs2DatasetMap => 'Carte';
+
+  @override
+  String get cs2DatasetPrevious =>
+      'Qu’a fait le côté T à la manche précédente ?';
+
+  @override
+  String get cs2DatasetAny => 'Tous les résultats précédents';
+
+  @override
+  String get cs2DatasetNext => 'Manche suivante la plus probable';
+
+  @override
+  String get cs2DatasetNoSites =>
+      'Cette carte n’a aucun site de bombe à comparer.';
+
+  @override
+  String get cs2DatasetNoRounds =>
+      'Aucune manche enregistrée pour cette carte.';
+
+  @override
+  String cs2DatasetSample(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'D’après $count manches enregistrées',
+      one: 'D’après 1 manche enregistrée',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get cs2DatasetFallback =>
+      'Aucune transition correspondante. Affichage des probabilités générales de la carte.';
+
+  @override
+  String get cs2DatasetOffline => 'Utilisation de la base téléchargée';
+
+  @override
+  String get cs2DatasetSignIn =>
+      'Connectez-vous avec un compte Luma approuvé pour voir la base publiée.';
+
+  @override
+  String get cs2DatasetReplaySignIn =>
+      'Connectez-vous avec un compte Luma approuvé pour importer des replays.';
+
+  @override
+  String get cs2DatasetOpenFailed =>
+      'Impossible d’ouvrir la base sur cet appareil.';
+
+  @override
+  String get cs2DatasetLoadFailed => 'Impossible de charger la base publiée.';
+
+  @override
+  String get cs2DatasetRetry => 'Réessayer';
+
+  @override
+  String get cs2DatasetManual => 'Ajouter des manches';
+
+  @override
+  String get cs2DatasetUpload => 'Importer un replay';
+
+  @override
+  String get cs2DatasetReplayPrivacy =>
+      'Le serveur analyse temporairement votre replay. Les manches extraites sont enregistrées sur cet appareil.';
+
+  @override
+  String get cs2DatasetReplayFormats =>
+      'Choisissez un replay .dem ou .dem.bz2 de 95 Mio maximum.';
+
+  @override
+  String get cs2DatasetRoundsSaved =>
+      'Manches enregistrées dans votre base privée.';
+
+  @override
+  String get cs2DatasetReplayDuplicate =>
+      'Ce replay figure déjà dans votre base privée.';
+
+  @override
+  String get cs2DatasetDownload => 'Télécharger pour un usage hors ligne';
+
+  @override
+  String get cs2DatasetExport => 'Enregistrer une copie du fichier';
+
+  @override
+  String get cs2DatasetDownloaded =>
+      'Base téléchargée pour un usage hors ligne.';
+
+  @override
+  String get cs2DatasetPaidDownload =>
+      'Toutes les offres payantes permettent de télécharger les bases.';
+
+  @override
+  String get cs2DatasetActionFailed => 'L’action a échoué. Réessayez.';
+
+  @override
+  String get cs2DatasetSiteA => 'Site A';
+
+  @override
+  String get cs2DatasetSiteB => 'Site B';
+
+  @override
+  String get cs2DatasetOther => 'Autre / aucun site';
+
+  @override
+  String get cs2DatasetManualHelp =>
+      'Saisissez les manches consécutives d’une même période côté T. Séparez A, B et Other par des virgules ou des espaces.';
+
+  @override
+  String get cs2DatasetMapId => 'Identifiant de carte CS2';
+
+  @override
+  String get cs2DatasetInvalidMap =>
+      'Utilisez un identifiant de carte de désamorçage, comme de_mirage.';
+
+  @override
+  String get cs2DatasetRounds => 'Résultats des manches';
+
+  @override
+  String get cs2DatasetInvalidRounds =>
+      'Saisissez de 1 à 500 résultats avec A, B ou Other.';
+
+  @override
+  String get cs2DatasetSave => 'Enregistrer les manches';
+
+  @override
   String get aiUsageSidebarExpand => 'Développer la barre latérale';
 
   @override
@@ -18374,31 +18553,14 @@ class LFr extends L {
   String get gameToolsCs2MarketBlurb => 'Skins, prix et graphiques';
 
   @override
-  String get gameToolsSellingCalculatorLabel => 'Calculateur de vente';
-
-  @override
-  String get gameToolsSellingCalculatorBlurb =>
-      'Estimer les gains de vente CS2';
-
-  @override
   String get gameToolsMafiaBlurb => 'Comptage des rôles';
 
   @override
-  String get gameToolsChatTranslatorLabel => 'Traducteur de chat';
-
-  @override
-  String get gameToolsChatTranslatorBlurb =>
-      'Chat CS2 traduit en surimpression';
-
-  @override
-  String get cs2TrTitle => 'Traducteur de chat CS2';
+  String get cs2TrTitle => 'Traducteur de chat';
 
   @override
   String get cs2TrSubtitle =>
-      'Traduit le chat en langue étrangère et l\'affiche en couleur dans une surimpression transparente au-dessus du jeu. Il lit seulement le fichier console.log écrit par CS2 : il ne touche jamais au jeu et reste sans risque pour VAC.';
-
-  @override
-  String get cs2TrSetupTitle => 'Configuration unique';
+      'Affiche le chat en couleur dans une surimpression et traduit les messages en langue étrangère. Lit seulement le fichier console.log écrit par CS2.';
 
   @override
   String get cs2TrSetupLaunchOptions =>
@@ -18406,7 +18568,7 @@ class LFr extends L {
 
   @override
   String get cs2TrSetupWindowed =>
-      'Réglez le mode d\'affichage de CS2 sur Plein écran fenêtré, pour que la surimpression reste au-dessus du jeu.';
+      'Réglez le mode d\'affichage de CS2 sur Plein écran fenêtré, pour que les surimpressions restent au-dessus du jeu.';
 
   @override
   String get cs2TrCopy => 'Copier';
@@ -18476,7 +18638,7 @@ class LFr extends L {
 
   @override
   String get cs2TrHowItWorks =>
-      'Chaque message en langue étrangère reçoit une mention « (translated from …) ». Google Traduction est essayé en premier, avec MyMemory en secours. Les mots courts en alphabet latin comme « gg » sont ignorés, car la détection de langue s\'y trompe. Les lignes traduites sont aussi renvoyées dans la console de CS2.';
+      'Chaque message en langue étrangère reçoit une mention « (translated from …) ». Google Traduction est essayé en premier, avec MyMemory en secours. Les mots courts en alphabet latin comme « gg » sont ignorés, car la détection de langue s\'y trompe.';
 
   @override
   String get cs2TrOutputTitle => 'Sortie';
@@ -18484,10 +18646,6 @@ class LFr extends L {
   @override
   String get cs2TrOutputEmpty =>
       'Rien pour le moment. Le chat et les traductions apparaissent ici une fois le traducteur lancé.';
-
-  @override
-  String get cs2TrWindowsOnly =>
-      'Le traducteur de chat nécessite Windows, où tournent CS2 et sa surimpression.';
 
   @override
   String gameToolsComingSoonTitle(String game) {
@@ -27539,9 +27697,6 @@ class LFr extends L {
   String steamRepoRefreshFailed(String error) {
     return 'Impossible d\'actualiser votre bibliothèque : $error';
   }
-
-  @override
-  String get cs2CalcTitle => 'Calculateur de vente CS2';
 
   @override
   String get cs2CalcSubtitle =>
@@ -41750,94 +41905,6 @@ class LFr extends L {
   String get cmdDashErrorPort => 'Saisissez un port entre 1 et 65535.';
 
   @override
-  String get gameToolsVoiceTranslateLabel => 'Traduction vocale';
-
-  @override
-  String get gameToolsVoiceTranslateBlurb =>
-      'Parler et envoyer un message CS2 traduit';
-
-  @override
-  String get cs2VoiceTitle => 'Traduction vocale CS2';
-
-  @override
-  String get cs2VoiceSubtitle =>
-      'Parlez, traduisez et envoyez automatiquement le résultat dans le chat général de CS2.';
-
-  @override
-  String get cs2VoiceEnable => 'Activer la traduction vocale';
-
-  @override
-  String get cs2VoiceEnableHint =>
-      'Fonctionne tant que luma est ouvert, même pendant une partie de CS2. Fermer luma désactive le microphone et le raccourci.';
-
-  @override
-  String get cs2VoiceTargetLanguage => 'Traduire en';
-
-  @override
-  String get cs2VoiceCustomLanguage => 'Choisir une autre langue…';
-
-  @override
-  String get cs2VoiceLanguageHint => 'Par exemple : finnois';
-
-  @override
-  String get cs2VoiceLanguageRequired => 'Saisissez une langue.';
-
-  @override
-  String get cs2VoiceHotkeyTitle => 'Raccourci d’enregistrement';
-
-  @override
-  String get cs2VoiceHotkeyHint =>
-      'Appuyez sur votre raccourci, puis sur Enregistrer. Il démarre et arrête les enregistrements tant que luma est ouvert.';
-
-  @override
-  String get cs2VoiceChangeHotkey => 'Définir le raccourci';
-
-  @override
-  String get cs2VoiceRecordingHint =>
-      'Appuyez une fois pour enregistrer avec votre microphone par défaut, puis à nouveau pour traduire et envoyer. L\'enregistrement s\'arrête après 30 secondes. Annuler l\'efface.';
-
-  @override
-  String get cs2VoiceAllowanceHint =>
-      'Une allocation IA hebdomadaire complète offre 10 min en gratuit, 30 min avec Orbit ou 2 heures avec Nova pour la traduction vocale. Partagée avec le chat ; seule la barre hebdomadaire est utilisée, jamais celle de 5 heures.';
-
-  @override
-  String get cs2VoiceStopAndSend => 'Arrêter, traduire et envoyer';
-
-  @override
-  String get cs2VoiceRecord => 'Démarrer l\'enregistrement';
-
-  @override
-  String get cs2VoiceCancel => 'Annuler l\'enregistrement / la requête';
-
-  @override
-  String get cs2VoiceLoading => 'Chargement des réglages vocaux…';
-
-  @override
-  String get cs2VoiceRetry => 'Réessayer';
-
-  @override
-  String get cs2VoiceTranscript => 'Ce que vous avez dit';
-
-  @override
-  String get cs2VoiceTranscriptEmpty =>
-      'Votre transcription apparaîtra ici après l\'enregistrement.';
-
-  @override
-  String get cs2VoiceTranslation => 'Message traduit';
-
-  @override
-  String get cs2VoiceTranslationEmpty =>
-      'Votre dernier message traduit apparaîtra ici.';
-
-  @override
-  String get cs2VoiceSetup =>
-      'Configuration unique : ouvrez la console développeur de CS2 (~) et exécutez cette commande. Après chaque traduction, appuyez sur Entrée du pavé numérique dans CS2 pour l’envoyer dans le chat :';
-
-  @override
-  String get cs2VoiceAdminRouting =>
-      'Utilise votre clé API et les modèles choisis dans Admin → Assistant → Traduction vocale. Connectez-vous avec un compte Luma approuvé.';
-
-  @override
   String get mapMakerCityLayers => 'Couches';
 
   @override
@@ -41944,37 +42011,6 @@ class LFr extends L {
   String mapMakerCityConnectedCount(int connected, int total) {
     return 'Accès : $connected/$total bâtiments';
   }
-
-  @override
-  String get cs2TeammateVoiceTitle => 'Traduction vocale des coéquipiers';
-
-  @override
-  String get cs2TeammateVoiceDescription =>
-      'Dirigez la voix de CS2 vers une source d’enregistrement Windows, comme un câble audio virtuel ou Stereo Mix, puis sélectionnez-la. Luma affiche la transcription et la traduction dans la superposition du chat. Les joueurs ne peuvent pas être identifiés.';
-
-  @override
-  String get cs2TeammateVoicePrivacy =>
-      'Le son de la source choisie est envoyé au serveur Luma configuré et aux fournisseurs d’IA et utilise votre quota vocal hebdomadaire. Les autres sons de cette source peuvent aussi être envoyés. Les sons faibles peuvent être ignorés.';
-
-  @override
-  String get cs2TeammateVoiceSource => 'Source d’enregistrement';
-
-  @override
-  String get cs2TeammateVoiceFindSources => 'Rechercher les sources';
-
-  @override
-  String get cs2TeammateVoiceStart => 'Commencer l’écoute';
-
-  @override
-  String get cs2TeammateVoiceStop => 'Arrêter l’écoute';
-
-  @override
-  String get cs2TeammateVoiceRunning =>
-      'Écoute et traduit vers la langue cible du traducteur de chat.';
-
-  @override
-  String get cs2TeammateVoiceIdle =>
-      'Démarrez le traducteur de chat et choisissez une source.';
 
   @override
   String get mapMakerCityInfiniteCanvas => 'Canevas infini';
@@ -42891,4 +42927,132 @@ class LFr extends L {
     );
     return '$_temp0';
   }
+
+  @override
+  String get gameToolsOverlaysLabel => 'Surimpressions';
+
+  @override
+  String get gameToolsOverlaysBlurb =>
+      'Traducteur de chat et minuteur de bombe';
+
+  @override
+  String get cs2OverlaysTitle => 'Surimpressions CS2';
+
+  @override
+  String get cs2OverlaysSubtitle =>
+      'Des fenêtres transparentes au-dessus du jeu. Elles ne lisent que ce que CS2 écrit lui-même : elles ne touchent jamais au jeu et restent sans risque pour VAC.';
+
+  @override
+  String get cs2OverlaysWindowsOnly =>
+      'Les surimpressions nécessitent Windows, où tourne CS2.';
+
+  @override
+  String get cs2OverlayRunning => 'Actif';
+
+  @override
+  String get cs2OverlayOff => 'Désactivé';
+
+  @override
+  String get cs2BombTitle => 'Minuteur de bombe';
+
+  @override
+  String get cs2BombDescription =>
+      'Décompte la C4 en secondes dès qu\'elle est posée. La couleur indique si un désamorçage est encore possible : blanc pour tous, orange avec un kit uniquement, rouge quand il est trop tard.';
+
+  @override
+  String get cs2BombSetupStep =>
+      'Installez une fois la configuration d\'état du jeu, puis redémarrez CS2. Le jeu ne la lit qu\'au lancement.';
+
+  @override
+  String get cs2BombInstall => 'Installer la configuration';
+
+  @override
+  String get cs2BombReinstall => 'Réinstaller';
+
+  @override
+  String get cs2BombInstalled =>
+      'Configuration installée dans le dossier cfg de CS2.';
+
+  @override
+  String get cs2BombNotInstalled => 'Pas encore installée.';
+
+  @override
+  String get cs2BombCs2Missing =>
+      'CS2 est introuvable dans vos bibliothèques Steam : la configuration ne peut pas être installée.';
+
+  @override
+  String cs2BombInstallFailed(String error) {
+    return 'Impossible d\'installer la configuration : $error';
+  }
+
+  @override
+  String get cs2BombStart => 'Lancer le minuteur';
+
+  @override
+  String get cs2BombStop => 'Arrêter le minuteur';
+
+  @override
+  String get cs2BombTry => 'Simuler une pose';
+
+  @override
+  String get cs2BombMove => 'Déplacer la surimpression';
+
+  @override
+  String get cs2BombResetPosition => 'Réinitialiser la position';
+
+  @override
+  String get cs2BombWaiting =>
+      'En attente de CS2. Si le jeu était déjà ouvert, redémarrez-le pour qu\'il charge la configuration.';
+
+  @override
+  String get cs2BombConnected => 'Connecté à CS2.';
+
+  @override
+  String get cs2BombIdle => 'Aucune bombe posée.';
+
+  @override
+  String get cs2BombAnyone => 'Désamorçable sans kit';
+
+  @override
+  String get cs2BombKitOnly => 'Kit requis';
+
+  @override
+  String get cs2BombTooLate => 'Trop tard';
+
+  @override
+  String get cs2BombDefused => 'Désamorcée';
+
+  @override
+  String get cs2BombExploded => 'Explosée';
+
+  @override
+  String get cs2BombDragHint => 'Glissez pour déplacer';
+
+  @override
+  String get cs2BombFuse => 'Durée de la mèche (secondes)';
+
+  @override
+  String get cs2BombFuseHint =>
+      '40 en compétitif et en premier. Ne le modifiez que pour les serveurs communautaires avec un autre mp_c4timer.';
+
+  @override
+  String cs2BombPortInUse(int port) {
+    return 'Un autre programme utilise déjà le port $port : CS2 ne peut pas joindre luma.';
+  }
+
+  @override
+  String cs2BombStartFailed(String error) {
+    return 'Impossible de lancer le minuteur : $error';
+  }
+
+  @override
+  String get cs2BombRunningHint =>
+      'Faites glisser le minuteur pour le déplacer ; clic droit pour le fermer.';
+
+  @override
+  String get cs2BombHowItWorks =>
+      'Utilise la Game State Integration de CS2, la fonction de Valve pour les surimpressions et les diffuseurs : le jeu envoie l\'état de la manche à luma sur cet ordinateur. Rien ne lit la mémoire du jeu.';
+
+  @override
+  String get cs2MarketSellCalculator => 'Calculateur de vente';
 }

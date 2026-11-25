@@ -242,6 +242,7 @@ class LocalQwenClient implements AiClient {
     required AiToolExecutor executeTool,
     required AiToolMetadata metadataFor,
     AiTextProgress? onText,
+    AiTextProgress? onCommentary,
   }) async {
     final path = await _modelPath();
     if (path == null) {
@@ -252,12 +253,21 @@ class LocalQwenClient implements AiClient {
 
     final repository = _repositoryFor(path);
     String? metadataJson;
+    var reply = '';
+    var shown = '';
 
     final nativeTools = [
       for (final tool in tools)
         _LumaLocalTool(
           definition: tool,
           run: (name, input) async {
+            if (onCommentary != null) {
+              final commentary = stripThinking(reply);
+              if (commentary.isNotEmpty) onCommentary(commentary);
+              reply = '';
+              if (shown.isNotEmpty) onText?.call('');
+              shown = '';
+            }
             final result = await executeTool(name, input);
             metadataJson ??= metadataFor(name, result);
             return jsonEncode(result);
@@ -267,10 +277,8 @@ class LocalQwenClient implements AiClient {
 
     // Read the stream rather than awaiting chatResponse, so the reply can be
     // shown while it is written: on a phone CPU the whole reply takes tens
-    // of seconds. Text is concatenated across tool rounds and the last
-    // round's token counts are kept, exactly as chatResponse does.
-    var reply = '';
-    var shown = '';
+    // of seconds. With an activity listener, each tool batch moves the
+    // preceding public text into the timeline. Keep the last token counts.
     var promptTokens = 0;
     var outputTokens = 0;
     try {

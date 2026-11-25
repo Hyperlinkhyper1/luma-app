@@ -2189,16 +2189,18 @@ class LZh extends L {
   String get assistantAgentsComingSoon => '即将推出';
 
   @override
-  String get assistantAgentsSubtitle => '你在 AI Usage 插件中创建的智能体。即将支持从助手中运行它们。';
+  String get assistantAgentsSubtitle =>
+      '你在 AI Tools and Data 插件中创建的智能体。即将支持从助手中运行它们。';
 
   @override
   String get assistantAgentsEmpty => '还没有智能体';
 
   @override
-  String get assistantAgentsEmptyHint => '在 AI Usage 插件的“智能体”标签中创建一个，它就会显示在这里。';
+  String get assistantAgentsEmptyHint =>
+      '在 AI Tools and Data 插件的“智能体”标签中创建一个，它就会显示在这里。';
 
   @override
-  String get assistantAgentsOpenBuilder => '打开 AI Usage';
+  String get assistantAgentsOpenBuilder => '打开 AI Tools and Data';
 
   @override
   String get assistantAgentsNoDescription => '无描述';
@@ -2883,6 +2885,39 @@ class LZh extends L {
 
   @override
   String get assistantResearchWriting => '正在撰写答案…';
+
+  @override
+  String get assistantActivityThinking => '正在思考…';
+
+  @override
+  String get assistantActivitySearchWeb => '搜索网页';
+
+  @override
+  String get assistantActivitySearchNotes => '搜索笔记';
+
+  @override
+  String get assistantActivityWriteNote => '写笔记';
+
+  @override
+  String get assistantActivityCreateFile => '创建文件';
+
+  @override
+  String get assistantActivityEditFile => '编辑文件';
+
+  @override
+  String get assistantActivityReadFile => '读取文件';
+
+  @override
+  String get assistantActivityInstallPlugin => '安装插件';
+
+  @override
+  String get assistantActivityNeedsInfo => '需要更多信息';
+
+  @override
+  String get assistantActivityUnavailable => '不可用';
+
+  @override
+  String get assistantActivityTool => '工具';
 
   @override
   String get assistantPictureDrawing => '正在绘制图片…';
@@ -3846,7 +3881,7 @@ class LZh extends L {
   String get pluginNameAiDetector => 'AI 检测器';
 
   @override
-  String get pluginNameAiUsage => 'AI 用量';
+  String get pluginNameAiUsage => 'AI 工具与数据';
 
   @override
   String get pluginNameAirlineTycoon => '航空大亨';
@@ -11434,6 +11469,130 @@ class LZh extends L {
   String get aiUsageSectionAssetsBlurb => '可免费使用';
 
   @override
+  String get aiUsageSectionDatasets => '数据集';
+
+  @override
+  String get aiUsageSectionDatasetsBlurb => '应用和游戏数据库';
+
+  @override
+  String get cs2DatasetSubtitle => 'T 方走向';
+
+  @override
+  String get cs2DatasetDescription =>
+      '比较 A 点、B 点和其他回合。导入回放时，采用成功安放的位置，或最后一次尝试安放的位置。';
+
+  @override
+  String get cs2DatasetPublished => '已发布数据库';
+
+  @override
+  String get cs2DatasetPrivate => '我的私有数据库';
+
+  @override
+  String get cs2DatasetMap => '地图';
+
+  @override
+  String get cs2DatasetPrevious => 'T 方上一回合怎么打的？';
+
+  @override
+  String get cs2DatasetAny => '任意上一回合结果';
+
+  @override
+  String get cs2DatasetNext => '下一回合预测';
+
+  @override
+  String get cs2DatasetNoSites => '此地图没有可比较的炸弹点。';
+
+  @override
+  String get cs2DatasetNoRounds => '此地图暂无回合记录。';
+
+  @override
+  String cs2DatasetSample(int count) {
+    return '基于 $count 个已记录回合';
+  }
+
+  @override
+  String get cs2DatasetFallback => '暂无匹配的回合衔接数据，显示地图的总体概率。';
+
+  @override
+  String get cs2DatasetOffline => '正在使用已下载的数据库';
+
+  @override
+  String get cs2DatasetSignIn => '请登录已获批准的 Luma 账号以查看已发布的数据库。';
+
+  @override
+  String get cs2DatasetReplaySignIn => '请登录已获批准的 Luma 账号以导入回放。';
+
+  @override
+  String get cs2DatasetOpenFailed => '无法在此设备上打开数据库。';
+
+  @override
+  String get cs2DatasetLoadFailed => '无法加载已发布的数据库。';
+
+  @override
+  String get cs2DatasetRetry => '重试';
+
+  @override
+  String get cs2DatasetManual => '添加回合';
+
+  @override
+  String get cs2DatasetUpload => '上传回放';
+
+  @override
+  String get cs2DatasetReplayPrivacy => '服务器会临时分析回放。提取的回合保存在此设备上。';
+
+  @override
+  String get cs2DatasetReplayFormats => '请选择不超过 95 MiB 的 .dem 或 .dem.bz2 回放。';
+
+  @override
+  String get cs2DatasetRoundsSaved => '回合已保存到你的私有数据库。';
+
+  @override
+  String get cs2DatasetReplayDuplicate => '此回放已在你的私有数据库中。';
+
+  @override
+  String get cs2DatasetDownload => '下载以供离线使用';
+
+  @override
+  String get cs2DatasetExport => '保存文件副本';
+
+  @override
+  String get cs2DatasetDownloaded => '数据库已下载，可离线使用。';
+
+  @override
+  String get cs2DatasetPaidDownload => '所有付费方案均可下载数据库。';
+
+  @override
+  String get cs2DatasetActionFailed => '操作未完成，请重试。';
+
+  @override
+  String get cs2DatasetSiteA => 'A 点';
+
+  @override
+  String get cs2DatasetSiteB => 'B 点';
+
+  @override
+  String get cs2DatasetOther => '其他／无点位';
+
+  @override
+  String get cs2DatasetManualHelp =>
+      '按顺序输入同一段 T 方比赛的连续回合，用逗号或空格分隔 A、B 和 Other。';
+
+  @override
+  String get cs2DatasetMapId => 'CS2 地图 ID';
+
+  @override
+  String get cs2DatasetInvalidMap => '请使用爆破地图 ID，例如 de_mirage。';
+
+  @override
+  String get cs2DatasetRounds => '回合结果';
+
+  @override
+  String get cs2DatasetInvalidRounds => '请输入 1 至 500 个结果，使用 A、B 或 Other。';
+
+  @override
+  String get cs2DatasetSave => '保存回合';
+
+  @override
   String get aiUsageSidebarExpand => '展开侧边栏';
 
   @override
@@ -17303,29 +17462,14 @@ class LZh extends L {
   String get gameToolsCs2MarketBlurb => '皮肤，价格与图表';
 
   @override
-  String get gameToolsSellingCalculatorLabel => '出售计算器';
-
-  @override
-  String get gameToolsSellingCalculatorBlurb => '估算 CS2 出售收益';
-
-  @override
   String get gameToolsMafiaBlurb => '角色计数';
 
   @override
-  String get gameToolsChatTranslatorLabel => '聊天翻译';
-
-  @override
-  String get gameToolsChatTranslatorBlurb => '在覆盖层中翻译 CS2 聊天';
-
-  @override
-  String get cs2TrTitle => 'CS2 聊天翻译';
+  String get cs2TrTitle => '聊天翻译';
 
   @override
   String get cs2TrSubtitle =>
-      '翻译外语聊天，并在游戏上方的透明覆盖层中按颜色显示。它只读取 CS2 写入的 console.log 文件，从不触碰游戏本身，因此不会触发 VAC。';
-
-  @override
-  String get cs2TrSetupTitle => '一次性设置';
+      '在覆盖层中按颜色显示聊天，并翻译外语消息。只读取 CS2 写入的 console.log 文件。';
 
   @override
   String get cs2TrSetupLaunchOptions => '在 Steam 中，将以下内容添加到 CS2 的启动选项：';
@@ -17396,16 +17540,13 @@ class LZh extends L {
 
   @override
   String get cs2TrHowItWorks =>
-      '每条外语消息都会带上“(translated from …)”标签。优先使用 Google 翻译，失败时改用 MyMemory。像“gg”这样的短拉丁字母词会被跳过，因为语言检测常会误判。翻译后的行也会回显到 CS2 控制台。';
+      '每条外语消息都会带上“(translated from …)”标签。优先使用 Google 翻译，失败时改用 MyMemory。像“gg”这样的短拉丁字母词会被跳过，因为语言检测常会误判。';
 
   @override
   String get cs2TrOutputTitle => '输出';
 
   @override
   String get cs2TrOutputEmpty => '暂无内容。翻译运行后，聊天和翻译会显示在这里。';
-
-  @override
-  String get cs2TrWindowsOnly => '聊天翻译需要 Windows，CS2 及其覆盖层在该系统上运行。';
 
   @override
   String gameToolsComingSoonTitle(String game) {
@@ -25921,9 +26062,6 @@ class LZh extends L {
   String steamRepoRefreshFailed(String error) {
     return '无法刷新你的游戏库：$error';
   }
-
-  @override
-  String get cs2CalcTitle => 'CS2 出售计算器';
 
   @override
   String get cs2CalcSubtitle => '查看扣除市场手续费后，预计存入你 Steam 钱包的金额。';
@@ -39363,89 +39501,6 @@ class LZh extends L {
   String get cmdDashErrorPort => '请输入 1 到 65535 之间的端口。';
 
   @override
-  String get gameToolsVoiceTranslateLabel => '语音翻译';
-
-  @override
-  String get gameToolsVoiceTranslateBlurb => '说话并发送翻译后的 CS2 聊天消息';
-
-  @override
-  String get cs2VoiceTitle => 'CS2 语音翻译';
-
-  @override
-  String get cs2VoiceSubtitle => '说话、翻译，并自动将结果发送到 CS2 全体聊天。';
-
-  @override
-  String get cs2VoiceEnable => '启用语音翻译';
-
-  @override
-  String get cs2VoiceEnableHint =>
-      '仅在 luma 打开时生效，玩 CS2 时也可使用。关闭 luma 会停用麦克风和快捷键。';
-
-  @override
-  String get cs2VoiceTargetLanguage => '翻译为';
-
-  @override
-  String get cs2VoiceCustomLanguage => '选择其他语言…';
-
-  @override
-  String get cs2VoiceLanguageHint => '例如：芬兰语';
-
-  @override
-  String get cs2VoiceLanguageRequired => '请输入语言。';
-
-  @override
-  String get cs2VoiceHotkeyTitle => '录音快捷键';
-
-  @override
-  String get cs2VoiceHotkeyHint => '按下自定义快捷键，然后保存。在 luma 打开时，用此快捷键开始和停止录音。';
-
-  @override
-  String get cs2VoiceChangeHotkey => '设置快捷键';
-
-  @override
-  String get cs2VoiceRecordingHint =>
-      '按一次使用默认麦克风录音，再按一次进行翻译并发送。录音将在 30 秒后停止。取消将丢弃录音。';
-
-  @override
-  String get cs2VoiceAllowanceHint =>
-      '完整的每周 AI 用量可用于语音翻译：免费版 10 分钟、Orbit 30 分钟、Nova 2 小时。与聊天共享每周额度，不占用 5 小时额度。';
-
-  @override
-  String get cs2VoiceStopAndSend => '停止、翻译并发送';
-
-  @override
-  String get cs2VoiceRecord => '开始录音';
-
-  @override
-  String get cs2VoiceCancel => '取消录音 / 请求';
-
-  @override
-  String get cs2VoiceLoading => '正在加载语音设置…';
-
-  @override
-  String get cs2VoiceRetry => '重试';
-
-  @override
-  String get cs2VoiceTranscript => '您说的内容';
-
-  @override
-  String get cs2VoiceTranscriptEmpty => '录音结束后，转写内容将显示在此处。';
-
-  @override
-  String get cs2VoiceTranslation => '翻译后的消息';
-
-  @override
-  String get cs2VoiceTranslationEmpty => '您最近翻译的消息将显示在此处。';
-
-  @override
-  String get cs2VoiceSetup =>
-      '一次性设置：打开 CS2 开发者控制台（~）并运行此命令。每次翻译后，在 CS2 中按小键盘回车键即可发送到聊天：';
-
-  @override
-  String get cs2VoiceAdminRouting =>
-      '使用您的提供商 API 密钥和在 Admin → Assistant → 语音翻译中选择的模型。请使用已批准的 Luma 账户登录。';
-
-  @override
   String get mapMakerCityLayers => '图层';
 
   @override
@@ -39548,35 +39603,6 @@ class LZh extends L {
   String mapMakerCityConnectedCount(int connected, int total) {
     return '道路连接：$connected/$total 栋建筑';
   }
-
-  @override
-  String get cs2TeammateVoiceTitle => '队友语音翻译';
-
-  @override
-  String get cs2TeammateVoiceDescription =>
-      '将 CS2 语音路由到 Windows 录音源（如虚拟音频线或立体声混音），然后选择该录音源。Luma 会在聊天浮层中显示转录和翻译。无法识别具体玩家。';
-
-  @override
-  String get cs2TeammateVoicePrivacy =>
-      '所选录音源的音频会发送至配置的 Luma 服务器和 AI 提供商，并消耗每周语音额度。该录音源的其他声音也可能被发送。较安静的音频可能被跳过。';
-
-  @override
-  String get cs2TeammateVoiceSource => '录音源';
-
-  @override
-  String get cs2TeammateVoiceFindSources => '查找录音源';
-
-  @override
-  String get cs2TeammateVoiceStart => '开始收听';
-
-  @override
-  String get cs2TeammateVoiceStop => '停止收听';
-
-  @override
-  String get cs2TeammateVoiceRunning => '正在收听并翻译为聊天翻译器的目标语言。';
-
-  @override
-  String get cs2TeammateVoiceIdle => '启动聊天翻译器并选择录音源即可开始。';
 
   @override
   String get mapMakerCityInfiniteCanvas => '无限画布';
@@ -40411,4 +40437,124 @@ class LZh extends L {
     );
     return '$_temp0';
   }
+
+  @override
+  String get gameToolsOverlaysLabel => '覆盖层';
+
+  @override
+  String get gameToolsOverlaysBlurb => '聊天翻译与炸弹计时器';
+
+  @override
+  String get cs2OverlaysTitle => 'CS2 覆盖层';
+
+  @override
+  String get cs2OverlaysSubtitle =>
+      '显示在游戏上方的透明窗口。它们只读取 CS2 自己输出的内容，从不触碰游戏，因此不会触发 VAC。';
+
+  @override
+  String get cs2OverlaysWindowsOnly => '覆盖层需要在运行 CS2 的 Windows 上使用。';
+
+  @override
+  String get cs2OverlayRunning => '运行中';
+
+  @override
+  String get cs2OverlayOff => '已关闭';
+
+  @override
+  String get cs2BombTitle => '炸弹计时器';
+
+  @override
+  String get cs2BombDescription =>
+      '从安放 C4 的那一刻起按秒倒计时。颜色表示是否还能拆除：白色表示谁都可以，橙色表示只有带拆弹器才行，红色表示已经来不及。';
+
+  @override
+  String get cs2BombSetupStep => '先安装一次游戏状态配置，然后重启 CS2。游戏只会在启动时读取它。';
+
+  @override
+  String get cs2BombInstall => '安装配置';
+
+  @override
+  String get cs2BombReinstall => '重新安装';
+
+  @override
+  String get cs2BombInstalled => '配置已安装到 CS2 的 cfg 文件夹。';
+
+  @override
+  String get cs2BombNotInstalled => '尚未安装。';
+
+  @override
+  String get cs2BombCs2Missing => '在你的 Steam 库中找不到 CS2，因此无法安装配置。';
+
+  @override
+  String cs2BombInstallFailed(String error) {
+    return '无法安装配置：$error';
+  }
+
+  @override
+  String get cs2BombStart => '启动炸弹计时器';
+
+  @override
+  String get cs2BombStop => '停止炸弹计时器';
+
+  @override
+  String get cs2BombTry => '模拟安放';
+
+  @override
+  String get cs2BombMove => '移动覆盖层';
+
+  @override
+  String get cs2BombResetPosition => '重置位置';
+
+  @override
+  String get cs2BombWaiting => '正在等待 CS2。如果游戏已经打开，请重启它以加载配置。';
+
+  @override
+  String get cs2BombConnected => '已连接到 CS2。';
+
+  @override
+  String get cs2BombIdle => '没有安放炸弹。';
+
+  @override
+  String get cs2BombAnyone => '无需拆弹器即可拆除';
+
+  @override
+  String get cs2BombKitOnly => '需拆弹器';
+
+  @override
+  String get cs2BombTooLate => '来不及了';
+
+  @override
+  String get cs2BombDefused => '已拆除';
+
+  @override
+  String get cs2BombExploded => '已爆炸';
+
+  @override
+  String get cs2BombDragHint => '拖动以移动';
+
+  @override
+  String get cs2BombFuse => '引信时长（秒）';
+
+  @override
+  String get cs2BombFuseHint => '竞技和优先模式中为 40。仅当社区服务器的 mp_c4timer 不同时才需修改。';
+
+  @override
+  String cs2BombPortInUse(int port) {
+    return '另一个程序已占用端口 $port，CS2 无法连接到 luma。';
+  }
+
+  @override
+  String cs2BombStartFailed(String error) {
+    return '无法启动炸弹计时器：$error';
+  }
+
+  @override
+  String get cs2BombRunningHint => '拖动计时器可移动它；右键单击可关闭。';
+
+  @override
+  String get cs2BombHowItWorks =>
+      '使用 CS2 的游戏状态集成（Game State Integration），这是 Valve 为覆盖层和直播提供的官方功能：游戏会把回合状态发送给本机上的 luma。不会读取游戏内存。';
+
+  @override
+  String get cs2MarketSellCalculator => '出售计算器';
 }

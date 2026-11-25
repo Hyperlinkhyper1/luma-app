@@ -2,21 +2,19 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../app/widgets.dart';
-import '../data/chat_repository.dart';
 import '../assistant_compose_mode.dart';
+import '../chat_turn_activity.dart';
+import '../data/chat_repository.dart';
 import 'chat_activity_card.dart';
+import 'chat_activity_timeline.dart';
 import 'chat_bubble.dart';
-import 'chat_moon.dart';
 
 /// Width of the reading column the transcript and composer share, as in the
 /// Claude app: the conversation stays a comfortable line length however wide
 /// the window gets.
 const chatColumnWidth = 740.0;
 
-/// Auto-scrolling transcript of a conversation, centred in a fixed-width
-/// column, with the animated moon underneath while a reply is on its way —
-/// replaced by the reply itself as it is written, for providers that
-/// stream it.
+/// Auto-scrolling transcript with activity and the draft of the active turn.
 class ChatMessageList extends StatefulWidget {
   const ChatMessageList({
     super.key,
@@ -25,6 +23,7 @@ class ChatMessageList extends StatefulWidget {
     this.thinking = false,
     this.draft,
     this.activity,
+    this.turnActivity,
   });
 
   final Stream<List<ChatMessageRecord>> stream;
@@ -37,6 +36,7 @@ class ChatMessageList extends StatefulWidget {
   /// What a deep research or picture turn is busy with, shown in place of
   /// the moon until the reply starts arriving.
   final ValueListenable<AssistantActivity?>? activity;
+  final ValueListenable<List<ChatTurnActivity>>? turnActivity;
 
   @override
   State<ChatMessageList> createState() => _ChatMessageListState();
@@ -44,40 +44,54 @@ class ChatMessageList extends StatefulWidget {
 
 class _ChatMessageListState extends State<ChatMessageList> {
   final _scrollController = ScrollController();
+  late Listenable _pendingUpdates;
   int _lastCount = 0;
+  bool _followScheduled = false;
 
   @override
   void didUpdateWidget(ChatMessageList oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.stream != widget.stream) _lastCount = 0;
     if (oldWidget.thinking != widget.thinking) _scrollToBottom();
-    if (oldWidget.draft != widget.draft) {
-      oldWidget.draft?.removeListener(_followDraft);
-      widget.draft?.addListener(_followDraft);
+    if (oldWidget.draft != widget.draft ||
+        oldWidget.activity != widget.activity ||
+        oldWidget.turnActivity != widget.turnActivity) {
+      _pendingUpdates.removeListener(_followPending);
+      _listenForPendingUpdates();
     }
   }
 
   @override
   void initState() {
     super.initState();
-    widget.draft?.addListener(_followDraft);
+    _listenForPendingUpdates();
+  }
+
+  void _listenForPendingUpdates() {
+    _pendingUpdates = Listenable.merge([
+      widget.draft,
+      widget.activity,
+      widget.turnActivity,
+    ])..addListener(_followPending);
   }
 
   @override
   void dispose() {
-    widget.draft?.removeListener(_followDraft);
+    _pendingUpdates.removeListener(_followPending);
     _scrollController.dispose();
     super.dispose();
   }
 
-  /// Keeps a growing draft in view, unless the user has scrolled up to read.
-  void _followDraft() {
+  void _followPending() {
+    if (!widget.thinking || _followScheduled || !_scrollController.hasClients) {
+      return;
+    }
+    if (_scrollController.position.extentAfter >= 160) return;
+    _followScheduled = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _followScheduled = false;
       if (!_scrollController.hasClients) return;
-      final position = _scrollController.position;
-      if (position.maxScrollExtent - position.pixels < 160) {
-        _scrollController.jumpTo(position.maxScrollExtent);
-      }
+      _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
     });
   }
 
@@ -98,43 +112,41 @@ class _ChatMessageListState extends State<ChatMessageList> {
     });
   }
 
-  static const _moon = Padding(
-    padding: EdgeInsets.only(top: 14, bottom: 8),
-    child: Align(
-      alignment: Alignment.centerLeft,
-      child: ChatMoon(size: 28, animating: true),
-    ),
+  Widget _pendingReply() => ListenableBuilder(
+    listenable: _pendingUpdates,
+    builder: (context, _) {
+      final text = widget.draft?.value ?? '';
+      final activity = widget.activity?.value;
+      final entries = widget.turnActivity?.value ?? const <ChatTurnActivity>[];
+      final runningTool = entries.whereType<ChatToolActivity>().any(
+        (tool) => tool.state == ChatToolState.running,
+      );
+      return Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (entries.isNotEmpty) ChatActivityTimeline(entries: entries),
+            if (text.isNotEmpty)
+              ChatBubble(
+                message: ChatMessageRecord(
+                  id: -1,
+                  conversationId: -1,
+                  role: 'assistant',
+                  content: text,
+                  createdAt: DateTime.now(),
+                ),
+                onOpenQrPlugin: widget.onOpenQrPlugin,
+              )
+            else if (activity != null)
+              ChatActivityCard(activity: activity)
+            else if (!runningTool)
+              const ChatThinkingRow(),
+          ],
+        ),
+      );
+    },
   );
-
-  Widget _waiting() {
-    final activity = widget.activity;
-    if (activity == null) return _moon;
-    return ValueListenableBuilder<AssistantActivity?>(
-      valueListenable: activity,
-      builder: (context, value, _) =>
-          value == null ? _moon : ChatActivityCard(activity: value),
-    );
-  }
-
-  Widget _pendingReply() {
-    final draft = widget.draft;
-    if (draft == null) return _waiting();
-    return ValueListenableBuilder<String>(
-      valueListenable: draft,
-      builder: (context, text, _) => text.isEmpty
-          ? _waiting()
-          : ChatBubble(
-              message: ChatMessageRecord(
-                id: -1,
-                conversationId: -1,
-                role: 'assistant',
-                content: text,
-                createdAt: DateTime.now(),
-              ),
-              onOpenQrPlugin: widget.onOpenQrPlugin,
-            ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {

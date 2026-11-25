@@ -95,7 +95,7 @@ List<String> parseSteamLibraryPaths(String vdf) => [
 ];
 
 /// Runs the CS2 chat translator: the PowerShell script bundled in
-/// `assets/cs2_translator/`, which tails the `console.log` CS2 writes under
+/// `assets/cs2_overlays/`, which tails the `console.log` CS2 writes under
 /// `-condebug` and draws translations in its own layered overlay window.
 ///
 /// The game itself is never touched — no memory reads, no injection, no
@@ -107,12 +107,10 @@ class Cs2TranslatorService extends ChangeNotifier {
 
   static final instance = Cs2TranslatorService._();
 
-  static const _assetPath = 'assets/cs2_translator/cs2-translator.ps1';
+  static const _assetPath = 'assets/cs2_overlays/cs2-translator.ps1';
   static const _maxOutputLines = 200;
 
   Process? _process;
-  Directory? _voiceInbox;
-  int _voiceSequence = 0;
   bool _testing = false;
   final List<String> _output = [];
 
@@ -122,7 +120,7 @@ class Cs2TranslatorService extends ChangeNotifier {
 
   static bool get supported => Platform.isWindows;
 
-  Future<Directory> _dir() async {
+  Future<Directory> dataDir() async {
     final base = await getApplicationSupportDirectory();
     final dir = Directory(
       '${base.path}${Platform.pathSeparator}cs2_translator',
@@ -134,7 +132,7 @@ class Cs2TranslatorService extends ChangeNotifier {
   /// Writes the bundled script out on every start, so an app update that
   /// changes it never leaves an older copy running.
   Future<String> _writeScript() async {
-    final dir = await _dir();
+    final dir = await dataDir();
     final file = File('${dir.path}${Platform.pathSeparator}cs2-translator.ps1');
     final data = await rootBundle.load(_assetPath);
     await file.writeAsBytes(data.buffer.asUint8List(), flush: true);
@@ -144,7 +142,7 @@ class Cs2TranslatorService extends ChangeNotifier {
   Future<Cs2TranslatorOptions> loadOptions() async {
     try {
       final file = File(
-        '${(await _dir()).path}${Platform.pathSeparator}options.json',
+        '${(await dataDir()).path}${Platform.pathSeparator}options.json',
       );
       if (!await file.exists()) return const Cs2TranslatorOptions();
       return Cs2TranslatorOptions.fromJson(
@@ -158,7 +156,7 @@ class Cs2TranslatorService extends ChangeNotifier {
   Future<void> saveOptions(Cs2TranslatorOptions options) async {
     try {
       final file = File(
-        '${(await _dir()).path}${Platform.pathSeparator}options.json',
+        '${(await dataDir()).path}${Platform.pathSeparator}options.json',
       );
       await file.writeAsString(jsonEncode(options.toJson()));
     } catch (_) {}
@@ -218,10 +216,6 @@ class Cs2TranslatorService extends ChangeNotifier {
   Future<String?> _launch(List<String> args, {required bool testing}) async {
     try {
       final script = await _writeScript();
-      final inbox = testing
-          ? null
-          : await Directory.systemTemp.createTemp('luma-cs2-chat-');
-      _voiceInbox = inbox;
       _output.clear();
       _testing = testing;
       final process = await Process.start('powershell.exe', [
@@ -233,7 +227,6 @@ class Cs2TranslatorService extends ChangeNotifier {
         '-File',
         script,
         ...args,
-        if (inbox != null) ...['-VoiceInbox', inbox.path],
       ]);
       _process = process;
       notifyListeners();
@@ -248,46 +241,17 @@ class Cs2TranslatorService extends ChangeNotifier {
           if (identical(_process, process)) {
             _process = null;
             _testing = false;
-            _voiceInbox = null;
-            if (inbox != null) unawaited(_deleteInbox(inbox));
             notifyListeners();
           }
         }),
       );
       return null;
     } catch (e) {
-      final inbox = _voiceInbox;
-      _voiceInbox = null;
-      if (inbox != null) unawaited(_deleteInbox(inbox));
       _process = null;
       _testing = false;
       notifyListeners();
       return '$e';
     }
-  }
-
-  Future<void> _deleteInbox(Directory inbox) async {
-    try {
-      await inbox.delete(recursive: true);
-    } catch (_) {}
-  }
-
-  Future<void> showVoiceLine(String transcript, String translation) async {
-    final inbox = _voiceInbox;
-    if (!running || inbox == null) {
-      throw StateError('Start the chat translator first.');
-    }
-    final stem = '${DateTime.now().microsecondsSinceEpoch}-${_voiceSequence++}';
-    final pending = File('${inbox.path}${Platform.pathSeparator}$stem.tmp');
-    await pending.writeAsString(
-      jsonEncode({'transcript': transcript, 'translation': translation}),
-      flush: true,
-    );
-    if (!running || !identical(inbox, _voiceInbox)) {
-      if (await pending.exists()) await pending.delete();
-      return;
-    }
-    await pending.rename('${inbox.path}${Platform.pathSeparator}$stem.json');
   }
 
   void _addLine(String line) {

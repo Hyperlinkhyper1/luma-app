@@ -254,19 +254,19 @@
     },
     "ai-usage": {
       "nl": {
-        "name": "AI-gebruik",
+        "name": "AI-tools en gegevens",
         "description": "Drie hulpmiddelen in één. Gebruik: een privédashboard voor je uitgaven aan Claude Code, Codex CLI, Antigravity, OpenCode en Freebuff, met tokenaantallen en kostenschattingen per dag en model, volledig gelezen uit je lokale sessielogs en nergens naartoe gestuurd. Ranglijst: elk groot model gerangschikt op redeneer-, codeer- en agentbeoordelingen, met contextvensters, prijzen en licenties naast elkaar. Open source: uitzoeken welke downloadbare modellen je eigen hardware echt kan draaien."
       },
       "fr": {
-        "name": "Utilisation de l'IA",
+        "name": "Outils d'IA et données",
         "description": "Trois outils en un. Utilisation : un tableau de bord privé pour vos dépenses liées à Claude Code, Codex CLI, Antigravity, OpenCode et Freebuff, avec nombre de tokens et estimations de coût par jour et par modèle, calculés uniquement à partir de vos journaux de session locaux, sans rien envoyer ailleurs. Classement : tous les grands modèles notés sur le raisonnement, le code et les agents, avec fenêtres de contexte, prix et licences côte à côte. Open source : déterminer quels modèles téléchargeables votre propre matériel peut réellement faire tourner."
       },
       "es": {
-        "name": "Uso de IA",
+        "name": "Herramientas de IA y datos",
         "description": "Tres herramientas en una. Uso: un panel privado para tu gasto en Claude Code, Codex CLI, Antigravity, OpenCode y Freebuff, con recuentos de tokens y estimaciones de coste por día y modelo, leídos únicamente de tus registros de sesión locales y que nunca se envían a ningún sitio. Clasificación: todos los modelos principales puntuados en razonamiento, programación y agentes, con ventanas de contexto, precios y licencias en paralelo. Código abierto: descubre qué modelos descargables puede ejecutar realmente tu hardware."
       },
       "zh": {
-        "name": "AI 用量",
+        "name": "AI 工具与数据",
         "description": "三合一工具。用量：一个私密仪表盘，汇总你在 Claude Code、Codex CLI、Antigravity、OpenCode 和 Freebuff 上的开销，按日期和模型显示 token 数量与费用估算，数据完全读取自本地会话日志，绝不发送到任何地方。排行榜：所有主流模型在推理、编程和智能体评分上的排名，并列显示上下文窗口、价格和许可证。开源：找出你自己的硬件真正能运行哪些可下载模型。"
       }
     },
@@ -742,19 +742,19 @@
     },
     "ai-usage": {
       "nl": {
-        "name": "AI-gebruik",
+        "name": "AI-tools en gegevens",
         "description": "Houd lokaal AI-gebruik bij, bewaar een Markdown-contextbibliotheek, bouw herbruikbare specialisten voor Luma en Codex, en vergelijk modellen. Er verlaat niets je laptop tenzij je een provider kiest."
       },
       "fr": {
-        "name": "Utilisation de l'IA",
+        "name": "Outils d'IA et données",
         "description": "Suivez votre utilisation locale de l'IA, tenez une bibliothèque de contexte en Markdown, créez des spécialistes réutilisables pour Luma et Codex, et comparez les modèles. Rien ne quitte votre ordinateur portable sauf si vous choisissez un fournisseur."
       },
       "es": {
-        "name": "Uso de IA",
+        "name": "Herramientas de IA y datos",
         "description": "Registra el uso local de IA, mantén una biblioteca de contexto en Markdown, crea especialistas reutilizables para Luma y Codex, y compara modelos. Nada sale de tu portátil a menos que elijas un proveedor."
       },
       "zh": {
-        "name": "AI 用量",
+        "name": "AI 工具与数据",
         "description": "追踪本地 AI 用量，维护 Markdown 上下文库，为 Luma 和 Codex 创建可复用的专家，并对比各类模型。除非你选择某个服务商，否则任何内容都不会离开你的笔记本电脑。"
       }
     },

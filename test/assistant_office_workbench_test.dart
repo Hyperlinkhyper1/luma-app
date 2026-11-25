@@ -63,6 +63,7 @@ class _WritingClient extends AiClient {
     required AiToolExecutor executeTool,
     required AiToolMetadata metadataFor,
     AiTextProgress? onText,
+    AiTextProgress? onCommentary,
   }) async {
     toolNames = [for (final t in tools) t.name];
     if (!systemPrompt.contains('create_office_file, then build it')) {

@@ -50,7 +50,7 @@ class StorageGuardService extends ChangeNotifier {
   /// whatever the user chose to move between their own machines — videos,
   /// archives, disk images. It has its own size readout in the plugin
   /// instead.
-  /// `ai_catalog_cache` is the AI Usage plugin's downloaded copy of the model
+  /// `ai_catalog_cache` is the AI Tools and Data plugin's downloaded copy of the model
   /// leaderboard: a few hundred KB that is byte-identical for every user and
   /// re-fetchable from the server — data the user never created.
   /// `ai_benchmarks_cache` is the same plugin's downloaded benchmark scenes

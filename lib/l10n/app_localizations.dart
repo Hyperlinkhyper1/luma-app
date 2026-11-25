@@ -4028,7 +4028,7 @@ abstract class L {
   /// No description provided for @assistantAgentsSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Agents you\'ve built in the AI Usage plugin. Running them from the assistant is coming soon.'**
+  /// **'Agents you\'ve built in the AI Tools and Data plugin. Running them from the assistant is coming soon.'**
   String get assistantAgentsSubtitle;
 
   /// No description provided for @assistantAgentsEmpty.
@@ -4040,13 +4040,13 @@ abstract class L {
   /// No description provided for @assistantAgentsEmptyHint.
   ///
   /// In en, this message translates to:
-  /// **'Build one in the AI Usage plugin\'s Agents tab and it shows up here.'**
+  /// **'Build one in the AI Tools and Data plugin\'s Agents tab and it shows up here.'**
   String get assistantAgentsEmptyHint;
 
   /// No description provided for @assistantAgentsOpenBuilder.
   ///
   /// In en, this message translates to:
-  /// **'Open AI Usage'**
+  /// **'Open AI Tools and Data'**
   String get assistantAgentsOpenBuilder;
 
   /// No description provided for @assistantAgentsNoDescription.
@@ -5302,6 +5302,72 @@ abstract class L {
   /// In en, this message translates to:
   /// **'Writing up the answer…'**
   String get assistantResearchWriting;
+
+  /// No description provided for @assistantActivityThinking.
+  ///
+  /// In en, this message translates to:
+  /// **'Thinking…'**
+  String get assistantActivityThinking;
+
+  /// No description provided for @assistantActivitySearchWeb.
+  ///
+  /// In en, this message translates to:
+  /// **'Search the web'**
+  String get assistantActivitySearchWeb;
+
+  /// No description provided for @assistantActivitySearchNotes.
+  ///
+  /// In en, this message translates to:
+  /// **'Search notes'**
+  String get assistantActivitySearchNotes;
+
+  /// No description provided for @assistantActivityWriteNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Write a note'**
+  String get assistantActivityWriteNote;
+
+  /// No description provided for @assistantActivityCreateFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a file'**
+  String get assistantActivityCreateFile;
+
+  /// No description provided for @assistantActivityEditFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit a file'**
+  String get assistantActivityEditFile;
+
+  /// No description provided for @assistantActivityReadFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Read a file'**
+  String get assistantActivityReadFile;
+
+  /// No description provided for @assistantActivityInstallPlugin.
+  ///
+  /// In en, this message translates to:
+  /// **'Install a plugin'**
+  String get assistantActivityInstallPlugin;
+
+  /// No description provided for @assistantActivityNeedsInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'More information needed'**
+  String get assistantActivityNeedsInfo;
+
+  /// No description provided for @assistantActivityUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Unavailable'**
+  String get assistantActivityUnavailable;
+
+  /// No description provided for @assistantActivityTool.
+  ///
+  /// In en, this message translates to:
+  /// **'Tool'**
+  String get assistantActivityTool;
 
   /// No description provided for @assistantPictureDrawing.
   ///
@@ -7058,7 +7124,7 @@ abstract class L {
   /// No description provided for @pluginNameAiUsage.
   ///
   /// In en, this message translates to:
-  /// **'AI Usage'**
+  /// **'AI Tools and Data'**
   String get pluginNameAiUsage;
 
   /// No description provided for @pluginNameAirlineTycoon.
@@ -19686,6 +19752,246 @@ abstract class L {
   /// **'Free to use'**
   String get aiUsageSectionAssetsBlurb;
 
+  /// No description provided for @aiUsageSectionDatasets.
+  ///
+  /// In en, this message translates to:
+  /// **'Datasets'**
+  String get aiUsageSectionDatasets;
+
+  /// No description provided for @aiUsageSectionDatasetsBlurb.
+  ///
+  /// In en, this message translates to:
+  /// **'App and game databases'**
+  String get aiUsageSectionDatasetsBlurb;
+
+  /// No description provided for @cs2DatasetSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'T-side tendencies'**
+  String get cs2DatasetSubtitle;
+
+  /// No description provided for @cs2DatasetDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Compare Bombsite A, Bombsite B and other rounds. Replay imports use the completed plant or last plant attempt.'**
+  String get cs2DatasetDescription;
+
+  /// No description provided for @cs2DatasetPublished.
+  ///
+  /// In en, this message translates to:
+  /// **'Published database'**
+  String get cs2DatasetPublished;
+
+  /// No description provided for @cs2DatasetPrivate.
+  ///
+  /// In en, this message translates to:
+  /// **'My private database'**
+  String get cs2DatasetPrivate;
+
+  /// No description provided for @cs2DatasetMap.
+  ///
+  /// In en, this message translates to:
+  /// **'Map'**
+  String get cs2DatasetMap;
+
+  /// No description provided for @cs2DatasetPrevious.
+  ///
+  /// In en, this message translates to:
+  /// **'What did T do last round?'**
+  String get cs2DatasetPrevious;
+
+  /// No description provided for @cs2DatasetAny.
+  ///
+  /// In en, this message translates to:
+  /// **'Any previous outcome'**
+  String get cs2DatasetAny;
+
+  /// No description provided for @cs2DatasetNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Likely next round'**
+  String get cs2DatasetNext;
+
+  /// No description provided for @cs2DatasetNoSites.
+  ///
+  /// In en, this message translates to:
+  /// **'This map has no bombsites to compare.'**
+  String get cs2DatasetNoSites;
+
+  /// No description provided for @cs2DatasetNoRounds.
+  ///
+  /// In en, this message translates to:
+  /// **'No recorded rounds for this map yet.'**
+  String get cs2DatasetNoRounds;
+
+  /// No description provided for @cs2DatasetSample.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{Based on 1 recorded round} other{Based on {count} recorded rounds}}'**
+  String cs2DatasetSample(int count);
+
+  /// No description provided for @cs2DatasetFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'No matching transitions yet. Showing overall map odds.'**
+  String get cs2DatasetFallback;
+
+  /// No description provided for @cs2DatasetOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'Using the downloaded database'**
+  String get cs2DatasetOffline;
+
+  /// No description provided for @cs2DatasetSignIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with an approved Luma account to view the published database.'**
+  String get cs2DatasetSignIn;
+
+  /// No description provided for @cs2DatasetReplaySignIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with an approved Luma account to import replays.'**
+  String get cs2DatasetReplaySignIn;
+
+  /// No description provided for @cs2DatasetOpenFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open the database on this device.'**
+  String get cs2DatasetOpenFailed;
+
+  /// No description provided for @cs2DatasetLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load the published database.'**
+  String get cs2DatasetLoadFailed;
+
+  /// No description provided for @cs2DatasetRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get cs2DatasetRetry;
+
+  /// No description provided for @cs2DatasetManual.
+  ///
+  /// In en, this message translates to:
+  /// **'Add rounds'**
+  String get cs2DatasetManual;
+
+  /// No description provided for @cs2DatasetUpload.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload replay'**
+  String get cs2DatasetUpload;
+
+  /// No description provided for @cs2DatasetReplayPrivacy.
+  ///
+  /// In en, this message translates to:
+  /// **'The server analyzes your replay temporarily. The extracted rounds are saved on this device.'**
+  String get cs2DatasetReplayPrivacy;
+
+  /// No description provided for @cs2DatasetReplayFormats.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a .dem or .dem.bz2 replay up to 95 MiB.'**
+  String get cs2DatasetReplayFormats;
+
+  /// No description provided for @cs2DatasetRoundsSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Rounds saved to your private database.'**
+  String get cs2DatasetRoundsSaved;
+
+  /// No description provided for @cs2DatasetReplayDuplicate.
+  ///
+  /// In en, this message translates to:
+  /// **'This replay is already in your private database.'**
+  String get cs2DatasetReplayDuplicate;
+
+  /// No description provided for @cs2DatasetDownload.
+  ///
+  /// In en, this message translates to:
+  /// **'Download for offline use'**
+  String get cs2DatasetDownload;
+
+  /// No description provided for @cs2DatasetExport.
+  ///
+  /// In en, this message translates to:
+  /// **'Save a file copy'**
+  String get cs2DatasetExport;
+
+  /// No description provided for @cs2DatasetDownloaded.
+  ///
+  /// In en, this message translates to:
+  /// **'Database downloaded for offline use.'**
+  String get cs2DatasetDownloaded;
+
+  /// No description provided for @cs2DatasetPaidDownload.
+  ///
+  /// In en, this message translates to:
+  /// **'Database downloads are included with any paid plan.'**
+  String get cs2DatasetPaidDownload;
+
+  /// No description provided for @cs2DatasetActionFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not complete the database action. Try again.'**
+  String get cs2DatasetActionFailed;
+
+  /// No description provided for @cs2DatasetSiteA.
+  ///
+  /// In en, this message translates to:
+  /// **'Bombsite A'**
+  String get cs2DatasetSiteA;
+
+  /// No description provided for @cs2DatasetSiteB.
+  ///
+  /// In en, this message translates to:
+  /// **'Bombsite B'**
+  String get cs2DatasetSiteB;
+
+  /// No description provided for @cs2DatasetOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other / no site'**
+  String get cs2DatasetOther;
+
+  /// No description provided for @cs2DatasetManualHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter consecutive rounds from one T-side stint in order. Separate A, B and Other with commas or spaces.'**
+  String get cs2DatasetManualHelp;
+
+  /// No description provided for @cs2DatasetMapId.
+  ///
+  /// In en, this message translates to:
+  /// **'CS2 map ID'**
+  String get cs2DatasetMapId;
+
+  /// No description provided for @cs2DatasetInvalidMap.
+  ///
+  /// In en, this message translates to:
+  /// **'Use a bomb-defusal map ID such as de_mirage.'**
+  String get cs2DatasetInvalidMap;
+
+  /// No description provided for @cs2DatasetRounds.
+  ///
+  /// In en, this message translates to:
+  /// **'Round outcomes'**
+  String get cs2DatasetRounds;
+
+  /// No description provided for @cs2DatasetInvalidRounds.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter 1 to 500 outcomes using A, B or Other.'**
+  String get cs2DatasetInvalidRounds;
+
+  /// No description provided for @cs2DatasetSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save rounds'**
+  String get cs2DatasetSave;
+
   /// No description provided for @aiUsageSidebarExpand.
   ///
   /// In en, this message translates to:
@@ -29769,53 +30075,23 @@ abstract class L {
   /// **'Skins, priced and charted'**
   String get gameToolsCs2MarketBlurb;
 
-  /// No description provided for @gameToolsSellingCalculatorLabel.
-  ///
-  /// In en, this message translates to:
-  /// **'Selling Calculator'**
-  String get gameToolsSellingCalculatorLabel;
-
-  /// No description provided for @gameToolsSellingCalculatorBlurb.
-  ///
-  /// In en, this message translates to:
-  /// **'Estimate CS2 sale proceeds'**
-  String get gameToolsSellingCalculatorBlurb;
-
   /// No description provided for @gameToolsMafiaBlurb.
   ///
   /// In en, this message translates to:
   /// **'Role counting'**
   String get gameToolsMafiaBlurb;
 
-  /// No description provided for @gameToolsChatTranslatorLabel.
-  ///
-  /// In en, this message translates to:
-  /// **'Chat Translator'**
-  String get gameToolsChatTranslatorLabel;
-
-  /// No description provided for @gameToolsChatTranslatorBlurb.
-  ///
-  /// In en, this message translates to:
-  /// **'Translate CS2 chat in an overlay'**
-  String get gameToolsChatTranslatorBlurb;
-
   /// No description provided for @cs2TrTitle.
   ///
   /// In en, this message translates to:
-  /// **'CS2 Chat Translator'**
+  /// **'Chat translator'**
   String get cs2TrTitle;
 
   /// No description provided for @cs2TrSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Translates foreign-language chat and shows it color-coded in a transparent overlay on top of the game. It only reads the console.log file CS2 writes, so it never touches the game itself and is VAC-safe.'**
+  /// **'Shows chat color-coded in an overlay and translates foreign-language messages. Reads only the console.log file CS2 writes.'**
   String get cs2TrSubtitle;
-
-  /// No description provided for @cs2TrSetupTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'One-time setup'**
-  String get cs2TrSetupTitle;
 
   /// No description provided for @cs2TrSetupLaunchOptions.
   ///
@@ -29826,7 +30102,7 @@ abstract class L {
   /// No description provided for @cs2TrSetupWindowed.
   ///
   /// In en, this message translates to:
-  /// **'Set CS2\'s display mode to Fullscreen Windowed, so the overlay can sit on top of the game.'**
+  /// **'Set CS2\'s display mode to Fullscreen Windowed, so overlays can sit on top of the game.'**
   String get cs2TrSetupWindowed;
 
   /// No description provided for @cs2TrCopy.
@@ -29946,7 +30222,7 @@ abstract class L {
   /// No description provided for @cs2TrHowItWorks.
   ///
   /// In en, this message translates to:
-  /// **'Every foreign-language message gets a \"(translated from …)\" label. Google Translate is tried first, with MyMemory as a fallback. Short Latin-script words like \"gg\" are left alone, because language detection guesses wrong on them. Translated lines are also echoed into the CS2 console.'**
+  /// **'Every foreign-language message gets a \"(translated from …)\" label. Google Translate is tried first, with MyMemory as a fallback. Short Latin-script words like \"gg\" are left alone, because language detection guesses wrong on them.'**
   String get cs2TrHowItWorks;
 
   /// No description provided for @cs2TrOutputTitle.
@@ -29960,12 +30236,6 @@ abstract class L {
   /// In en, this message translates to:
   /// **'Nothing yet. Chat and translations appear here once the translator is running.'**
   String get cs2TrOutputEmpty;
-
-  /// No description provided for @cs2TrWindowsOnly.
-  ///
-  /// In en, this message translates to:
-  /// **'The chat translator needs Windows, where CS2 and its overlay run.'**
-  String get cs2TrWindowsOnly;
 
   /// No description provided for @gameToolsComingSoonTitle.
   ///
@@ -44093,12 +44363,6 @@ abstract class L {
   /// In en, this message translates to:
   /// **'Could not refresh your library: {error}'**
   String steamRepoRefreshFailed(String error);
-
-  /// No description provided for @cs2CalcTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'CS2 Selling Calculator'**
-  String get cs2CalcTitle;
 
   /// No description provided for @cs2CalcSubtitle.
   ///
@@ -67643,162 +67907,6 @@ abstract class L {
   /// **'Enter a port between 1 and 65535.'**
   String get cmdDashErrorPort;
 
-  /// No description provided for @gameToolsVoiceTranslateLabel.
-  ///
-  /// In en, this message translates to:
-  /// **'Voice translate'**
-  String get gameToolsVoiceTranslateLabel;
-
-  /// No description provided for @gameToolsVoiceTranslateBlurb.
-  ///
-  /// In en, this message translates to:
-  /// **'Speak and send translated CS2 chat'**
-  String get gameToolsVoiceTranslateBlurb;
-
-  /// No description provided for @cs2VoiceTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'CS2 Voice translate'**
-  String get cs2VoiceTitle;
-
-  /// No description provided for @cs2VoiceSubtitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Speak, translate, and automatically send the result to CS2 all-chat.'**
-  String get cs2VoiceSubtitle;
-
-  /// No description provided for @cs2VoiceEnable.
-  ///
-  /// In en, this message translates to:
-  /// **'Enable voice translate'**
-  String get cs2VoiceEnable;
-
-  /// No description provided for @cs2VoiceEnableHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Works while luma is open, including while you play CS2. Closing luma disables the microphone and keybind.'**
-  String get cs2VoiceEnableHint;
-
-  /// No description provided for @cs2VoiceTargetLanguage.
-  ///
-  /// In en, this message translates to:
-  /// **'Translate into'**
-  String get cs2VoiceTargetLanguage;
-
-  /// No description provided for @cs2VoiceCustomLanguage.
-  ///
-  /// In en, this message translates to:
-  /// **'Choose another language…'**
-  String get cs2VoiceCustomLanguage;
-
-  /// No description provided for @cs2VoiceLanguageHint.
-  ///
-  /// In en, this message translates to:
-  /// **'For example: Finnish'**
-  String get cs2VoiceLanguageHint;
-
-  /// No description provided for @cs2VoiceLanguageRequired.
-  ///
-  /// In en, this message translates to:
-  /// **'Enter a language.'**
-  String get cs2VoiceLanguageRequired;
-
-  /// No description provided for @cs2VoiceHotkeyTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Recording keybind'**
-  String get cs2VoiceHotkeyTitle;
-
-  /// No description provided for @cs2VoiceHotkeyHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Press your own keybind, then Save. Use it to start and stop recording while luma is open.'**
-  String get cs2VoiceHotkeyHint;
-
-  /// No description provided for @cs2VoiceChangeHotkey.
-  ///
-  /// In en, this message translates to:
-  /// **'Set keybind'**
-  String get cs2VoiceChangeHotkey;
-
-  /// No description provided for @cs2VoiceRecordingHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Press once to record with your default microphone, then again to translate and send. Recording stops after 30 seconds. Cancel discards it.'**
-  String get cs2VoiceRecordingHint;
-
-  /// No description provided for @cs2VoiceAllowanceHint.
-  ///
-  /// In en, this message translates to:
-  /// **'A full weekly AI allowance provides Free 10 min, Orbit 30 min or Nova 2 hours of voice translation. Shared with chat; only the weekly bar is used, never the 5-hour bar.'**
-  String get cs2VoiceAllowanceHint;
-
-  /// No description provided for @cs2VoiceStopAndSend.
-  ///
-  /// In en, this message translates to:
-  /// **'Stop, translate and send'**
-  String get cs2VoiceStopAndSend;
-
-  /// No description provided for @cs2VoiceRecord.
-  ///
-  /// In en, this message translates to:
-  /// **'Start recording'**
-  String get cs2VoiceRecord;
-
-  /// No description provided for @cs2VoiceCancel.
-  ///
-  /// In en, this message translates to:
-  /// **'Cancel recording / request'**
-  String get cs2VoiceCancel;
-
-  /// No description provided for @cs2VoiceLoading.
-  ///
-  /// In en, this message translates to:
-  /// **'Loading voice settings…'**
-  String get cs2VoiceLoading;
-
-  /// No description provided for @cs2VoiceRetry.
-  ///
-  /// In en, this message translates to:
-  /// **'Try again'**
-  String get cs2VoiceRetry;
-
-  /// No description provided for @cs2VoiceTranscript.
-  ///
-  /// In en, this message translates to:
-  /// **'What you said'**
-  String get cs2VoiceTranscript;
-
-  /// No description provided for @cs2VoiceTranscriptEmpty.
-  ///
-  /// In en, this message translates to:
-  /// **'Your transcript will appear here after recording.'**
-  String get cs2VoiceTranscriptEmpty;
-
-  /// No description provided for @cs2VoiceTranslation.
-  ///
-  /// In en, this message translates to:
-  /// **'Translated message'**
-  String get cs2VoiceTranslation;
-
-  /// No description provided for @cs2VoiceTranslationEmpty.
-  ///
-  /// In en, this message translates to:
-  /// **'Your latest translated message will appear here.'**
-  String get cs2VoiceTranslationEmpty;
-
-  /// No description provided for @cs2VoiceSetup.
-  ///
-  /// In en, this message translates to:
-  /// **'One-time setup: open the CS2 developer console (~) and run this command. After each translation, press Numpad Enter in CS2 to send it to chat:'**
-  String get cs2VoiceSetup;
-
-  /// No description provided for @cs2VoiceAdminRouting.
-  ///
-  /// In en, this message translates to:
-  /// **'Uses your provider API key and the models selected in Admin → Assistant → Voice translate. Sign in with an approved Luma account.'**
-  String get cs2VoiceAdminRouting;
-
   /// No description provided for @mapMakerCityLayers.
   ///
   /// In en, this message translates to:
@@ -67972,60 +68080,6 @@ abstract class L {
   /// In en, this message translates to:
   /// **'Access: {connected}/{total} buildings'**
   String mapMakerCityConnectedCount(int connected, int total);
-
-  /// No description provided for @cs2TeammateVoiceTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Teammate voice translation'**
-  String get cs2TeammateVoiceTitle;
-
-  /// No description provided for @cs2TeammateVoiceDescription.
-  ///
-  /// In en, this message translates to:
-  /// **'Route CS2 voice to a Windows recording source (such as a virtual audio cable or Stereo Mix), then select that source. Luma displays the transcript and translation in the chat overlay. Player names cannot be identified.'**
-  String get cs2TeammateVoiceDescription;
-
-  /// No description provided for @cs2TeammateVoicePrivacy.
-  ///
-  /// In en, this message translates to:
-  /// **'Audio from the selected source is sent to the configured Luma server and AI providers and uses your weekly voice allowance. Any other audio on that source can also be sent. Quiet audio may be skipped.'**
-  String get cs2TeammateVoicePrivacy;
-
-  /// No description provided for @cs2TeammateVoiceSource.
-  ///
-  /// In en, this message translates to:
-  /// **'Recording source'**
-  String get cs2TeammateVoiceSource;
-
-  /// No description provided for @cs2TeammateVoiceFindSources.
-  ///
-  /// In en, this message translates to:
-  /// **'Find recording sources'**
-  String get cs2TeammateVoiceFindSources;
-
-  /// No description provided for @cs2TeammateVoiceStart.
-  ///
-  /// In en, this message translates to:
-  /// **'Start listening'**
-  String get cs2TeammateVoiceStart;
-
-  /// No description provided for @cs2TeammateVoiceStop.
-  ///
-  /// In en, this message translates to:
-  /// **'Stop listening'**
-  String get cs2TeammateVoiceStop;
-
-  /// No description provided for @cs2TeammateVoiceRunning.
-  ///
-  /// In en, this message translates to:
-  /// **'Listening and translating into the chat translator’s target language.'**
-  String get cs2TeammateVoiceRunning;
-
-  /// No description provided for @cs2TeammateVoiceIdle.
-  ///
-  /// In en, this message translates to:
-  /// **'Start the chat translator and choose a source to begin.'**
-  String get cs2TeammateVoiceIdle;
 
   /// No description provided for @mapMakerCityInfiniteCanvas.
   ///
@@ -69544,6 +69598,228 @@ abstract class L {
   /// In en, this message translates to:
   /// **'{checks, plural, =1{Ultra Reasoning · checked once} other{Ultra Reasoning · checked {checks} times}}'**
   String assistantUltraBadge(int checks);
+
+  /// No description provided for @gameToolsOverlaysLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Overlays'**
+  String get gameToolsOverlaysLabel;
+
+  /// No description provided for @gameToolsOverlaysBlurb.
+  ///
+  /// In en, this message translates to:
+  /// **'Chat translator and bomb timer'**
+  String get gameToolsOverlaysBlurb;
+
+  /// No description provided for @cs2OverlaysTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'CS2 overlays'**
+  String get cs2OverlaysTitle;
+
+  /// No description provided for @cs2OverlaysSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Transparent windows on top of the game. They only read what CS2 writes out itself, so they never touch the game and are VAC-safe.'**
+  String get cs2OverlaysSubtitle;
+
+  /// No description provided for @cs2OverlaysWindowsOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Overlays need Windows, where CS2 runs.'**
+  String get cs2OverlaysWindowsOnly;
+
+  /// No description provided for @cs2OverlayRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'Running'**
+  String get cs2OverlayRunning;
+
+  /// No description provided for @cs2OverlayOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get cs2OverlayOff;
+
+  /// No description provided for @cs2BombTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Bomb timer'**
+  String get cs2BombTitle;
+
+  /// No description provided for @cs2BombDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Counts the C4 down in seconds from the moment it\'s planted. The color shows whether a defuse is still possible: white for anyone, amber with a kit only, red when it\'s too late.'**
+  String get cs2BombDescription;
+
+  /// No description provided for @cs2BombSetupStep.
+  ///
+  /// In en, this message translates to:
+  /// **'Install the game state config once, then restart CS2. The game only reads it at launch.'**
+  String get cs2BombSetupStep;
+
+  /// No description provided for @cs2BombInstall.
+  ///
+  /// In en, this message translates to:
+  /// **'Install config'**
+  String get cs2BombInstall;
+
+  /// No description provided for @cs2BombReinstall.
+  ///
+  /// In en, this message translates to:
+  /// **'Reinstall'**
+  String get cs2BombReinstall;
+
+  /// No description provided for @cs2BombInstalled.
+  ///
+  /// In en, this message translates to:
+  /// **'Config installed in CS2\'s cfg folder.'**
+  String get cs2BombInstalled;
+
+  /// No description provided for @cs2BombNotInstalled.
+  ///
+  /// In en, this message translates to:
+  /// **'Not installed yet.'**
+  String get cs2BombNotInstalled;
+
+  /// No description provided for @cs2BombCs2Missing.
+  ///
+  /// In en, this message translates to:
+  /// **'CS2 wasn\'t found in your Steam libraries, so the config can\'t be installed.'**
+  String get cs2BombCs2Missing;
+
+  /// No description provided for @cs2BombInstallFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t install the config: {error}'**
+  String cs2BombInstallFailed(String error);
+
+  /// No description provided for @cs2BombStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start bomb timer'**
+  String get cs2BombStart;
+
+  /// No description provided for @cs2BombStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop bomb timer'**
+  String get cs2BombStop;
+
+  /// No description provided for @cs2BombTry.
+  ///
+  /// In en, this message translates to:
+  /// **'Try a plant'**
+  String get cs2BombTry;
+
+  /// No description provided for @cs2BombMove.
+  ///
+  /// In en, this message translates to:
+  /// **'Move overlay'**
+  String get cs2BombMove;
+
+  /// No description provided for @cs2BombResetPosition.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset position'**
+  String get cs2BombResetPosition;
+
+  /// No description provided for @cs2BombWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for CS2. If the game was already open, restart it so it loads the config.'**
+  String get cs2BombWaiting;
+
+  /// No description provided for @cs2BombConnected.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected to CS2.'**
+  String get cs2BombConnected;
+
+  /// No description provided for @cs2BombIdle.
+  ///
+  /// In en, this message translates to:
+  /// **'No bomb planted.'**
+  String get cs2BombIdle;
+
+  /// No description provided for @cs2BombAnyone.
+  ///
+  /// In en, this message translates to:
+  /// **'Defusable without a kit'**
+  String get cs2BombAnyone;
+
+  /// No description provided for @cs2BombKitOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Kit only'**
+  String get cs2BombKitOnly;
+
+  /// No description provided for @cs2BombTooLate.
+  ///
+  /// In en, this message translates to:
+  /// **'Too late'**
+  String get cs2BombTooLate;
+
+  /// No description provided for @cs2BombDefused.
+  ///
+  /// In en, this message translates to:
+  /// **'Defused'**
+  String get cs2BombDefused;
+
+  /// No description provided for @cs2BombExploded.
+  ///
+  /// In en, this message translates to:
+  /// **'Exploded'**
+  String get cs2BombExploded;
+
+  /// No description provided for @cs2BombDragHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Drag to move'**
+  String get cs2BombDragHint;
+
+  /// No description provided for @cs2BombFuse.
+  ///
+  /// In en, this message translates to:
+  /// **'Fuse length (seconds)'**
+  String get cs2BombFuse;
+
+  /// No description provided for @cs2BombFuseHint.
+  ///
+  /// In en, this message translates to:
+  /// **'40 in competitive and premier. Change it only for community servers with a different mp_c4timer.'**
+  String get cs2BombFuseHint;
+
+  /// No description provided for @cs2BombPortInUse.
+  ///
+  /// In en, this message translates to:
+  /// **'Another program is already using port {port}, so CS2 can\'t reach luma.'**
+  String cs2BombPortInUse(int port);
+
+  /// No description provided for @cs2BombStartFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t start the bomb timer: {error}'**
+  String cs2BombStartFailed(String error);
+
+  /// No description provided for @cs2BombRunningHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Drag the timer to move it; right-click it to close.'**
+  String get cs2BombRunningHint;
+
+  /// No description provided for @cs2BombHowItWorks.
+  ///
+  /// In en, this message translates to:
+  /// **'Uses CS2\'s Game State Integration, Valve\'s own feature for overlays and broadcasters: the game sends its round state to luma on this computer. Nothing reads the game\'s memory.'**
+  String get cs2BombHowItWorks;
+
+  /// No description provided for @cs2MarketSellCalculator.
+  ///
+  /// In en, this message translates to:
+  /// **'Sell calculator'**
+  String get cs2MarketSellCalculator;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

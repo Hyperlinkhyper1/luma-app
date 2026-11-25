@@ -125,7 +125,7 @@ void main() {
     expect(find.text('No agents yet'), findsOneWidget);
   });
 
-  testWidgets('agents panel lists the AI Usage agents', (tester) async {
+  testWidgets('agents panel lists the AI Tools and Data agents', (tester) async {
     tester.view.physicalSize = const Size(1200, 800);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);

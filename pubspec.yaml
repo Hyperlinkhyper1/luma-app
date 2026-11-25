@@ -28,6 +28,8 @@ environment:
 # the latest version available on pub.dev. To see which dependencies have newer
 # versions available, run `flutter pub outdated`.
 dependencies:
+  cs2_dataset:
+    path: server/packages/cs2_dataset
   flutter:
     sdk: flutter
   flutter_localizations:
@@ -176,7 +178,7 @@ flutter:
     - assets/world/
     - assets/device_health/
     - assets/monitor_simulation/
-    - assets/cs2_translator/
+    - assets/cs2_overlays/
     - assets/airline_tycoon/
     - assets/airline_tycoon/scene/
     - assets/airline_tycoon/scene/vendor/

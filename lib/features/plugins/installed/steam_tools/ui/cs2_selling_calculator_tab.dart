@@ -5,8 +5,9 @@ import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../steam_price_history.dart' show formatSteamPrice;
 
-/// Estimates a CS2 seller's Steam Wallet proceeds from the buyer-facing price.
-/// Steam calculates the two fees separately and each has a one-cent minimum.
+/// The CS2 Market tool's Sell view: estimates a seller's Steam Wallet
+/// proceeds from the buyer-facing price. Steam calculates the two fees
+/// separately and each has a one-cent minimum.
 class Cs2SellingCalculatorTab extends StatefulWidget {
   const Cs2SellingCalculatorTab({super.key});
 
@@ -35,7 +36,7 @@ class _Cs2SellingCalculatorTabState extends State<Cs2SellingCalculatorTab> {
         : estimateCs2MarketPayout(buyerPays);
 
     return ListView(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(20),
       children: [
         ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 560),
@@ -43,19 +44,10 @@ class _Cs2SellingCalculatorTabState extends State<Cs2SellingCalculatorTab> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                t.cs2CalcTitle,
-                style: TextStyle(
-                  color: luma.textPrimary,
-                  fontSize: 22,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
                 t.cs2CalcSubtitle,
                 style: TextStyle(color: luma.textSecondary, fontSize: 13),
               ),
-              const SizedBox(height: 22),
+              const SizedBox(height: 18),
               Row(
                 children: [
                   Expanded(
@@ -121,7 +113,10 @@ class _Cs2SellingCalculatorTabState extends State<Cs2SellingCalculatorTab> {
                     children: [
                       Text(
                         t.cs2CalcYouReceive,
-                        style: TextStyle(color: luma.textSecondary, fontSize: 13),
+                        style: TextStyle(
+                          color: luma.textSecondary,
+                          fontSize: 13,
+                        ),
                       ),
                       const SizedBox(height: 4),
                       Text(
@@ -152,7 +147,11 @@ class _Cs2SellingCalculatorTabState extends State<Cs2SellingCalculatorTab> {
               const SizedBox(height: 14),
               Text(
                 t.cs2CalcDisclaimer,
-                style: TextStyle(color: luma.textMuted, fontSize: 11.5, height: 1.4),
+                style: TextStyle(
+                  color: luma.textMuted,
+                  fontSize: 11.5,
+                  height: 1.4,
+                ),
               ),
             ],
           ),
@@ -216,7 +215,11 @@ String _currencySymbol(String currency) => switch (currency) {
 };
 
 class _FeeRow extends StatelessWidget {
-  const _FeeRow({required this.label, required this.value, required this.currency});
+  const _FeeRow({
+    required this.label,
+    required this.value,
+    required this.currency,
+  });
 
   final String label;
   final int value;
@@ -227,8 +230,16 @@ class _FeeRow extends StatelessWidget {
     final luma = context.luma;
     return Row(
       children: [
-        Expanded(child: Text(label, style: TextStyle(color: luma.textSecondary, fontSize: 12))),
-        Text(formatSteamPrice(value, currency), style: TextStyle(color: luma.textPrimary, fontSize: 12)),
+        Expanded(
+          child: Text(
+            label,
+            style: TextStyle(color: luma.textSecondary, fontSize: 12),
+          ),
+        ),
+        Text(
+          formatSteamPrice(value, currency),
+          style: TextStyle(color: luma.textPrimary, fontSize: 12),
+        ),
       ],
     );
   }

@@ -1,8 +1,12 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:luma/features/plugins/installed/ai_usage/ai_usage_shell.dart';
+import 'package:luma/features/plugins/installed/ai_usage/cs2_dataset_view.dart';
+import 'package:luma/features/plugins/installed/ai_usage/datasets_tab.dart';
 import 'package:luma/features/plugins/installed/ai_usage/tests/ai_benchmark.dart';
 import 'package:luma/features/plugins/installed/ai_usage/tests/ai_benchmark_repository.dart';
 import 'package:luma/features/plugins/installed/ai_usage/tests/ai_benchmark_scope.dart';
@@ -11,6 +15,17 @@ import 'package:luma/features/plugins/installed/ai_usage/tests/pagoda_test_page.
 import 'package:luma/features/plugins/installed/ai_usage/tests/tests_tab.dart';
 import 'package:luma/l10n/app_localizations.dart';
 import 'package:luma/theme/luma_theme.dart';
+// ignore: depend_on_referenced_packages
+import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
+
+class _DatasetPaths extends PathProviderPlatform {
+  _DatasetPaths(this.path);
+
+  final String path;
+
+  @override
+  Future<String?> getApplicationSupportPath() async => path;
+}
 
 /// Benchmark tile art downloads from the luma server now — nothing ships in
 /// the bundle — so the tab starts with no roster and both tiles render their
@@ -33,7 +48,7 @@ void main() {
   // The shell drives its IndexedStack off the enum's index, so keep the
   // navigation order and stack order in lockstep.
   test('rail sections keep their stack order', () {
-    expect(AiUsageSection.values.length, 7);
+    expect(AiUsageSection.values.length, 8);
     expect(AiUsageSection.openSource.index, 2);
     expect(AiUsageSection.library.index, 3);
     expect(AiUsageSection.agents.index, 4);
@@ -41,7 +56,63 @@ void main() {
     expect(AiUsageSection.tests.label, 'Tests');
     expect(AiUsageSection.assets.index, 6);
     expect(AiUsageSection.assets.label, 'Assets');
+    expect(AiUsageSection.datasets.index, 7);
+    expect(AiUsageSection.datasets.label, 'Datasets');
   });
+
+  testWidgets(
+    'CS2 saves private rounds and recalculates after a previous site',
+    (tester) async {
+      final directory = Directory.systemTemp.createTempSync('luma-cs2-widget');
+      final previous = PathProviderPlatform.instance;
+      PathProviderPlatform.instance = _DatasetPaths(directory.path);
+      addTearDown(() {
+        PathProviderPlatform.instance = previous;
+        directory.deleteSync(recursive: true);
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: L.localizationsDelegates,
+          supportedLocales: L.supportedLocales,
+          theme: LumaTheme.dark,
+          home: const Scaffold(body: DatasetsTab()),
+        ),
+      );
+
+      await tester.tap(find.widgetWithText(OutlinedButton, 'CS2'));
+      await tester.pumpAndSettle();
+      expect(find.byType(Cs2DatasetView), findsOneWidget);
+      await tester.tap(find.widgetWithText(ChoiceChip, 'My private database'));
+      await tester.pumpAndSettle();
+      expect(find.text('No recorded rounds for this map yet.'), findsOneWidget);
+      final add = find.text('Add rounds');
+      await tester.ensureVisible(add);
+      await tester.tap(add);
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextFormField).last, 'A, B, A');
+      await tester.tap(find.text('Save rounds'));
+      await tester.pumpAndSettle();
+      expect(find.text('Based on 3 recorded rounds'), findsOneWidget);
+      final previousField = find.byType(DropdownButtonFormField<int>);
+      await tester.ensureVisible(previousField);
+      await tester.tap(previousField);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Bombsite A').last);
+      await tester.pumpAndSettle();
+      expect(find.text('100.0%'), findsOneWidget);
+      expect(find.text('Based on 1 recorded round'), findsOneWidget);
+
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      expect(find.widgetWithText(OutlinedButton, 'CS2'), findsOneWidget);
+      await tester.tap(find.widgetWithText(OutlinedButton, 'CS2'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(ChoiceChip, 'My private database'));
+      await tester.pumpAndSettle();
+      expect(find.text('Based on 3 recorded rounds'), findsOneWidget);
+    },
+  );
 
   testWidgets('the tile names itself in the purple band', (tester) async {
     await tester.pumpWidget(_app());

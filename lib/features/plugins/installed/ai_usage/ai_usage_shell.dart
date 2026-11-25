@@ -8,6 +8,7 @@ import 'ai_usage_page.dart';
 import 'ai_agent_builder_tab.dart';
 import 'ai_markdown_library_tab.dart';
 import 'assets/assets_tab.dart';
+import 'datasets_tab.dart';
 import 'leaderboard/ai_leaderboard_tab.dart';
 import 'open_source/open_source_tab.dart';
 import 'tests/tests_tab.dart';
@@ -20,7 +21,8 @@ enum AiUsageSection {
   library(icon: Icons.menu_book_rounded),
   agents(icon: Icons.smart_toy_rounded),
   tests(icon: Icons.science_rounded),
-  assets(icon: Icons.inventory_2_rounded);
+  assets(icon: Icons.inventory_2_rounded),
+  datasets(icon: Icons.storage_rounded);
 
   const AiUsageSection({required this.icon});
 
@@ -34,6 +36,7 @@ enum AiUsageSection {
     AiUsageSection.agents => currentL.aiUsageSectionAgents,
     AiUsageSection.tests => currentL.aiUsageSectionTests,
     AiUsageSection.assets => currentL.aiUsageSectionAssets,
+    AiUsageSection.datasets => currentL.aiUsageSectionDatasets,
   };
 
   /// One-line description, shown under the label while the rail is expanded
@@ -46,10 +49,11 @@ enum AiUsageSection {
     AiUsageSection.agents => currentL.aiUsageSectionAgentsBlurb,
     AiUsageSection.tests => currentL.aiUsageSectionTestsBlurb,
     AiUsageSection.assets => currentL.aiUsageSectionAssetsBlurb,
+    AiUsageSection.datasets => currentL.aiUsageSectionDatasetsBlurb,
   };
 }
 
-/// The AI Usage plugin's frame: a collapsible sidebar on the left and the
+/// The AI Tools and Data plugin's frame: a collapsible sidebar on the left and the
 /// selected section on the right.
 ///
 /// The sections are kept alive in an [IndexedStack] rather than rebuilt on
@@ -86,6 +90,7 @@ class _AiUsagePageState extends State<AiUsagePage> {
         const AiAgentBuilderTab(),
         TestsTab(key: ValueKey(_testsVisit)),
         const AssetsTab(),
+        const DatasetsTab(),
       ],
     );
     if (context.isPhoneWidth) {
@@ -161,15 +166,21 @@ class _SectionRail extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SizedBox(height: 12),
-          for (final section in AiUsageSection.values)
-            _RailItem(
-              section: section,
-              selected: section == selected,
-              collapsed: collapsed,
-              onTap: () => onSelect(section),
+          Expanded(
+            child: ListView(
+              primary: false,
+              padding: const EdgeInsets.only(top: 12),
+              children: [
+                for (final section in AiUsageSection.values)
+                  _RailItem(
+                    section: section,
+                    selected: section == selected,
+                    collapsed: collapsed,
+                    onTap: () => onSelect(section),
+                  ),
+              ],
             ),
-          const Spacer(),
+          ),
           _CollapseButton(collapsed: collapsed, onTap: onToggleCollapsed),
           const SizedBox(height: 12),
         ],
@@ -286,9 +297,7 @@ class _CollapseButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final luma = context.luma;
     final t = L.of(context);
-    final label = collapsed
-        ? t.aiUsageSidebarExpand
-        : t.aiUsageSidebarCollapse;
+    final label = collapsed ? t.aiUsageSidebarExpand : t.aiUsageSidebarCollapse;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 6),
       child: Material(

@@ -54,6 +54,7 @@ class AnthropicClient implements AiClient {
     required AiToolExecutor executeTool,
     required AiToolMetadata metadataFor,
     AiTextProgress? onText,
+    AiTextProgress? onCommentary,
   }) async {
     final messages = <Map<String, dynamic>>[
       for (final t in history)
@@ -113,6 +114,7 @@ class AnthropicClient implements AiClient {
       }
 
       messages.add({'role': 'assistant', 'content': res.rawContent});
+      if (res.text.isNotEmpty) onCommentary?.call(res.text);
       final toolResults = <Map<String, dynamic>>[];
       for (final toolUse in res.toolUses) {
         final name = toolUse['name'] as String;

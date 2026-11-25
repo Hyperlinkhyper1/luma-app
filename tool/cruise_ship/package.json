@@ -2,7 +2,7 @@
   "name": "luma-cruise-ship-test",
   "private": true,
   "version": "1.0.0",
-  "description": "Cruise Ship Test scene for luma's AI Usage > Tests (Opus 5.5 Ultracode entry).",
+  "description": "Cruise Ship Test scene for luma's AI Tools and Data > Tests (Opus 5.5 Ultracode entry).",
   "type": "module",
   "scripts": {
     "dev": "vite",

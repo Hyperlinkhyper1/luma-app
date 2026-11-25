@@ -75,6 +75,7 @@ class OpenAiCompatibleClient implements AiClient {
     required AiToolExecutor executeTool,
     required AiToolMetadata metadataFor,
     AiTextProgress? onText,
+    AiTextProgress? onCommentary,
   }) async {
     final messages = <Map<String, dynamic>>[
       if (systemPrompt.isNotEmpty) {'role': 'system', 'content': systemPrompt},
@@ -144,6 +145,10 @@ class OpenAiCompatibleClient implements AiClient {
         'content': message['content'],
         'tool_calls': toolCalls,
       });
+      if (message['content'] case final String text
+          when text.trim().isNotEmpty) {
+        onCommentary?.call(text.trim());
+      }
       for (final call in toolCalls) {
         final fn = call['function'] as Map<String, dynamic>;
         final name = fn['name'] as String;

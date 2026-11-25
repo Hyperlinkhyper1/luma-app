@@ -2284,17 +2284,17 @@ class LEn extends L {
 
   @override
   String get assistantAgentsSubtitle =>
-      'Agents you\'ve built in the AI Usage plugin. Running them from the assistant is coming soon.';
+      'Agents you\'ve built in the AI Tools and Data plugin. Running them from the assistant is coming soon.';
 
   @override
   String get assistantAgentsEmpty => 'No agents yet';
 
   @override
   String get assistantAgentsEmptyHint =>
-      'Build one in the AI Usage plugin\'s Agents tab and it shows up here.';
+      'Build one in the AI Tools and Data plugin\'s Agents tab and it shows up here.';
 
   @override
-  String get assistantAgentsOpenBuilder => 'Open AI Usage';
+  String get assistantAgentsOpenBuilder => 'Open AI Tools and Data';
 
   @override
   String get assistantAgentsNoDescription => 'No description';
@@ -3013,6 +3013,39 @@ class LEn extends L {
 
   @override
   String get assistantResearchWriting => 'Writing up the answer…';
+
+  @override
+  String get assistantActivityThinking => 'Thinking…';
+
+  @override
+  String get assistantActivitySearchWeb => 'Search the web';
+
+  @override
+  String get assistantActivitySearchNotes => 'Search notes';
+
+  @override
+  String get assistantActivityWriteNote => 'Write a note';
+
+  @override
+  String get assistantActivityCreateFile => 'Create a file';
+
+  @override
+  String get assistantActivityEditFile => 'Edit a file';
+
+  @override
+  String get assistantActivityReadFile => 'Read a file';
+
+  @override
+  String get assistantActivityInstallPlugin => 'Install a plugin';
+
+  @override
+  String get assistantActivityNeedsInfo => 'More information needed';
+
+  @override
+  String get assistantActivityUnavailable => 'Unavailable';
+
+  @override
+  String get assistantActivityTool => 'Tool';
 
   @override
   String get assistantPictureDrawing => 'Drawing your picture…';
@@ -4008,7 +4041,7 @@ class LEn extends L {
   String get pluginNameAiDetector => 'AI Detector';
 
   @override
-  String get pluginNameAiUsage => 'AI Usage';
+  String get pluginNameAiUsage => 'AI Tools and Data';
 
   @override
   String get pluginNameAirlineTycoon => 'Airline Tycoon';
@@ -12076,6 +12109,147 @@ class LEn extends L {
   String get aiUsageSectionAssetsBlurb => 'Free to use';
 
   @override
+  String get aiUsageSectionDatasets => 'Datasets';
+
+  @override
+  String get aiUsageSectionDatasetsBlurb => 'App and game databases';
+
+  @override
+  String get cs2DatasetSubtitle => 'T-side tendencies';
+
+  @override
+  String get cs2DatasetDescription =>
+      'Compare Bombsite A, Bombsite B and other rounds. Replay imports use the completed plant or last plant attempt.';
+
+  @override
+  String get cs2DatasetPublished => 'Published database';
+
+  @override
+  String get cs2DatasetPrivate => 'My private database';
+
+  @override
+  String get cs2DatasetMap => 'Map';
+
+  @override
+  String get cs2DatasetPrevious => 'What did T do last round?';
+
+  @override
+  String get cs2DatasetAny => 'Any previous outcome';
+
+  @override
+  String get cs2DatasetNext => 'Likely next round';
+
+  @override
+  String get cs2DatasetNoSites => 'This map has no bombsites to compare.';
+
+  @override
+  String get cs2DatasetNoRounds => 'No recorded rounds for this map yet.';
+
+  @override
+  String cs2DatasetSample(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Based on $count recorded rounds',
+      one: 'Based on 1 recorded round',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get cs2DatasetFallback =>
+      'No matching transitions yet. Showing overall map odds.';
+
+  @override
+  String get cs2DatasetOffline => 'Using the downloaded database';
+
+  @override
+  String get cs2DatasetSignIn =>
+      'Sign in with an approved Luma account to view the published database.';
+
+  @override
+  String get cs2DatasetReplaySignIn =>
+      'Sign in with an approved Luma account to import replays.';
+
+  @override
+  String get cs2DatasetOpenFailed =>
+      'Could not open the database on this device.';
+
+  @override
+  String get cs2DatasetLoadFailed => 'Could not load the published database.';
+
+  @override
+  String get cs2DatasetRetry => 'Try again';
+
+  @override
+  String get cs2DatasetManual => 'Add rounds';
+
+  @override
+  String get cs2DatasetUpload => 'Upload replay';
+
+  @override
+  String get cs2DatasetReplayPrivacy =>
+      'The server analyzes your replay temporarily. The extracted rounds are saved on this device.';
+
+  @override
+  String get cs2DatasetReplayFormats =>
+      'Choose a .dem or .dem.bz2 replay up to 95 MiB.';
+
+  @override
+  String get cs2DatasetRoundsSaved => 'Rounds saved to your private database.';
+
+  @override
+  String get cs2DatasetReplayDuplicate =>
+      'This replay is already in your private database.';
+
+  @override
+  String get cs2DatasetDownload => 'Download for offline use';
+
+  @override
+  String get cs2DatasetExport => 'Save a file copy';
+
+  @override
+  String get cs2DatasetDownloaded => 'Database downloaded for offline use.';
+
+  @override
+  String get cs2DatasetPaidDownload =>
+      'Database downloads are included with any paid plan.';
+
+  @override
+  String get cs2DatasetActionFailed =>
+      'Could not complete the database action. Try again.';
+
+  @override
+  String get cs2DatasetSiteA => 'Bombsite A';
+
+  @override
+  String get cs2DatasetSiteB => 'Bombsite B';
+
+  @override
+  String get cs2DatasetOther => 'Other / no site';
+
+  @override
+  String get cs2DatasetManualHelp =>
+      'Enter consecutive rounds from one T-side stint in order. Separate A, B and Other with commas or spaces.';
+
+  @override
+  String get cs2DatasetMapId => 'CS2 map ID';
+
+  @override
+  String get cs2DatasetInvalidMap =>
+      'Use a bomb-defusal map ID such as de_mirage.';
+
+  @override
+  String get cs2DatasetRounds => 'Round outcomes';
+
+  @override
+  String get cs2DatasetInvalidRounds =>
+      'Enter 1 to 500 outcomes using A, B or Other.';
+
+  @override
+  String get cs2DatasetSave => 'Save rounds';
+
+  @override
   String get aiUsageSidebarExpand => 'Expand sidebar';
 
   @override
@@ -18176,29 +18350,14 @@ class LEn extends L {
   String get gameToolsCs2MarketBlurb => 'Skins, priced and charted';
 
   @override
-  String get gameToolsSellingCalculatorLabel => 'Selling Calculator';
-
-  @override
-  String get gameToolsSellingCalculatorBlurb => 'Estimate CS2 sale proceeds';
-
-  @override
   String get gameToolsMafiaBlurb => 'Role counting';
 
   @override
-  String get gameToolsChatTranslatorLabel => 'Chat Translator';
-
-  @override
-  String get gameToolsChatTranslatorBlurb => 'Translate CS2 chat in an overlay';
-
-  @override
-  String get cs2TrTitle => 'CS2 Chat Translator';
+  String get cs2TrTitle => 'Chat translator';
 
   @override
   String get cs2TrSubtitle =>
-      'Translates foreign-language chat and shows it color-coded in a transparent overlay on top of the game. It only reads the console.log file CS2 writes, so it never touches the game itself and is VAC-safe.';
-
-  @override
-  String get cs2TrSetupTitle => 'One-time setup';
+      'Shows chat color-coded in an overlay and translates foreign-language messages. Reads only the console.log file CS2 writes.';
 
   @override
   String get cs2TrSetupLaunchOptions =>
@@ -18206,7 +18365,7 @@ class LEn extends L {
 
   @override
   String get cs2TrSetupWindowed =>
-      'Set CS2\'s display mode to Fullscreen Windowed, so the overlay can sit on top of the game.';
+      'Set CS2\'s display mode to Fullscreen Windowed, so overlays can sit on top of the game.';
 
   @override
   String get cs2TrCopy => 'Copy';
@@ -18275,7 +18434,7 @@ class LEn extends L {
 
   @override
   String get cs2TrHowItWorks =>
-      'Every foreign-language message gets a \"(translated from …)\" label. Google Translate is tried first, with MyMemory as a fallback. Short Latin-script words like \"gg\" are left alone, because language detection guesses wrong on them. Translated lines are also echoed into the CS2 console.';
+      'Every foreign-language message gets a \"(translated from …)\" label. Google Translate is tried first, with MyMemory as a fallback. Short Latin-script words like \"gg\" are left alone, because language detection guesses wrong on them.';
 
   @override
   String get cs2TrOutputTitle => 'Output';
@@ -18283,10 +18442,6 @@ class LEn extends L {
   @override
   String get cs2TrOutputEmpty =>
       'Nothing yet. Chat and translations appear here once the translator is running.';
-
-  @override
-  String get cs2TrWindowsOnly =>
-      'The chat translator needs Windows, where CS2 and its overlay run.';
 
   @override
   String gameToolsComingSoonTitle(String game) {
@@ -27211,9 +27366,6 @@ class LEn extends L {
   String steamRepoRefreshFailed(String error) {
     return 'Could not refresh your library: $error';
   }
-
-  @override
-  String get cs2CalcTitle => 'CS2 Selling Calculator';
 
   @override
   String get cs2CalcSubtitle =>
@@ -41229,94 +41381,6 @@ class LEn extends L {
   String get cmdDashErrorPort => 'Enter a port between 1 and 65535.';
 
   @override
-  String get gameToolsVoiceTranslateLabel => 'Voice translate';
-
-  @override
-  String get gameToolsVoiceTranslateBlurb =>
-      'Speak and send translated CS2 chat';
-
-  @override
-  String get cs2VoiceTitle => 'CS2 Voice translate';
-
-  @override
-  String get cs2VoiceSubtitle =>
-      'Speak, translate, and automatically send the result to CS2 all-chat.';
-
-  @override
-  String get cs2VoiceEnable => 'Enable voice translate';
-
-  @override
-  String get cs2VoiceEnableHint =>
-      'Works while luma is open, including while you play CS2. Closing luma disables the microphone and keybind.';
-
-  @override
-  String get cs2VoiceTargetLanguage => 'Translate into';
-
-  @override
-  String get cs2VoiceCustomLanguage => 'Choose another language…';
-
-  @override
-  String get cs2VoiceLanguageHint => 'For example: Finnish';
-
-  @override
-  String get cs2VoiceLanguageRequired => 'Enter a language.';
-
-  @override
-  String get cs2VoiceHotkeyTitle => 'Recording keybind';
-
-  @override
-  String get cs2VoiceHotkeyHint =>
-      'Press your own keybind, then Save. Use it to start and stop recording while luma is open.';
-
-  @override
-  String get cs2VoiceChangeHotkey => 'Set keybind';
-
-  @override
-  String get cs2VoiceRecordingHint =>
-      'Press once to record with your default microphone, then again to translate and send. Recording stops after 30 seconds. Cancel discards it.';
-
-  @override
-  String get cs2VoiceAllowanceHint =>
-      'A full weekly AI allowance provides Free 10 min, Orbit 30 min or Nova 2 hours of voice translation. Shared with chat; only the weekly bar is used, never the 5-hour bar.';
-
-  @override
-  String get cs2VoiceStopAndSend => 'Stop, translate and send';
-
-  @override
-  String get cs2VoiceRecord => 'Start recording';
-
-  @override
-  String get cs2VoiceCancel => 'Cancel recording / request';
-
-  @override
-  String get cs2VoiceLoading => 'Loading voice settings…';
-
-  @override
-  String get cs2VoiceRetry => 'Try again';
-
-  @override
-  String get cs2VoiceTranscript => 'What you said';
-
-  @override
-  String get cs2VoiceTranscriptEmpty =>
-      'Your transcript will appear here after recording.';
-
-  @override
-  String get cs2VoiceTranslation => 'Translated message';
-
-  @override
-  String get cs2VoiceTranslationEmpty =>
-      'Your latest translated message will appear here.';
-
-  @override
-  String get cs2VoiceSetup =>
-      'One-time setup: open the CS2 developer console (~) and run this command. After each translation, press Numpad Enter in CS2 to send it to chat:';
-
-  @override
-  String get cs2VoiceAdminRouting =>
-      'Uses your provider API key and the models selected in Admin → Assistant → Voice translate. Sign in with an approved Luma account.';
-
-  @override
   String get mapMakerCityLayers => 'Layers';
 
   @override
@@ -41423,37 +41487,6 @@ class LEn extends L {
   String mapMakerCityConnectedCount(int connected, int total) {
     return 'Access: $connected/$total buildings';
   }
-
-  @override
-  String get cs2TeammateVoiceTitle => 'Teammate voice translation';
-
-  @override
-  String get cs2TeammateVoiceDescription =>
-      'Route CS2 voice to a Windows recording source (such as a virtual audio cable or Stereo Mix), then select that source. Luma displays the transcript and translation in the chat overlay. Player names cannot be identified.';
-
-  @override
-  String get cs2TeammateVoicePrivacy =>
-      'Audio from the selected source is sent to the configured Luma server and AI providers and uses your weekly voice allowance. Any other audio on that source can also be sent. Quiet audio may be skipped.';
-
-  @override
-  String get cs2TeammateVoiceSource => 'Recording source';
-
-  @override
-  String get cs2TeammateVoiceFindSources => 'Find recording sources';
-
-  @override
-  String get cs2TeammateVoiceStart => 'Start listening';
-
-  @override
-  String get cs2TeammateVoiceStop => 'Stop listening';
-
-  @override
-  String get cs2TeammateVoiceRunning =>
-      'Listening and translating into the chat translator’s target language.';
-
-  @override
-  String get cs2TeammateVoiceIdle =>
-      'Start the chat translator and choose a source to begin.';
 
   @override
   String get mapMakerCityInfiniteCanvas => 'Infinite canvas';
@@ -42356,4 +42389,129 @@ class LEn extends L {
     );
     return '$_temp0';
   }
+
+  @override
+  String get gameToolsOverlaysLabel => 'Overlays';
+
+  @override
+  String get gameToolsOverlaysBlurb => 'Chat translator and bomb timer';
+
+  @override
+  String get cs2OverlaysTitle => 'CS2 overlays';
+
+  @override
+  String get cs2OverlaysSubtitle =>
+      'Transparent windows on top of the game. They only read what CS2 writes out itself, so they never touch the game and are VAC-safe.';
+
+  @override
+  String get cs2OverlaysWindowsOnly => 'Overlays need Windows, where CS2 runs.';
+
+  @override
+  String get cs2OverlayRunning => 'Running';
+
+  @override
+  String get cs2OverlayOff => 'Off';
+
+  @override
+  String get cs2BombTitle => 'Bomb timer';
+
+  @override
+  String get cs2BombDescription =>
+      'Counts the C4 down in seconds from the moment it\'s planted. The color shows whether a defuse is still possible: white for anyone, amber with a kit only, red when it\'s too late.';
+
+  @override
+  String get cs2BombSetupStep =>
+      'Install the game state config once, then restart CS2. The game only reads it at launch.';
+
+  @override
+  String get cs2BombInstall => 'Install config';
+
+  @override
+  String get cs2BombReinstall => 'Reinstall';
+
+  @override
+  String get cs2BombInstalled => 'Config installed in CS2\'s cfg folder.';
+
+  @override
+  String get cs2BombNotInstalled => 'Not installed yet.';
+
+  @override
+  String get cs2BombCs2Missing =>
+      'CS2 wasn\'t found in your Steam libraries, so the config can\'t be installed.';
+
+  @override
+  String cs2BombInstallFailed(String error) {
+    return 'Couldn\'t install the config: $error';
+  }
+
+  @override
+  String get cs2BombStart => 'Start bomb timer';
+
+  @override
+  String get cs2BombStop => 'Stop bomb timer';
+
+  @override
+  String get cs2BombTry => 'Try a plant';
+
+  @override
+  String get cs2BombMove => 'Move overlay';
+
+  @override
+  String get cs2BombResetPosition => 'Reset position';
+
+  @override
+  String get cs2BombWaiting =>
+      'Waiting for CS2. If the game was already open, restart it so it loads the config.';
+
+  @override
+  String get cs2BombConnected => 'Connected to CS2.';
+
+  @override
+  String get cs2BombIdle => 'No bomb planted.';
+
+  @override
+  String get cs2BombAnyone => 'Defusable without a kit';
+
+  @override
+  String get cs2BombKitOnly => 'Kit only';
+
+  @override
+  String get cs2BombTooLate => 'Too late';
+
+  @override
+  String get cs2BombDefused => 'Defused';
+
+  @override
+  String get cs2BombExploded => 'Exploded';
+
+  @override
+  String get cs2BombDragHint => 'Drag to move';
+
+  @override
+  String get cs2BombFuse => 'Fuse length (seconds)';
+
+  @override
+  String get cs2BombFuseHint =>
+      '40 in competitive and premier. Change it only for community servers with a different mp_c4timer.';
+
+  @override
+  String cs2BombPortInUse(int port) {
+    return 'Another program is already using port $port, so CS2 can\'t reach luma.';
+  }
+
+  @override
+  String cs2BombStartFailed(String error) {
+    return 'Couldn\'t start the bomb timer: $error';
+  }
+
+  @override
+  String get cs2BombRunningHint =>
+      'Drag the timer to move it; right-click it to close.';
+
+  @override
+  String get cs2BombHowItWorks =>
+      'Uses CS2\'s Game State Integration, Valve\'s own feature for overlays and broadcasters: the game sends its round state to luma on this computer. Nothing reads the game\'s memory.';
+
+  @override
+  String get cs2MarketSellCalculator => 'Sell calculator';
 }

@@ -8,7 +8,7 @@ import '../../../../../theme/luma_theme.dart';
 import 'ai_benchmark_scope.dart';
 import 'decider_results.dart';
 
-/// AI Usage → Tests → Decider Test (Moderation): the results of the admin
+/// AI Tools and Data → Tests → Decider Test (Moderation): the results of the admin
 /// dashboard's Decider test. Decision models are scored on the server; this
 /// page only shows each model's latest run, cost against accuracy.
 class DeciderTestPage extends StatefulWidget {

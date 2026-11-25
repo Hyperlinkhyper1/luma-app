@@ -19,7 +19,7 @@ String ttsScriptTitle(L t, String id) => switch (id) {
       _ => id,
     };
 
-/// AI Usage → Tests → Text to Speech: every speech model the admin
+/// AI Tools and Data → Tests → Text to Speech: every speech model the admin
 /// dashboard ran through the four scripts, with what the four clips cost
 /// and took. Tapping a model opens its clips to listen to.
 class TtsTestPage extends StatefulWidget {

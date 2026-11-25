@@ -76,6 +76,7 @@ class _EditingClient extends AiClient {
     required AiToolExecutor executeTool,
     required AiToolMetadata metadataFor,
     AiTextProgress? onText,
+    AiTextProgress? onCommentary,
   }) async {
     lastUserTurn = history.last.text;
     final id = int.parse(

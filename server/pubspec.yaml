@@ -8,6 +8,8 @@ environment:
   sdk: ^3.0.0
 
 dependencies:
+  cs2_dataset:
+    path: packages/cs2_dataset
   shelf: ^1.4.2
   shelf_router: ^1.1.4
   shelf_web_socket: ^2.0.1
