@@ -42503,6 +42503,41 @@ class LEs extends L {
   String get assistantArtifactGeneration => 'Generación de artefactos';
 
   @override
+  String get assistantArtifactChooseType => 'Elige un tipo de archivo';
+
+  @override
+  String get assistantArtifactPicturesOnly =>
+      'Solo imágenes · los archivos requieren Orbit o Nova';
+
+  @override
+  String assistantArtifactSelected(String type) {
+    return '$type seleccionado';
+  }
+
+  @override
+  String get assistantArtifactGroupOffice => 'Office';
+
+  @override
+  String get assistantArtifactGroupText => 'Texto';
+
+  @override
+  String get assistantArtifactGroupData => 'Datos y web';
+
+  @override
+  String get assistantArtifactGroupImage => 'Imagen';
+
+  @override
+  String get assistantModesHeader => 'Modos';
+
+  @override
+  String assistantPictureWeeklyCost(String percent) {
+    return '$percent % del uso semanal';
+  }
+
+  @override
+  String get assistantPictureUnavailable => 'No disponible ahora';
+
+  @override
   String get aiWikiSearchCostTitle => 'Coste frente a rendimiento';
 
   @override

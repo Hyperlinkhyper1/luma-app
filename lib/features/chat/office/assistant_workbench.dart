@@ -5,10 +5,12 @@ import 'package:flutter/widgets.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import '../assistant_files.dart';
 import '../data/chat_repository.dart';
 import '../providers/ai_client.dart';
 import 'office_document.dart';
 import 'office_export.dart';
+import 'office_import.dart';
 
 /// A file shown in the Assistant's preview panel.
 class AssistantPreviewFile {
@@ -269,23 +271,46 @@ class AssistantWorkbench extends ChangeNotifier {
     if (kind == null) {
       throw const FormatException('type must be docx, pptx or xlsx.');
     }
-    final rawName = p.basename(input['name']?.toString() ?? 'document');
-    final stem = p
-        .basenameWithoutExtension(rawName)
-        .replaceAll(RegExp(r'[^\p{L}\p{N} _-]', unicode: true), '_')
-        .trim();
-    final name =
-        '${stem.isEmpty ? 'document' : stem.substring(0, stem.length.clamp(0, 80))}.${kind.name}';
+    final name = _safeName(input['name']?.toString() ?? 'document', kind);
     final title = (input['title']?.toString().trim().isNotEmpty ?? false)
         ? input['title'].toString().trim()
         : p.basenameWithoutExtension(name);
+    final session = await _register(
+      conversationId,
+      OfficeDocument(kind, title: title),
+      name,
+    );
+    return {
+      'status': 'created',
+      'file_id': session.file.artifactId,
+      'id': session.file.artifactId,
+      'name': name,
+      'path': session.file.path,
+      'mimeType': officeMimeTypes[kind],
+    };
+  }
+
+  static String _safeName(String raw, OfficeKind kind) {
+    final stem = p
+        .basenameWithoutExtension(p.basename(raw))
+        .replaceAll(RegExp(r'[^\p{L}\p{N} _-]', unicode: true), '_')
+        .trim();
+    return '${stem.isEmpty ? 'document' : stem.substring(0, stem.length.clamp(0, 80))}.${kind.name}';
+  }
+
+  /// Writes [document] as a new artifact in [conversationId] and opens it.
+  Future<OfficeSession> _register(
+    int conversationId,
+    OfficeDocument document,
+    String name,
+  ) async {
+    final kind = document.kind;
     final directory = await _directory();
     await directory.create(recursive: true);
     final path = p.join(
       directory.path,
       '${DateTime.now().microsecondsSinceEpoch}_$name',
     );
-    final document = OfficeDocument(kind, title: title);
     await File(path).writeAsBytes(exportOfficeDocument(document), flush: true);
     await File(sidecarPath(path)).writeAsString(jsonEncode(document.toJson()));
     final int id;
@@ -309,14 +334,54 @@ class AssistantWorkbench extends ChangeNotifier {
     _focus = null;
     _revision++;
     notifyListeners();
-    return {
-      'status': 'created',
-      'file_id': id,
-      'id': id,
-      'name': name,
-      'path': path,
-      'mimeType': officeMimeTypes[kind],
+    return session;
+  }
+
+  /// Turns an uploaded Word, PowerPoint or Excel file into an editable copy
+  /// in [conversationId], opens it in the panel, and returns the text
+  /// attachment the model sees in its place: the copy's file_id and its
+  /// numbered contents. The uploaded original is never written to.
+  Future<AssistantAttachment> importUpload(
+    int conversationId,
+    AssistantAttachment upload,
+  ) async {
+    final kind = officeKindOf(upload.name);
+    final data = upload.base64Data;
+    if (kind == null || data == null) {
+      throw const FormatException(
+        'Only .docx, .pptx and .xlsx files can be edited.',
+      );
+    }
+    final imported = importOfficeFile(upload.name, base64Decode(data));
+    final document = imported.document;
+    final name = _safeName(upload.name, kind);
+    if (document.title.isEmpty) {
+      document.title = p.basenameWithoutExtension(name);
+    }
+    final session = await _register(conversationId, document, name);
+    final label = switch (kind) {
+      OfficeKind.docx => 'Word document',
+      OfficeKind.pptx => 'PowerPoint deck',
+      OfficeKind.xlsx => 'Excel workbook',
     };
+    final text = [
+      'The user uploaded the $label "$name". luma imported it as an editable '
+          'copy with file_id ${session.file.artifactId}, now open beside the '
+          'chat. Change it with edit_office_file (indices below) and look '
+          'closer with read_office_file. Edits go to this copy; the uploaded '
+          'original is not changed. Text, headings, lists, tables, slides and '
+          'cell values were kept; pictures, charts and custom styling were not.',
+      if (imported.truncated)
+        "The file was larger than luma's limits, so only the first part was imported.",
+      if (document.partCount == 0) 'The file has no text content yet.',
+      '',
+      officeContentsForPrompt(document),
+    ].join('\n');
+    return AssistantAttachment(
+      name: name,
+      mimeType: 'text/plain',
+      text: text.length > 30000 ? text.substring(0, 30000) : text,
+    );
   }
 
   Future<OfficeSession> _sessionFor(Object? rawId) async {

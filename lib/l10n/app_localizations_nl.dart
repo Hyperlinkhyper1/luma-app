@@ -42351,6 +42351,41 @@ class LNl extends L {
   String get assistantArtifactGeneration => 'Artefacten maken';
 
   @override
+  String get assistantArtifactChooseType => 'Kies een bestandstype';
+
+  @override
+  String get assistantArtifactPicturesOnly =>
+      'Alleen afbeeldingen · bestanden vereisen Orbit of Nova';
+
+  @override
+  String assistantArtifactSelected(String type) {
+    return '$type gekozen';
+  }
+
+  @override
+  String get assistantArtifactGroupOffice => 'Office';
+
+  @override
+  String get assistantArtifactGroupText => 'Tekst';
+
+  @override
+  String get assistantArtifactGroupData => 'Data & web';
+
+  @override
+  String get assistantArtifactGroupImage => 'Afbeelding';
+
+  @override
+  String get assistantModesHeader => 'Modi';
+
+  @override
+  String assistantPictureWeeklyCost(String percent) {
+    return '$percent% van je weekgebruik';
+  }
+
+  @override
+  String get assistantPictureUnavailable => 'Nu niet beschikbaar';
+
+  @override
   String get aiWikiSearchCostTitle => 'Kosten tegenover prestaties';
 
   @override

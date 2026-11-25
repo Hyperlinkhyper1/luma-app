@@ -25583,6 +25583,30 @@
   "assistantUploadFilesHint": "Text, PDF and supported images",
   "assistantRequiresOrbitOrNova": "Requires Orbit or Nova",
   "assistantArtifactGeneration": "Artifact generation",
+  "assistantArtifactChooseType": "Choose a file type",
+  "assistantArtifactPicturesOnly": "Pictures only · files need Orbit or Nova",
+  "assistantArtifactSelected": "{type} selected",
+  "assistantArtifactGroupOffice": "Office",
+  "assistantArtifactGroupText": "Text",
+  "assistantArtifactGroupData": "Data & web",
+  "assistantArtifactGroupImage": "Image",
+  "assistantModesHeader": "Modes",
+  "assistantPictureWeeklyCost": "{percent}% of weekly usage",
+  "assistantPictureUnavailable": "Not available right now",
+  "@assistantArtifactSelected": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      }
+    }
+  },
+  "@assistantPictureWeeklyCost": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
   "aiWikiSearchCostTitle": "Cost vs performance",
   "aiWikiSearchCostHint": "Retrieval score vs OpenRouter catalog price per 1M input tokens. Prices may be cached. Hover or tap a point for model details.",
   "aiWikiSearchNoPrices": "No model prices are available for this comparison.",

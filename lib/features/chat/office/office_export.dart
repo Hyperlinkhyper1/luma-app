@@ -303,9 +303,10 @@ String _slideXml(OfficeSlide slide, {required bool cover}) {
     int w,
     int h,
     String paragraphs, {
+    required String name,
     String anchor = 't',
   }) =>
-      '<p:sp><p:nvSpPr><p:cNvPr id="${shapeId++}" name="Text ${shapeId - 2}"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr>'
+      '<p:sp><p:nvSpPr><p:cNvPr id="${shapeId++}" name="$name ${shapeId - 2}"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr>'
       '<p:spPr><a:xfrm><a:off x="$x" y="$y"/><a:ext cx="$w" cy="$h"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/></p:spPr>'
       '<p:txBody><a:bodyPr wrap="square" lIns="0" rIns="0" anchor="$anchor"><a:normAutofit/></a:bodyPr><a:lstStyle/>$paragraphs</p:txBody></p:sp>';
   String para(
@@ -325,7 +326,7 @@ String _slideXml(OfficeSlide slide, {required bool cover}) {
         .join();
     final indent = 342900 + level * 342900;
     final pPr = bullet
-        ? '<a:pPr marL="$indent" indent="-285750"><a:spcBef><a:spcPts val="900"/></a:spcBef>'
+        ? '<a:pPr marL="$indent" lvl="$level" indent="-285750"><a:spcBef><a:spcPts val="900"/></a:spcBef>'
               '<a:buClr><a:srgbClr val="2563EB"/></a:buClr><a:buFont typeface="Arial"/><a:buChar char="${level == 0 ? '•' : '–'}"/></a:pPr>'
         : '<a:pPr><a:buNone/></a:pPr>';
     return '<a:p>$pPr${runs.isEmpty ? '' : runs}<a:endParaRPr lang="en-US" sz="$size" dirty="0"/></a:p>';
@@ -341,6 +342,7 @@ String _slideXml(OfficeSlide slide, {required bool cover}) {
           10515600,
           1371600,
           para(slide.title, size: 4400, bold: true, color: 'FFFFFF'),
+          name: 'Title',
           anchor: 'b',
         ),
       )
@@ -351,6 +353,7 @@ String _slideXml(OfficeSlide slide, {required bool cover}) {
           10515600,
           1143000,
           para(slide.subtitle, size: 2200, color: 'DBEAFE'),
+          name: 'Subtitle',
         ),
       );
   } else {
@@ -362,6 +365,7 @@ String _slideXml(OfficeSlide slide, {required bool cover}) {
           10820400,
           914400,
           para(slide.title, size: 3200, bold: true, color: '1F3A5F'),
+          name: 'Title',
           anchor: 'b',
         ),
       )
@@ -370,9 +374,20 @@ String _slideXml(OfficeSlide slide, {required bool cover}) {
         '<p:spPr><a:xfrm><a:off x="685800" y="1417320"/><a:ext cx="1371600" cy="0"/></a:xfrm><a:prstGeom prst="line"><a:avLst/></a:prstGeom>'
         '<a:ln w="38100"><a:solidFill><a:srgbClr val="2563EB"/></a:solidFill></a:ln></p:spPr></p:cxnSp>',
       );
+    final hasSubtitle = slide.subtitle.isNotEmpty;
+    if (hasSubtitle) {
+      shapes.write(
+        box(
+          685800,
+          1600200,
+          10820400,
+          502920,
+          para(slide.subtitle, size: 2000, color: '4B5563'),
+          name: 'Subtitle',
+        ),
+      );
+    }
     final body = [
-      if (slide.subtitle.isNotEmpty)
-        para(slide.subtitle, size: 2000, color: '4B5563'),
       for (final b in slide.bullets)
         para(
           b.text,
@@ -385,10 +400,11 @@ String _slideXml(OfficeSlide slide, {required bool cover}) {
     shapes.write(
       box(
         685800,
-        1645920,
+        hasSubtitle ? 2148840 : 1645920,
         10820400,
-        4572000,
+        hasSubtitle ? 4069080 : 4572000,
         body.isEmpty ? para('', size: 2000) : body.join(),
+        name: 'Content',
       ),
     );
   }

@@ -12,6 +12,7 @@ import '../local_model_store.dart';
 import '../providers/ai_modes.dart';
 import '../providers/ai_providers.dart';
 import '../providers/ai_usage.dart';
+import 'compact_menu.dart';
 import 'compose_mode_menu.dart';
 
 /// One entry in the model menu: a user-facing name mapped to the provider
@@ -144,7 +145,7 @@ class _AssistantModelSelectorState extends State<AssistantModelSelector> {
     final luma = context.luma;
     final status = _status;
 
-    PopupMenuItem<String> item(
+    PopupMenuEntry<String> item(
       String tier,
       String label,
       double? percent,
@@ -152,10 +153,9 @@ class _AssistantModelSelectorState extends State<AssistantModelSelector> {
     ) {
       final selected = settings.pictureTier == tier;
       final enabled = available && percent != null;
-      return PopupMenuItem<String>(
+      return CompactMenuItem<String>(
         value: tier,
         enabled: enabled,
-        height: 40,
         child: Row(
           children: [
             Expanded(
@@ -167,8 +167,8 @@ class _AssistantModelSelectorState extends State<AssistantModelSelector> {
                       : selected
                       ? luma.accent
                       : luma.textPrimary,
-                  fontSize: 13,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  fontSize: 12.5,
+                  fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
                 ),
               ),
             ),
@@ -176,13 +176,13 @@ class _AssistantModelSelectorState extends State<AssistantModelSelector> {
               enabled
                   ? '${formatPicturePercent(percent)}% weekly usage'
                   : 'Unavailable',
-              style: TextStyle(color: luma.textMuted, fontSize: 10.5),
+              style: TextStyle(color: luma.textMuted, fontSize: 10),
             ),
             const SizedBox(width: 8),
             SizedBox(
-              width: 16,
+              width: 15,
               child: selected
-                  ? Icon(Icons.check_rounded, size: 16, color: luma.accent)
+                  ? Icon(Icons.check_rounded, size: 15, color: luma.accent)
                   : null,
             ),
           ],
@@ -193,12 +193,10 @@ class _AssistantModelSelectorState extends State<AssistantModelSelector> {
     final picked = await showMenu<String>(
       context: context,
       position: _menuPosition(),
-      constraints: const BoxConstraints(minWidth: 270, maxWidth: 330),
+      constraints: const BoxConstraints(minWidth: 220, maxWidth: 270),
+      menuPadding: kCompactMenuPadding,
       color: luma.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-        side: BorderSide(color: luma.border),
-      ),
+      shape: compactMenuShape(luma),
       items: [
         item(
           'standard',
@@ -291,13 +289,12 @@ class _AssistantModelSelectorState extends State<AssistantModelSelector> {
     final titleStyle = TextStyle(
       color: luma.textMuted,
       fontSize: 11,
-      fontWeight: FontWeight.w700,
-      letterSpacing: 0.4,
+      fontWeight: FontWeight.w600,
     );
-    final captionStyle = TextStyle(color: luma.textMuted, fontSize: 10.5);
+    final captionStyle = TextStyle(color: luma.textMuted, fontSize: 10);
     final providerStyle = captionStyle.copyWith(color: luma.textSecondary);
 
-    PopupMenuItem<_ModelChoice> item(_ModelChoice choice) {
+    PopupMenuEntry<_ModelChoice> item(_ModelChoice choice) {
       final selected = choice.isActive(settings);
       final apiModel = choice.modelId != null;
       final count =
@@ -308,13 +305,13 @@ class _AssistantModelSelectorState extends State<AssistantModelSelector> {
         overflow: TextOverflow.ellipsis,
         style: TextStyle(
           color: selected ? luma.accent : luma.textPrimary,
-          fontSize: 13,
-          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+          fontSize: 12.5,
+          fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
         ),
       );
-      return PopupMenuItem<_ModelChoice>(
+      return CompactMenuItem<_ModelChoice>(
         value: choice,
-        height: apiModel ? 44 : 40,
+        rowHeight: apiModel ? 38 : 30,
         child: Semantics(
           selected: selected,
           child: Row(
@@ -351,9 +348,9 @@ class _AssistantModelSelectorState extends State<AssistantModelSelector> {
                 ),
               const SizedBox(width: 8),
               SizedBox(
-                width: 16,
+                width: 15,
                 child: selected
-                    ? Icon(Icons.check_rounded, size: 16, color: luma.accent)
+                    ? Icon(Icons.check_rounded, size: 15, color: luma.accent)
                     : null,
               ),
             ],
@@ -365,23 +362,18 @@ class _AssistantModelSelectorState extends State<AssistantModelSelector> {
     final picked = await showMenu<_ModelChoice>(
       context: context,
       position: _menuPosition(),
-      constraints: const BoxConstraints(minWidth: 270, maxWidth: 330),
+      constraints: const BoxConstraints(minWidth: 220, maxWidth: 270),
+      menuPadding: kCompactMenuPadding,
       color: luma.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-        side: BorderSide(color: luma.border),
-      ),
+      shape: compactMenuShape(luma),
       items: [
-        PopupMenuItem<_ModelChoice>(
-          enabled: false,
-          height: 30,
+        CompactMenuLabel<_ModelChoice>(
           child: Text(t.assistantModelsHeader, style: titleStyle),
         ),
         ..._lumaModelsFor(settings, _modeVersions).map(item),
-        const PopupMenuDivider(height: 10),
-        PopupMenuItem<_ModelChoice>(
+        const PopupMenuDivider(height: 9),
+        CompactMenuItem<_ModelChoice>(
           value: _apiKeyAction,
-          height: 40,
           child: Row(
             children: [
               Expanded(
@@ -394,7 +386,7 @@ class _AssistantModelSelectorState extends State<AssistantModelSelector> {
                 message: providers.isEmpty
                     ? t.assistantApiAddKey
                     : t.assistantApiAddModel,
-                child: Icon(Icons.add_rounded, size: 17, color: luma.accent),
+                child: Icon(Icons.add_rounded, size: 15, color: luma.accent),
               ),
             ],
           ),

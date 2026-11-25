@@ -69029,6 +69029,66 @@ abstract class L {
   /// **'Artifact generation'**
   String get assistantArtifactGeneration;
 
+  /// No description provided for @assistantArtifactChooseType.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a file type'**
+  String get assistantArtifactChooseType;
+
+  /// No description provided for @assistantArtifactPicturesOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Pictures only · files need Orbit or Nova'**
+  String get assistantArtifactPicturesOnly;
+
+  /// No description provided for @assistantArtifactSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'{type} selected'**
+  String assistantArtifactSelected(String type);
+
+  /// No description provided for @assistantArtifactGroupOffice.
+  ///
+  /// In en, this message translates to:
+  /// **'Office'**
+  String get assistantArtifactGroupOffice;
+
+  /// No description provided for @assistantArtifactGroupText.
+  ///
+  /// In en, this message translates to:
+  /// **'Text'**
+  String get assistantArtifactGroupText;
+
+  /// No description provided for @assistantArtifactGroupData.
+  ///
+  /// In en, this message translates to:
+  /// **'Data & web'**
+  String get assistantArtifactGroupData;
+
+  /// No description provided for @assistantArtifactGroupImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Image'**
+  String get assistantArtifactGroupImage;
+
+  /// No description provided for @assistantModesHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'Modes'**
+  String get assistantModesHeader;
+
+  /// No description provided for @assistantPictureWeeklyCost.
+  ///
+  /// In en, this message translates to:
+  /// **'{percent}% of weekly usage'**
+  String assistantPictureWeeklyCost(String percent);
+
+  /// No description provided for @assistantPictureUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Not available right now'**
+  String get assistantPictureUnavailable;
+
   /// No description provided for @aiWikiSearchCostTitle.
   ///
   /// In en, this message translates to:

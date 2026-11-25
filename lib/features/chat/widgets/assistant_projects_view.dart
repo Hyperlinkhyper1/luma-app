@@ -71,18 +71,10 @@ class AssistantProjectsView extends StatelessWidget {
               child: Text(L.of(context).assistantProjectsEmpty),
             ),
           for (final p in projects)
-            Card(
-              child: ListTile(
-                leading: const Icon(Icons.folder_outlined),
-                title: Text(p.name),
-                subtitle: p.description.isEmpty
-                    ? null
-                    : Text(
-                        p.description,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                trailing: const Icon(Icons.chevron_right_rounded),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _ProjectTile(
+                project: p,
                 onTap: () => onOpenProject(p.id),
               ),
             ),
@@ -293,6 +285,94 @@ class AssistantProjectsView extends StatelessWidget {
       await repository.deleteProject(project.id);
       onOpenProject(null);
     }
+  }
+}
+
+class _ProjectTile extends StatelessWidget {
+  const _ProjectTile({required this.project, required this.onTap});
+  final ChatProjectRecord project;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final name = project.name.trim();
+    final initial = name.isEmpty ? '?' : name.characters.first.toUpperCase();
+    final description = project.description.trim();
+    final radius = BorderRadius.circular(16);
+    return Material(
+      color: luma.surface,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: radius,
+        side: BorderSide(color: luma.border),
+      ),
+      child: InkWell(
+        borderRadius: radius,
+        hoverColor: luma.surfaceHover,
+        highlightColor: luma.accentSubtle,
+        splashColor: luma.accent.withValues(alpha: 0.12),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: luma.accentSubtle,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: luma.accent.withValues(alpha: 0.35),
+                  ),
+                ),
+                child: Text(
+                  initial,
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                    color: luma.accent,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      project.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: luma.textPrimary,
+                      ),
+                    ),
+                    if (description.isNotEmpty && description != '-') ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        description,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: luma.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Icon(Icons.chevron_right_rounded, color: luma.textMuted),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

@@ -42052,6 +42052,41 @@ class LEn extends L {
   String get assistantArtifactGeneration => 'Artifact generation';
 
   @override
+  String get assistantArtifactChooseType => 'Choose a file type';
+
+  @override
+  String get assistantArtifactPicturesOnly =>
+      'Pictures only · files need Orbit or Nova';
+
+  @override
+  String assistantArtifactSelected(String type) {
+    return '$type selected';
+  }
+
+  @override
+  String get assistantArtifactGroupOffice => 'Office';
+
+  @override
+  String get assistantArtifactGroupText => 'Text';
+
+  @override
+  String get assistantArtifactGroupData => 'Data & web';
+
+  @override
+  String get assistantArtifactGroupImage => 'Image';
+
+  @override
+  String get assistantModesHeader => 'Modes';
+
+  @override
+  String assistantPictureWeeklyCost(String percent) {
+    return '$percent% of weekly usage';
+  }
+
+  @override
+  String get assistantPictureUnavailable => 'Not available right now';
+
+  @override
   String get aiWikiSearchCostTitle => 'Cost vs performance';
 
   @override

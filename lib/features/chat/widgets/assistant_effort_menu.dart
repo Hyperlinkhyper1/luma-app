@@ -5,6 +5,7 @@ import '../../../settings/settings_controller.dart';
 import '../../../sync/sync_scope.dart';
 import '../../../theme/luma_theme.dart';
 import '../assistant_effort.dart';
+import 'compact_menu.dart';
 
 String assistantEffortLabel(L t, AssistantEffort effort) => switch (effort) {
   AssistantEffort.low => t.assistantEffortLow,
@@ -74,24 +75,23 @@ class _AssistantEffortButtonState extends State<AssistantEffortButton> {
     final ultraAllowed = ultraReasoningUnlocked(settings.selectedPlanId);
     final ultraOn = _ultraOn;
 
-    PopupMenuItem<String> level(AssistantEffort effort) {
+    PopupMenuEntry<String> level(AssistantEffort effort) {
       final selected = !ultraOn && effort == current;
       final weight = weights[effort.name] ?? effort.fallbackWeight;
       final warn = effort == AssistantEffort.max;
-      return PopupMenuItem<String>(
+      return CompactMenuItem<String>(
         value: effort.name,
-        height: 40,
         child: Row(
           children: [
             Text(
               assistantEffortLabel(t, effort),
               style: TextStyle(
                 color: selected ? luma.accent : luma.textPrimary,
-                fontSize: 14,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                fontSize: 12.5,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 7),
             if (effort == AssistantEffort.recommended)
               _Tag(text: t.assistantEffortRecommended, color: luma.textMuted)
             else if (weight > 1)
@@ -102,9 +102,9 @@ class _AssistantEffortButtonState extends State<AssistantEffortButton> {
               ),
             const Spacer(),
             SizedBox(
-              width: 18,
+              width: 15,
               child: selected
-                  ? Icon(Icons.check_rounded, size: 18, color: luma.accent)
+                  ? Icon(Icons.check_rounded, size: 15, color: luma.accent)
                   : null,
             ),
           ],
@@ -115,73 +115,80 @@ class _AssistantEffortButtonState extends State<AssistantEffortButton> {
     final picked = await showMenu<String>(
       context: context,
       position: position,
-      constraints: const BoxConstraints(minWidth: 290, maxWidth: 360),
+      constraints: const BoxConstraints(minWidth: 230, maxWidth: 270),
+      menuPadding: kCompactMenuPadding,
       color: luma.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-        side: BorderSide(color: luma.border),
-      ),
+      shape: compactMenuShape(luma),
       items: [
-        PopupMenuItem<String>(
-          enabled: false,
-          height: 0,
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
+        CompactMenuLabel<String>(
+          padding: const EdgeInsets.fromLTRB(
+            kCompactMenuTextPadding,
+            4,
+            kCompactMenuTextPadding,
+            5,
+          ),
           child: Text(
             t.assistantEffortDescription,
-            style: TextStyle(
-              color: luma.textMuted,
-              fontSize: 12.5,
-              height: 1.35,
-            ),
+            style: TextStyle(color: luma.textMuted, fontSize: 11, height: 1.3),
           ),
         ),
         for (final effort in AssistantEffort.values) level(effort),
-        const PopupMenuDivider(height: 10),
-        PopupMenuItem<String>(
+        const PopupMenuDivider(height: 9),
+        CompactMenuItem<String>(
           value: _ultraToggle,
           enabled: ultraAllowed,
-          height: 52,
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      t.assistantUltraReasoning,
-                      style: TextStyle(
-                        color: ultraAllowed
-                            ? (ultraOn ? luma.accent : luma.textPrimary)
-                            : luma.textMuted,
-                        fontSize: 14,
-                        fontWeight: ultraOn ? FontWeight.w700 : FontWeight.w500,
+          rowHeight: 44,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 5),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        t.assistantUltraReasoning,
+                        style: TextStyle(
+                          color: ultraAllowed
+                              ? (ultraOn ? luma.accent : luma.textPrimary)
+                              : luma.textMuted,
+                          fontSize: 12.5,
+                          fontWeight: ultraOn
+                              ? FontWeight.w600
+                              : FontWeight.w400,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        ultraAllowed
+                            ? t.assistantUltraReasoningDescription
+                            : t.assistantUltraReasoningPlan,
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: luma.textMuted,
+                          fontSize: 10.5,
+                          height: 1.3,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IgnorePointer(
+                  child: SizedBox(
+                    height: 20,
+                    child: FittedBox(
+                      child: Switch(
+                        value: ultraOn,
+                        onChanged: ultraAllowed ? (_) {} : null,
                       ),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      ultraAllowed
-                          ? t.assistantUltraReasoningDescription
-                          : t.assistantUltraReasoningPlan,
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: luma.textMuted,
-                        fontSize: 11.5,
-                        height: 1.3,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: 10),
-              IgnorePointer(
-                child: Switch(
-                  value: ultraOn,
-                  onChanged: ultraAllowed ? (_) {} : null,
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ],
@@ -248,17 +255,17 @@ class _Tag extends StatelessWidget {
     final luma = context.luma;
     return Flexible(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
         decoration: BoxDecoration(
-          color: luma.surfaceHover,
-          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: luma.border),
+          borderRadius: BorderRadius.circular(5),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             if (icon != null) ...[
-              Icon(icon, size: 12, color: color),
-              const SizedBox(width: 4),
+              Icon(icon, size: 10.5, color: color),
+              const SizedBox(width: 3),
             ],
             Flexible(
               child: Text(
@@ -266,8 +273,8 @@ class _Tag extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: color,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ),

@@ -42583,6 +42583,41 @@ class LFr extends L {
   String get assistantArtifactGeneration => 'Génération d’artefacts';
 
   @override
+  String get assistantArtifactChooseType => 'Choisir un type de fichier';
+
+  @override
+  String get assistantArtifactPicturesOnly =>
+      'Images uniquement · les fichiers nécessitent Orbit ou Nova';
+
+  @override
+  String assistantArtifactSelected(String type) {
+    return '$type sélectionné';
+  }
+
+  @override
+  String get assistantArtifactGroupOffice => 'Office';
+
+  @override
+  String get assistantArtifactGroupText => 'Texte';
+
+  @override
+  String get assistantArtifactGroupData => 'Données et web';
+
+  @override
+  String get assistantArtifactGroupImage => 'Image';
+
+  @override
+  String get assistantModesHeader => 'Modes';
+
+  @override
+  String assistantPictureWeeklyCost(String percent) {
+    return '$percent % de l’usage hebdomadaire';
+  }
+
+  @override
+  String get assistantPictureUnavailable => 'Indisponible pour le moment';
+
+  @override
   String get aiWikiSearchCostTitle => 'Coût et performances';
 
   @override

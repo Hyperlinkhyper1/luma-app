@@ -21,3 +21,12 @@ const assistantArtifactTypes = <String, String>{
 /// Built live, a section at a time, by the office tools rather than in one
 /// create_artifact call.
 const assistantOfficeArtifactTypes = {'docx', 'pptx', 'xlsx'};
+
+/// The upload MIME type of each Office extension the Assistant can edit.
+const officeUploadMimeTypes = <String, String>{
+  'docx':
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'pptx':
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+};

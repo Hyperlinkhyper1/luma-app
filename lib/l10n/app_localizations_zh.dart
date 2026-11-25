@@ -40120,6 +40120,40 @@ class LZh extends L {
   String get assistantArtifactGeneration => '生成产出文件';
 
   @override
+  String get assistantArtifactChooseType => '选择文件类型';
+
+  @override
+  String get assistantArtifactPicturesOnly => '仅限图片 · 文件需要 Orbit 或 Nova';
+
+  @override
+  String assistantArtifactSelected(String type) {
+    return '已选择$type';
+  }
+
+  @override
+  String get assistantArtifactGroupOffice => 'Office';
+
+  @override
+  String get assistantArtifactGroupText => '文本';
+
+  @override
+  String get assistantArtifactGroupData => '数据与网页';
+
+  @override
+  String get assistantArtifactGroupImage => '图片';
+
+  @override
+  String get assistantModesHeader => '模式';
+
+  @override
+  String assistantPictureWeeklyCost(String percent) {
+    return '占每周用量的 $percent%';
+  }
+
+  @override
+  String get assistantPictureUnavailable => '暂不可用';
+
+  @override
   String get aiWikiSearchCostTitle => '成本与性能';
 
   @override

@@ -270,8 +270,8 @@ void main() {
           matching: find.byType(SubmenuButton),
         ),
       );
-      // Pictures are on every plan; the file types stay behind Orbit.
-      expect(locked.menuChildren, hasLength(1));
+      // Pictures are on every plan (header + row); file types stay behind Orbit.
+      expect(locked.menuChildren, hasLength(2));
       expect(find.text('Requires Orbit or Nova'), findsOneWidget);
       expect(
         find.text('Pictures only · files need Orbit or Nova'),
@@ -284,7 +284,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Artifact generation'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('CSV spreadsheet (.csv)'));
+      await tester.tap(find.text('CSV spreadsheet'));
       await tester.pumpAndSettle();
       expect(picked, 'csv');
       expect(tester.takeException(), isNull);

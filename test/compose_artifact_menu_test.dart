@@ -70,7 +70,7 @@ void main() {
         ),
       );
       await _openMenu(tester);
-      expect(find.text('CSV spreadsheet (.csv)'), findsNothing);
+      expect(find.text('CSV spreadsheet'), findsNothing);
       final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
       await mouse.addPointer(location: const Offset(1200, 700));
       addTearDown(mouse.removePointer);
@@ -78,16 +78,16 @@ void main() {
       await tester.pumpAndSettle();
 
       for (final type in assistantArtifactTypes.entries) {
-        expect(find.text('${type.value} (.${type.key})'), findsOneWidget);
+        expect(find.text(type.value), findsOneWidget);
       }
-      expect(find.text('Picture unavailable'), findsOneWidget);
+      expect(find.text('Not available right now'), findsOneWidget);
       expect(find.text('Upload files'), findsOneWidget);
       final parent = tester.getRect(find.byType(SubmenuButton));
       expect(
-        tester.getTopLeft(_menuItem('Plain text (.txt)')).dx,
+        tester.getTopLeft(_menuItem('Plain text')).dx,
         greaterThanOrEqualTo(parent.right),
       );
-      final csv = _menuItem('CSV spreadsheet (.csv)');
+      final csv = _menuItem('CSV spreadsheet');
       await mouse.moveTo(Offset(parent.right + 2, parent.center.dy));
       await tester.pump();
       await mouse.moveTo(tester.getCenter(csv));
@@ -99,7 +99,7 @@ void main() {
       expect(modes, [AssistantComposeMode.chat]);
       expect(artifacts, ['csv']);
       expect(find.text('Artifact generation'), findsNothing);
-      expect(find.text('CSV spreadsheet (.csv)'), findsNothing);
+      expect(find.text('CSV spreadsheet'), findsNothing);
       expect(tester.takeException(), isNull);
     },
   );
@@ -120,16 +120,19 @@ void main() {
     );
     await _openMenu(tester);
     expect(find.text('Requires Orbit or Nova'), findsOneWidget);
-    expect(find.text('Pictures only · files need Orbit or Nova'), findsOneWidget);
+    expect(
+      find.text('Pictures only · files need Orbit or Nova'),
+      findsOneWidget,
+    );
     final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
     await mouse.addPointer(location: const Offset(700, 500));
     addTearDown(mouse.removePointer);
     await mouse.moveTo(tester.getCenter(find.text('Artifact generation')));
     await tester.pumpAndSettle();
     for (final type in assistantArtifactTypes.entries) {
-      expect(find.text('${type.value} (.${type.key})'), findsNothing);
+      expect(find.text(type.value), findsNothing);
     }
-    await tester.tap(find.text('Picture · 10% weekly usage'));
+    await tester.tap(find.text('10% of weekly usage'));
     await tester.pumpAndSettle();
     expect(modes, [AssistantComposeMode.picture]);
     expect(artifacts, [null]);
@@ -153,12 +156,12 @@ void main() {
     await _openMenu(tester);
     await tester.tap(find.text('Artifact generation'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Picture · 5% weekly usage'));
+    await tester.tap(find.text('5% of weekly usage'));
     await tester.pumpAndSettle();
     expect(modes, [AssistantComposeMode.picture]);
     expect(artifacts, [null]);
     expect(find.text('Artifact generation'), findsNothing);
-    expect(find.text('Picture · 5% weekly usage'), findsNothing);
+    expect(find.text('5% of weekly usage'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -186,9 +189,7 @@ void main() {
         await _openMenu(tester);
         await tester.tap(find.text('Artifact generation'));
         await tester.pumpAndSettle();
-        final label = available.picturePercent == null
-            ? 'Picture unavailable'
-            : 'Picture · ${formatPicturePercent(available.picturePercent!)}% weekly usage';
+        const label = 'Not available right now';
         expect(
           tester.widget<MenuItemButton>(_menuItem(label)).onPressed,
           isNull,
@@ -213,15 +214,15 @@ void main() {
     await tester.tapAt(const Offset(790, 12));
     await tester.pumpAndSettle();
     expect(find.text('Artifact generation'), findsNothing);
-    expect(find.text('CSV spreadsheet (.csv)'), findsNothing);
+    expect(find.text('CSV spreadsheet'), findsNothing);
 
     await _openMenu(tester);
     await tester.tap(find.text('Artifact generation'));
     await tester.pumpAndSettle();
-    expect(find.text('CSV spreadsheet (.csv)'), findsOneWidget);
+    expect(find.text('CSV spreadsheet'), findsOneWidget);
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);
     await tester.pumpAndSettle();
-    expect(find.text('CSV spreadsheet (.csv)'), findsNothing);
+    expect(find.text('CSV spreadsheet'), findsNothing);
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);
     await tester.pumpAndSettle();
     expect(find.text('Artifact generation'), findsNothing);
@@ -230,7 +231,7 @@ void main() {
     expect(find.text('Artifact generation'), findsOneWidget);
     await tester.tap(find.text('Artifact generation'));
     await tester.pumpAndSettle();
-    expect(find.text('CSV spreadsheet (.csv)'), findsOneWidget);
+    expect(find.text('CSV spreadsheet'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -254,16 +255,16 @@ void main() {
     expect(tester.getCenter(artifact).dy, lessThan(plus.top));
     await tester.tap(artifact);
     await tester.pumpAndSettle();
-    final csv = find.text('CSV spreadsheet (.csv)');
+    final csv = find.text('CSV spreadsheet');
     expect(csv.hitTestable(), findsOneWidget);
     for (final type in assistantArtifactTypes.entries) {
-      final label = find.text('${type.value} (.${type.key})');
+      final label = find.text(type.value);
       expect(label.hitTestable(), findsOneWidget);
       final labelRect = tester.getRect(label);
       expect(labelRect.left, greaterThanOrEqualTo(0));
       expect(labelRect.right, lessThanOrEqualTo(320));
     }
-    final rect = tester.getRect(_menuItem('CSV spreadsheet (.csv)'));
+    final rect = tester.getRect(_menuItem('CSV spreadsheet'));
     expect(rect.left, greaterThanOrEqualTo(0));
     expect(rect.right, lessThanOrEqualTo(320));
     await tester.tap(csv);

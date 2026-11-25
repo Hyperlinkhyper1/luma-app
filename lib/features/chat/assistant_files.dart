@@ -27,6 +27,17 @@ class AssistantAttachment {
   final String? base64Data;
   bool get isImage => mimeType.startsWith('image/');
 
+  /// An uploaded Word, PowerPoint or Excel file, still as its bytes. The
+  /// controller turns it into an editable copy plus a text attachment
+  /// before the message is saved, so these bytes never reach history.
+  bool get isOffice =>
+      base64Data != null &&
+      officeUploadMimeTypes.containsValue(mimeType);
+
+  /// Office files are imported rather than read as text, so they may be
+  /// larger than other attachments.
+  static const officeMaxBytes = 20 * 1024 * 1024;
+
   void validate() {
     if (name.isEmpty || name.length > 255) {
       throw const FormatException('Invalid attachment name.');
@@ -38,6 +49,12 @@ class AssistantAttachment {
           base64Decode(base64Data!).length > 4 * 1024 * 1024) {
         throw const FormatException(
           'Unsupported image or image larger than 4 MB.',
+        );
+      }
+    } else if (isOffice) {
+      if (base64Data!.length > officeMaxBytes * 4 ~/ 3 + 4) {
+        throw const FormatException(
+          'Word, PowerPoint and Excel files must be smaller than 20 MB.',
         );
       }
     } else if (text == null || text!.length > 30000) {
@@ -62,19 +79,35 @@ class AssistantAttachment {
     'yml',
     'log',
     'pdf',
+    'docx',
+    'pptx',
+    'xlsx',
   ];
   static const imageExtensions = ['png', 'jpg', 'jpeg', 'webp'];
 
   static Future<AssistantAttachment> fromFile(File file) async {
-    if (await file.length() > 4 * 1024 * 1024) {
-      throw const FormatException('Each attachment must be smaller than 4 MB.');
-    }
-    final bytes = await file.readAsBytes();
     final extension = p
         .extension(file.path)
         .replaceFirst('.', '')
         .toLowerCase();
     final name = p.basename(file.path);
+    final officeMime = officeUploadMimeTypes[extension];
+    if (officeMime != null) {
+      if (await file.length() > officeMaxBytes) {
+        throw const FormatException(
+          'Word, PowerPoint and Excel files must be smaller than 20 MB.',
+        );
+      }
+      return AssistantAttachment(
+        name: name,
+        mimeType: officeMime,
+        base64Data: base64Encode(await file.readAsBytes()),
+      );
+    }
+    if (await file.length() > 4 * 1024 * 1024) {
+      throw const FormatException('Each attachment must be smaller than 4 MB.');
+    }
+    final bytes = await file.readAsBytes();
     if (imageExtensions.contains(extension)) {
       return AssistantAttachment(
         name: name,

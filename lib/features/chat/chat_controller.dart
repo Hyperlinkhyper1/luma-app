@@ -399,6 +399,19 @@ class ChatController extends ChangeNotifier {
         auto: auto,
       );
     }
+    if (attachments.any((a) => a.isOffice)) {
+      try {
+        attachments = [
+          for (final attachment in attachments)
+            attachment.isOffice
+                ? await workbench.importUpload(conversationId, attachment)
+                : attachment,
+        ];
+      } on FormatException catch (error) {
+        await _repository.addMessage(conversationId, 'error', error.message);
+        return;
+      }
+    }
     final usingLocalModel = providerId == AiProviderId.local.name;
     var apiKey = usingLocalModel
         ? 'local'

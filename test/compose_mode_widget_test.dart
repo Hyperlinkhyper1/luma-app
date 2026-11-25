@@ -66,7 +66,7 @@ void main() {
     expect(find.text('Deep research'), findsOneWidget);
     await tester.tap(find.text('Artifact generation'));
     await tester.pumpAndSettle();
-    expect(find.text('Picture · 1.5% weekly usage'), findsOneWidget);
+    expect(find.text('1.5% of weekly usage'), findsOneWidget);
 
     await tester.tap(find.text('Plan mode'));
     await tester.pumpAndSettle();
@@ -100,7 +100,7 @@ void main() {
     );
     await tester.tap(find.text('Artifact generation'));
     await tester.pumpAndSettle();
-    expect(find.text('Picture unavailable'), findsOneWidget);
+    expect(find.text('Not available right now'), findsOneWidget);
 
     await tester.tap(find.text('Deep research'), warnIfMissed: false);
     await tester.pumpAndSettle();
