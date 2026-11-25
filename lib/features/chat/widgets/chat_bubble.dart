@@ -8,6 +8,9 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../../l10n/app_localizations.dart';
 import '../../../theme/luma_theme.dart';
+import '../assistant_auto_router.dart';
+import '../assistant_effort.dart';
+import 'assistant_effort_menu.dart';
 import '../assistant_compose_mode.dart';
 import '../assistant_files.dart';
 import '../chat_usage.dart';
@@ -138,9 +141,56 @@ class _ChatBubbleState extends State<ChatBubble> {
     final qrUrl = _qrUrlFrom(widget.message.metadataJson);
     final composeMode = chatComposeModeOf(widget.message.metadataJson);
     final imagePath = chatImagePathOf(widget.message.metadataJson);
+    final autoRoute = chatAutoRouteOf(widget.message.metadataJson);
+    final effortTag = chatEffortOf(widget.message.metadataJson);
+    final effortText = switch (effortTag) {
+      (checks: final int checks, effort: _) =>
+        L.of(context).assistantUltraBadge(checks),
+      (checks: null, effort: final AssistantEffort effort) =>
+        L.of(context).assistantEffortBadge(
+          assistantEffortLabel(L.of(context), effort),
+        ),
+      _ => null,
+    };
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (effortText != null) ...[
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                effortTag?.checks != null
+                    ? Icons.all_inclusive_rounded
+                    : Icons.speed_rounded,
+                size: 13,
+                color: luma.textMuted,
+              ),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  effortText,
+                  style: TextStyle(color: luma.textMuted, fontSize: 11.5),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+        ],
+        if (autoRoute != null) ...[
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.auto_mode_rounded, size: 13, color: luma.textMuted),
+              const SizedBox(width: 6),
+              Text(
+                'Auto · ${autoRouteModelLabel(autoRoute)}',
+                style: TextStyle(color: luma.textMuted, fontSize: 11.5),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+        ],
         if (composeMode != null &&
             composeMode != AssistantComposeMode.picture) ...[
           Row(

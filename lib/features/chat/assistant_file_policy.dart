@@ -13,4 +13,11 @@ const assistantArtifactTypes = <String, String>{
   'csv': 'CSV spreadsheet',
   'json': 'JSON data',
   'svg': 'SVG image',
+  'docx': 'Word document',
+  'pptx': 'PowerPoint deck',
+  'xlsx': 'Excel workbook',
 };
+
+/// Built live, a section at a time, by the office tools rather than in one
+/// create_artifact call.
+const assistantOfficeArtifactTypes = {'docx', 'pptx', 'xlsx'};

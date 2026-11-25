@@ -1867,6 +1867,55 @@ class LNl extends L {
   String get assistantToggleSidebar => 'Zijbalk tonen/verbergen';
 
   @override
+  String get assistantDetailsTitle => 'Chatdetails';
+
+  @override
+  String get assistantDetailsShow => 'Chatdetails tonen';
+
+  @override
+  String get assistantDetailsHide => 'Chatdetails verbergen';
+
+  @override
+  String get assistantDetailsEnvironment => 'Omgeving';
+
+  @override
+  String get assistantDetailsChatMode => 'Chat';
+
+  @override
+  String get assistantDetailsContext => 'Context';
+
+  @override
+  String assistantDetailsContextUsed(int percent) {
+    return '$percent% gebruikt';
+  }
+
+  @override
+  String get assistantDetailsContextPending =>
+      'Vult zich na het eerste antwoord.';
+
+  @override
+  String get assistantDetailsInputTokens => 'Laatste invoer';
+
+  @override
+  String get assistantDetailsOutputTokens => 'Laatste uitvoer';
+
+  @override
+  String get assistantDetailsYourMessages => 'Jouw berichten';
+
+  @override
+  String get assistantDetailsReplies => 'Antwoorden';
+
+  @override
+  String get assistantDetailsFiles => 'Bestanden';
+
+  @override
+  String get assistantDetailsNoFiles =>
+      'Bestanden die de assistent in deze chat maakt, verschijnen hier.';
+
+  @override
+  String get assistantDetailsFileMissing => 'ontbreekt';
+
+  @override
   String get assistantChats => 'Chats';
 
   @override
@@ -2073,6 +2122,22 @@ class LNl extends L {
 
   @override
   String get assistantApiManage => 'API-sleutels beheren';
+
+  @override
+  String get assistantApiAddKey => 'API-sleutel toevoegen';
+
+  @override
+  String get assistantApiAddModel => 'Model toevoegen';
+
+  @override
+  String get assistantApiProvider => 'Aanbieder';
+
+  @override
+  String get assistantApiModelId => 'Model-ID';
+
+  @override
+  String get assistantApiSaveKeyFailed =>
+      'De API-sleutel kon niet worden opgeslagen.';
 
   @override
   String get aiSettingsApiKeysMoved =>
@@ -42169,6 +42234,13 @@ class LNl extends L {
   String get assistantProjectsAll => 'Alle projecten';
 
   @override
+  String get assistantProjectsTitle => 'Projecten';
+
+  @override
+  String get assistantProjectsSubtitle =>
+      'Houd chats en geheugen per project bij elkaar.';
+
+  @override
   String get assistantProjectsNew => 'Nieuw project';
 
   @override
@@ -42198,6 +42270,72 @@ class LNl extends L {
   @override
   String get assistantProjectDeleteMessage =>
       'Hiermee verwijder je het project en het geheugen ervan. De chats gaan terug naar de hoofdlijst; gemaakte bestanden blijven in Artefacten.';
+
+  @override
+  String assistantProjectChatCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count chats',
+      one: '1 chat',
+      zero: 'Geen chats',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get assistantProjectMemorySaved => 'Geheugen opgeslagen';
+
+  @override
+  String get assistantProjectMemoryNone => 'Nog geen geheugen';
+
+  @override
+  String assistantProjectLastActive(String date) {
+    return 'Actief $date';
+  }
+
+  @override
+  String get assistantProjectDescriptionFallback =>
+      'Chats hier gebruiken je algemene geheugen en het geheugen van dit project.';
+
+  @override
+  String get assistantProjectNoChatsTitle => 'Begin de eerste chat';
+
+  @override
+  String get assistantProjectNoChatsBody =>
+      'Chats die je hier begint blijven bij dit project en delen het geheugen ervan.';
+
+  @override
+  String get assistantProjectStartChat => 'Chat beginnen';
+
+  @override
+  String get assistantProjectMemoryEmpty =>
+      'Nog geen projectgeheugen. Voeg hier notities toe of vraag de assistent een projectfeit te onthouden.';
+
+  @override
+  String get assistantProjectAddMemory => 'Geheugen toevoegen';
+
+  @override
+  String get assistantProjectHowTitle => 'Zo werken projecten';
+
+  @override
+  String get assistantProjectHowChats =>
+      'Elke chat die je hier begint, hoort bij dit project.';
+
+  @override
+  String get assistantProjectHowMemory =>
+      'Het projectgeheugen wordt alleen gedeeld met de chats van dit project.';
+
+  @override
+  String get assistantProjectHowDelete =>
+      'Als je het project verwijdert, blijven de chats en bestanden bestaan.';
+
+  @override
+  String get assistantProjectNoArtifactsTitle => 'Nog geen artefacten';
+
+  @override
+  String get assistantProjectNoArtifactsBody =>
+      'Afbeeldingen en bestanden die de assistent in de chats van dit project maakt, verschijnen hier.';
 
   @override
   String get assistantUploadFiles => 'Bestanden uploaden';
@@ -42345,4 +42483,142 @@ class LNl extends L {
 
   @override
   String get steamCs2RefreshInventory => 'Inventaris vernieuwen';
+
+  @override
+  String get assistantPreviewNotFound =>
+      'Dit bestand staat niet meer op dit apparaat.';
+
+  @override
+  String get assistantPreviewNoApp =>
+      'Er is geen app op dit apparaat die dit soort bestand opent.';
+
+  @override
+  String get assistantPreviewSaveError =>
+      'Het bestand is geopend in een andere app, dus alleen de kopie in luma is bijgewerkt.';
+
+  @override
+  String get assistantPreviewOpenExternally => 'Openen in andere app';
+
+  @override
+  String get assistantPreviewShowInFolder => 'Tonen in map';
+
+  @override
+  String get assistantPreviewClose => 'Voorbeeld sluiten';
+
+  @override
+  String get assistantPreviewWorking => 'Bezig met het bestand…';
+
+  @override
+  String get assistantPreviewReadingOutline => 'Leest de inhoudsopgave';
+
+  @override
+  String assistantPreviewReading(String part) {
+    return 'Leest $part';
+  }
+
+  @override
+  String assistantPreviewWriting(String part) {
+    return 'Schrijft $part';
+  }
+
+  @override
+  String assistantPreviewDeleting(String part) {
+    return 'Verwijdert $part';
+  }
+
+  @override
+  String assistantPreviewPartBlock(String range) {
+    return 'blok $range';
+  }
+
+  @override
+  String assistantPreviewPartSlide(String range) {
+    return 'dia $range';
+  }
+
+  @override
+  String get assistantPreviewTagReading => 'Leest';
+
+  @override
+  String get assistantPreviewTagWriting => 'Schrijft';
+
+  @override
+  String get assistantPreviewTagDeleting => 'Verwijdert';
+
+  @override
+  String get assistantPreviewEmptyDocument =>
+      'De assistent begint aan dit bestand…';
+
+  @override
+  String get assistantPreviewUnsupported =>
+      'luma kan dit bestand niet weergeven.';
+
+  @override
+  String get assistantPreviewNoPdfText => 'Deze pdf bevat geen leesbare tekst.';
+
+  @override
+  String get assistantEffortTitle => 'Inspanning';
+
+  @override
+  String get assistantEffortDescription =>
+      'Meer inspanning geeft grondigere antwoorden, maar duurt langer en gebruikt je limieten sneller.';
+
+  @override
+  String get assistantEffortLow => 'Laag';
+
+  @override
+  String get assistantEffortMedium => 'Gemiddeld';
+
+  @override
+  String get assistantEffortHigh => 'Hoog';
+
+  @override
+  String get assistantEffortExtra => 'Extra';
+
+  @override
+  String get assistantEffortMax => 'Max';
+
+  @override
+  String get assistantEffortRecommended => 'Aanbevolen';
+
+  @override
+  String assistantEffortUsage(String multiplier) {
+    return '$multiplier× of meer verbruik';
+  }
+
+  @override
+  String assistantEffortBadge(String level) {
+    return 'Inspanning: $level';
+  }
+
+  @override
+  String get assistantUltraReasoning => 'Ultra Reasoning';
+
+  @override
+  String get assistantUltraReasoningDescription =>
+      'Doet eerst onderzoek en controleert en verbetert daarna zijn antwoord in meerdere rondes op Max-inspanning. Duurt veel langer en gebruikt veel meer van je limieten.';
+
+  @override
+  String get assistantUltraReasoningPlan => 'Vereist Nova';
+
+  @override
+  String assistantUltraChecking(int round, int rounds) {
+    return 'Antwoord controleren ($round/$rounds)';
+  }
+
+  @override
+  String assistantUltraImproving(int round, int rounds) {
+    return 'Antwoord verbeteren ($round/$rounds)';
+  }
+
+  @override
+  String assistantUltraBadge(int checks) {
+    String _temp0 = intl.Intl.pluralLogic(
+      checks,
+      locale: localeName,
+      other: 'Ultra Reasoning · $checks keer gecontroleerd',
+      one: 'Ultra Reasoning · één keer gecontroleerd',
+    );
+    return '$_temp0';
+  }
 }

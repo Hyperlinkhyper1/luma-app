@@ -30,6 +30,10 @@ class ChatActivityCard extends StatelessWidget {
     final String title;
     if (picture) {
       title = t.assistantPictureDrawing;
+    } else if (activity.reviewing) {
+      title = activity.improving
+          ? t.assistantUltraImproving(activity.round, activity.rounds)
+          : t.assistantUltraChecking(activity.round, activity.rounds);
     } else if (activity.writing) {
       title = t.assistantResearchWriting;
     } else if (total == 0) {

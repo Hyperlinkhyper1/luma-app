@@ -37,11 +37,11 @@ import 'clipboard_files.dart';
 import 'chat_scope.dart';
 import 'chat_usage.dart';
 import 'memory/assistant_memory_scope.dart';
-import 'providers/ai_modes.dart';
 import 'providers/ai_providers.dart';
-import 'providers/ai_usage.dart';
 import 'providers/local_qwen_client.dart';
 import 'data/chat_repository.dart';
+import 'widgets/assistant_effort_menu.dart';
+import 'widgets/assistant_model_selector.dart';
 import 'widgets/chat_input_bar.dart';
 import 'widgets/chat_markdown.dart';
 import 'widgets/chat_message_list.dart';
@@ -50,9 +50,15 @@ import 'widgets/chat_usage_meter.dart';
 import 'widgets/compose_mode_menu.dart';
 import 'widgets/assistant_projects_view.dart';
 import 'widgets/assistant_sidebar_transition.dart';
+import 'office/assistant_workbench.dart';
 import 'widgets/assistant_artifacts_view.dart';
+import 'widgets/assistant_file_panel.dart';
+import 'widgets/assistant_details_panel.dart';
 
 const _wideBreakpoint = 760.0;
+
+/// Wide enough for the sidebar, the chat column and the details panel.
+const _detailsBreakpoint = 1080.0;
 
 /// Phones and tablets: no hover, so row actions stay visible and tap
 /// targets grow to finger size.
@@ -145,7 +151,9 @@ class _ChatPageState extends State<ChatPage> {
             }
             final keyStore = snap.data!;
             final controller = _controllerFor(keyStore);
-            return _ChatBody(
+            return AssistantWorkbenchScope(
+              workbench: controller.workbench,
+              child: _ChatBody(
               controller: controller,
               keyStore: keyStore,
               syncService: syncService,
@@ -155,6 +163,7 @@ class _ChatPageState extends State<ChatPage> {
                   setState(() => _activeConversationId = id),
               onOpenSettings: widget.onOpenSettings,
               onOpenPlugin: widget.onOpenPlugin,
+              ),
             );
           },
         );
@@ -346,6 +355,7 @@ class _ChatBodyState extends State<_ChatBody> {
                 ? null
                 : _NoKeyState(
                     settings: widget.settings,
+                    keyStore: widget.keyStore,
                     localModel: _providerId == AiProviderId.local.name,
                     onOpenSettings: isApiKeyProvider(_providerId)
                         ? () => showAssistantPanel(context, AssistantPanel.api)
@@ -391,6 +401,7 @@ class _ChatLayoutState extends State<_ChatLayout> {
   final _homeText = TextEditingController();
   final _homeFocus = FocusNode();
   bool _sidebarOpen = true;
+  bool _detailsOpen = true;
   String _view = 'chat';
   int? _projectId;
   String? _artifactType;
@@ -681,6 +692,12 @@ class _ChatLayoutState extends State<_ChatLayout> {
                           onOpenPlugin: widget.onOpenPlugin,
                         ));
 
+        final showDetails =
+            constraints.maxWidth >= _detailsBreakpoint &&
+            _view == 'chat' &&
+            activeId != null &&
+            widget.chatUnavailable == null;
+
         final main = Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -692,6 +709,10 @@ class _ChatLayoutState extends State<_ChatLayout> {
                   ? () => setState(() => _sidebarOpen = true)
                   : () => _scaffoldKey.currentState?.openDrawer(),
               onSelect: _select,
+              detailsOpen: _detailsOpen,
+              onToggleDetails: showDetails
+                  ? () => setState(() => _detailsOpen = !_detailsOpen)
+                  : null,
             ),
             if (_view == 'chat' && _projectId != null)
               StreamBuilder<List<ChatProjectRecord>>(
@@ -749,6 +770,41 @@ class _ChatLayoutState extends State<_ChatLayout> {
                       ),
                     ),
                     Expanded(child: main),
+                    AssistantFilePanelSlot(
+                      workbench: widget.controller.workbench,
+                      availableWidth: constraints.maxWidth,
+                    ),
+                    if (showDetails && !widget.controller.workbench.hasFile)
+                      AssistantSidebarTransition(
+                        open: _detailsOpen,
+                        width: assistantDetailsPanelWidth,
+                        alignment: Alignment.topRight,
+                        child: _projectId == null
+                            ? AssistantDetailsPanel(
+                                conversationId: activeId,
+                                settings: settings,
+                                composeMode: _effectiveComposeMode(settings),
+                                onClose: () =>
+                                    setState(() => _detailsOpen = false),
+                              )
+                            : StreamBuilder<List<ChatProjectRecord>>(
+                                stream: ChatScope.of(context).watchProjects(),
+                                builder: (context, snap) =>
+                                    AssistantDetailsPanel(
+                                      conversationId: activeId,
+                                      settings: settings,
+                                      composeMode: _effectiveComposeMode(
+                                        settings,
+                                      ),
+                                      projectName: snap.data
+                                          ?.where((p) => p.id == _projectId)
+                                          .firstOrNull
+                                          ?.name,
+                                      onClose: () =>
+                                          setState(() => _detailsOpen = false),
+                                    ),
+                              ),
+                      ),
                   ],
                 )
               : main,
@@ -1320,6 +1376,8 @@ class _TitleBar extends StatelessWidget {
     required this.showNewChatButton,
     required this.onToggleSidebar,
     required this.onSelect,
+    this.detailsOpen = false,
+    this.onToggleDetails,
   });
 
   final int? activeConversationId;
@@ -1327,6 +1385,10 @@ class _TitleBar extends StatelessWidget {
   final bool showNewChatButton;
   final VoidCallback onToggleSidebar;
   final ValueChanged<int?> onSelect;
+
+  /// Shows or hides the chat details panel; null when it doesn't fit.
+  final VoidCallback? onToggleDetails;
+  final bool detailsOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -1353,67 +1415,83 @@ class _TitleBar extends StatelessWidget {
               ),
             const SizedBox(width: 6),
             if (activeConversationId != null)
-              Flexible(
-                child: StreamBuilder<List<ChatConversationRecord>>(
-                  stream: repo.watchConversations(),
-                  builder: (context, snap) {
-                    final c = snap.data
-                        ?.where((c) => c.id == activeConversationId)
-                        .firstOrNull;
-                    if (c == null) return const SizedBox.shrink();
-                    return Builder(
-                      builder: (anchorContext) => TextButton(
-                        onPressed: () {
-                          final box =
-                              anchorContext.findRenderObject()! as RenderBox;
-                          _showConversationMenu(
-                            context,
-                            box.localToGlobal(box.size.bottomLeft(Offset.zero)),
-                            c,
-                            activeConversationId: activeConversationId,
-                            onSelect: onSelect,
-                          );
-                        },
-                        style: TextButton.styleFrom(
-                          foregroundColor: luma.textPrimary,
-                          padding: const EdgeInsets.symmetric(horizontal: 10),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (c.pinned) ...[
-                              Icon(
-                                Icons.star_rounded,
-                                size: 15,
-                                color: luma.accent,
+              Expanded(
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: StreamBuilder<List<ChatConversationRecord>>(
+                    stream: repo.watchConversations(),
+                    builder: (context, snap) {
+                      final c = snap.data
+                          ?.where((c) => c.id == activeConversationId)
+                          .firstOrNull;
+                      if (c == null) return const SizedBox.shrink();
+                      return Builder(
+                        builder: (anchorContext) => TextButton(
+                          onPressed: () {
+                            final box =
+                                anchorContext.findRenderObject()! as RenderBox;
+                            _showConversationMenu(
+                              context,
+                              box.localToGlobal(
+                                box.size.bottomLeft(Offset.zero),
                               ),
-                              const SizedBox(width: 6),
-                            ],
-                            Flexible(
-                              child: Text(
-                                c.title,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontSize: 14.5,
-                                  fontWeight: FontWeight.w500,
+                              c,
+                              activeConversationId: activeConversationId,
+                              onSelect: onSelect,
+                            );
+                          },
+                          style: TextButton.styleFrom(
+                            foregroundColor: luma.textPrimary,
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (c.pinned) ...[
+                                Icon(
+                                  Icons.star_rounded,
+                                  size: 15,
+                                  color: luma.accent,
+                                ),
+                                const SizedBox(width: 6),
+                              ],
+                              Flexible(
+                                child: Text(
+                                  c.title,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 14.5,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 4),
-                            Icon(
-                              Icons.keyboard_arrow_down_rounded,
-                              size: 18,
-                              color: luma.textMuted,
-                            ),
-                          ],
+                              const SizedBox(width: 4),
+                              Icon(
+                                Icons.keyboard_arrow_down_rounded,
+                                size: 18,
+                                color: luma.textMuted,
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    );
-                  },
+                      );
+                    },
+                  ),
+                ),
+              )
+            else
+              const Spacer(),
+            if (onToggleDetails != null && !detailsOpen)
+              Transform.flip(
+                flipX: true,
+                child: _IconAction(
+                  icon: Icons.view_sidebar_outlined,
+                  tooltip: L.of(context).assistantDetailsShow,
+                  onTap: onToggleDetails!,
                 ),
               ),
           ],
@@ -2132,11 +2210,14 @@ class _ChatComposerState extends State<_ChatComposer> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Flexible(
-            child: _ModelSelector(
+            child: AssistantModelSelector(
               settings: settings,
+              keyStore: widget.keyStore,
               picture: composeMode == AssistantComposeMode.picture,
             ),
           ),
+          if (composeMode != AssistantComposeMode.picture)
+            Flexible(child: AssistantEffortButton(settings: settings)),
           meter,
         ],
       ),
@@ -2154,344 +2235,6 @@ class _ChatComposerState extends State<_ChatComposer> {
       minLines: widget.minLines,
       autofocus: widget.autofocus,
       onSend: widget.onSend,
-    );
-  }
-}
-
-/// One entry in the model menu: a user-facing name mapped to the provider
-/// (and, for Luma AI, the intelligence mode) it actually selects.
-class _ModelChoice {
-  const _ModelChoice(this.label, this.providerId, [this.mode]);
-
-  final String label;
-  final String providerId;
-
-  /// [AiMode.name] to activate, for the Luma AI (Google) tiers.
-  final String? mode;
-
-  bool isActive(SettingsController settings) =>
-      settings.aiProviderId == providerId &&
-      (mode == null || settings.aiMode == mode);
-}
-
-List<_ModelChoice> _lumaModelsFor(
-  SettingsController settings,
-  Map<String, String> modeVersions,
-) => [
-  for (final mode in AiMode.values.where(
-    (mode) => mode.availableForPlan(settings.selectedPlanId),
-  ))
-    _ModelChoice(
-      'Luma ${mode.displayNameFor(modeVersions[mode.name])}',
-      AiProviderId.google.name,
-      mode.name,
-    ),
-  if (LocalModelStore.supported)
-    _ModelChoice('Luma Assistant', AiProviderId.local.name),
-];
-
-List<_ModelChoice> get _apiKeyModels => [
-  for (final provider in kApiKeyProviders)
-    _ModelChoice(provider.displayName, provider.id.name),
-];
-
-/// The model picker's last row: opens the API screen instead of picking.
-const _manageApiKeys = _ModelChoice('', '');
-
-/// Claude-style model picker: a small pill under the typing bar showing the
-/// active model's name; tapping it expands a menu of every model — the four
-/// luma-branded ones plus an "API key" section for bring-your-own-key
-/// providers. Selecting one flips the provider (and Luma AI mode) in
-/// Settings, which the surrounding chat body already listens to.
-class _ModelSelector extends StatefulWidget {
-  const _ModelSelector({required this.settings, this.picture = false});
-  final SettingsController settings;
-
-  /// Picture mode draws with one of the two admin-picked image models
-  /// whatever chat model is selected, so the pill names that instead and
-  /// opens a Standard / Pro choice.
-  final bool picture;
-
-  @override
-  State<_ModelSelector> createState() => _ModelSelectorState();
-}
-
-class _ModelSelectorState extends State<_ModelSelector> {
-  SyncService? _sync;
-  Map<String, String> modeVersions = const {};
-  AiServerStatus? _status;
-
-  SettingsController get settings => widget.settings;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final sync = SyncScope.of(context);
-    if (identical(sync, _sync)) return;
-    _sync = sync;
-    _refreshVersions();
-  }
-
-  Future<void> _refreshVersions() async {
-    final sync = _sync;
-    final status = await sync?.aiStatus();
-    if (!mounted || !identical(sync, _sync)) return;
-    setState(() {
-      _status = status;
-      modeVersions = status?.modeVersions ?? const {};
-    });
-  }
-
-  /// Where a menu opened from the pill anchors: the pill's own rect,
-  /// relative to the overlay.
-  RelativeRect _menuPosition() {
-    final button = context.findRenderObject()! as RenderBox;
-    final overlay =
-        Overlay.of(context).context.findRenderObject()! as RenderBox;
-    return RelativeRect.fromRect(
-      Rect.fromPoints(
-        button.localToGlobal(Offset.zero, ancestor: overlay),
-        button.localToGlobal(
-          button.size.bottomRight(Offset.zero),
-          ancestor: overlay,
-        ),
-      ),
-      Offset.zero & overlay.size,
-    );
-  }
-
-  /// The picture pill's menu: the operator's cheaper standard model and
-  /// the pricier pro one, each with what a picture costs on this plan.
-  Future<void> _openPictureMenu() async {
-    await _refreshVersions();
-    if (!mounted) return;
-    final luma = context.luma;
-    final status = _status;
-
-    PopupMenuItem<String> item(
-      String tier,
-      String label,
-      double? percent,
-      bool available,
-    ) {
-      final selected = settings.pictureTier == tier;
-      final enabled = available && percent != null;
-      return PopupMenuItem<String>(
-        value: tier,
-        enabled: enabled,
-        height: 40,
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                label,
-                style: TextStyle(
-                  color: !enabled
-                      ? luma.textMuted
-                      : selected
-                      ? luma.accent
-                      : luma.textPrimary,
-                  fontSize: 13,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                ),
-              ),
-            ),
-            Text(
-              enabled
-                  ? '${formatPicturePercent(percent)}% weekly usage'
-                  : 'Unavailable',
-              style: TextStyle(color: luma.textMuted, fontSize: 10.5),
-            ),
-            const SizedBox(width: 8),
-            SizedBox(
-              width: 16,
-              child: selected
-                  ? Icon(Icons.check_rounded, size: 16, color: luma.accent)
-                  : null,
-            ),
-          ],
-        ),
-      );
-    }
-
-    final picked = await showMenu<String>(
-      context: context,
-      position: _menuPosition(),
-      constraints: const BoxConstraints(minWidth: 270, maxWidth: 330),
-      color: luma.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-        side: BorderSide(color: luma.border),
-      ),
-      items: [
-        item(
-          'standard',
-          _pictureLabel('standard'),
-          status?.pictureWeeklyPct,
-          status?.pictureConfigured ?? false,
-        ),
-        item(
-          'pro',
-          _pictureLabel('pro'),
-          status?.pictureProWeeklyPct,
-          status?.pictureProConfigured ?? false,
-        ),
-      ],
-    );
-    if (picked != null) settings.setPictureTier(picked);
-  }
-
-  static String _pictureLabel(String tier) =>
-      tier == 'pro' ? 'Luma Picture Pro' : 'Luma Picture';
-
-  _ModelChoice get _active =>
-      [..._lumaModelsFor(settings, modeVersions), ..._apiKeyModels].firstWhere(
-        (c) => c.isActive(settings),
-        orElse: () => _lumaModelsFor(settings, modeVersions).first,
-      );
-
-  Future<void> _openMenu() async {
-    await _refreshVersions();
-    if (!mounted) return;
-    final luma = context.luma;
-    final t = L.of(context);
-    // The button's own rect, relative to the overlay — the same anchor
-    // PopupMenuButton itself uses. showMenu positions the menu's top-left
-    // here and then, if it would overflow the bottom of the window, shifts
-    // the whole menu up just enough to stay on screen (see
-    // _PopupMenuRouteLayout._fitInsideScreen in the framework) — that's what
-    // makes it "expand upward" here, since the pill sits near the bottom.
-    final position = _menuPosition();
-
-    PopupMenuItem<_ModelChoice> item(_ModelChoice choice) {
-      final selected = choice.isActive(settings);
-      final usageKey = modelUsageKeyFor(
-        choice.providerId,
-        mode: choice.mode == null ? null : aiModeById(choice.mode!),
-      );
-      final count = settings.modelUsage[usageKey] ?? 0;
-      final usageLabel = count == 0
-          ? t.assistantModelUnused
-          : t.assistantModelMessageCount(count);
-      return PopupMenuItem<_ModelChoice>(
-        value: choice,
-        height: 40,
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                choice.label,
-                style: TextStyle(
-                  color: selected ? luma.accent : luma.textPrimary,
-                  fontSize: 13,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                ),
-              ),
-            ),
-            Text(
-              usageLabel,
-              style: TextStyle(color: luma.textMuted, fontSize: 10.5),
-            ),
-            const SizedBox(width: 8),
-            SizedBox(
-              width: 16,
-              child: selected
-                  ? Icon(Icons.check_rounded, size: 16, color: luma.accent)
-                  : null,
-            ),
-          ],
-        ),
-      );
-    }
-
-    PopupMenuItem<_ModelChoice> header(String text) =>
-        PopupMenuItem<_ModelChoice>(
-          enabled: false,
-          height: 30,
-          child: Text(
-            text,
-            style: TextStyle(
-              color: luma.textMuted,
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.4,
-            ),
-          ),
-        );
-
-    final picked = await showMenu<_ModelChoice>(
-      context: context,
-      position: position,
-      constraints: const BoxConstraints(minWidth: 270, maxWidth: 330),
-      color: luma.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-        side: BorderSide(color: luma.border),
-      ),
-      items: [
-        header(t.assistantModelsHeader),
-        ..._lumaModelsFor(settings, modeVersions).map(item),
-        const PopupMenuDivider(height: 10),
-        header(t.assistantApiKeyHeader),
-        ..._apiKeyModels.map(item),
-        PopupMenuItem<_ModelChoice>(
-          value: _manageApiKeys,
-          height: 38,
-          child: Row(
-            children: [
-              Icon(Icons.key_rounded, size: 15, color: luma.textMuted),
-              const SizedBox(width: 8),
-              Text(
-                t.assistantApiManage,
-                style: TextStyle(color: luma.textSecondary, fontSize: 12.5),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-
-    if (picked == null || !mounted) return;
-    if (identical(picked, _manageApiKeys)) {
-      await showAssistantPanel(context, AssistantPanel.api);
-      return;
-    }
-    settings.setAiProviderId(picked.providerId);
-    if (picked.mode != null) settings.setAiMode(picked.mode!);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final luma = context.luma;
-    final picture = widget.picture;
-    return TextButton(
-      onPressed: picture ? _openPictureMenu : _openMenu,
-      style: TextButton.styleFrom(
-        foregroundColor: luma.textSecondary,
-        disabledForegroundColor: luma.textSecondary,
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        minimumSize: const Size(0, 32),
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Flexible(
-            child: Text(
-              picture ? _pictureLabel(settings.pictureTier) : _active.label,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-            ),
-          ),
-          const SizedBox(width: 2),
-          Icon(
-            Icons.keyboard_arrow_down_rounded,
-            size: 17,
-            color: luma.textMuted,
-          ),
-        ],
-      ),
     );
   }
 }
@@ -2518,12 +2261,14 @@ class _LoadError extends StatelessWidget {
 class _NoKeyState extends StatelessWidget {
   const _NoKeyState({
     required this.settings,
+    required this.keyStore,
     required this.localModel,
     required this.onOpenSettings,
     required this.onRecheck,
   });
 
   final SettingsController settings;
+  final AiKeyStore keyStore;
   final bool localModel;
   final VoidCallback onOpenSettings;
   final VoidCallback onRecheck;
@@ -2583,7 +2328,7 @@ class _NoKeyState extends StatelessWidget {
                   ),
                 ],
                 const SizedBox(height: 12),
-                _ModelSelector(settings: settings),
+                AssistantModelSelector(settings: settings, keyStore: keyStore),
               ],
             ),
           ),
@@ -2615,7 +2360,7 @@ class _NoKeyState extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
-            _ModelSelector(settings: settings),
+            AssistantModelSelector(settings: settings, keyStore: keyStore),
           ],
         ),
       ),

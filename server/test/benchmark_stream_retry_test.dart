@@ -300,7 +300,7 @@ void main() {
     expect(before, 0);
     expect(acc.error, 'Server error');
   });
-  test('a rate limit waits minutes, honouring Retry-After within a cap', () {
+  test('a rate limit honours Retry-After or waits minutes by default', () {
     const planned = Duration(seconds: 20);
     expect(benchmarkRetryWait(attempt: 0, planned: planned, rateLimited: false),
         planned);
@@ -310,28 +310,69 @@ void main() {
         kBenchmarkRateLimitBackoff[1]);
     expect(
         benchmarkRetryWait(
-            attempt: 0, planned: planned, rateLimited: true, retryAfter: '90'),
+            attempt: 0,
+            planned: planned,
+            rateLimited: true,
+            rateLimit: const BenchmarkRateLimit(retryAfter: '90')),
         const Duration(seconds: 90));
-    expect(
-        benchmarkRetryWait(
-            attempt: 0, planned: planned, rateLimited: true, retryAfter: '1'),
-        planned);
     expect(
         benchmarkRetryWait(
             attempt: 0,
             planned: planned,
             rateLimited: true,
-            retryAfter: '86400'),
-        kBenchmarkMaxRetryWait);
+            rateLimit: const BenchmarkRateLimit(retryAfter: '1')),
+        const Duration(seconds: 1));
+    expect(
+        benchmarkRetryWait(
+            attempt: 0,
+            planned: planned,
+            rateLimited: true,
+            rateLimit: const BenchmarkRateLimit(retryAfter: '86400')),
+        isNull);
     final now = DateTime.utc(2026, 11, 19, 12);
     expect(
         benchmarkRetryWait(
             attempt: 0,
             planned: planned,
             rateLimited: true,
-            retryAfter: HttpDate.format(now.add(const Duration(minutes: 3))),
+            rateLimit: BenchmarkRateLimit(
+                retryAfter:
+                    HttpDate.format(now.add(const Duration(minutes: 3)))),
             now: now),
         const Duration(minutes: 3));
+    expect(
+        benchmarkRetryWait(
+            attempt: 0,
+            planned: planned,
+            rateLimited: true,
+            rateLimit: BenchmarkRateLimit(
+                retryAfter: 'invalid',
+                reset: '${now.millisecondsSinceEpoch + 45000}'),
+            now: now),
+        const Duration(seconds: 45));
+  });
+
+  test('a daily free-tier quota error ends the stream without a retry',
+      () async {
+    final acc = ChatStreamAccumulator();
+    var attempts = 0;
+    await retryBenchmarkStream(acc, () async {
+      attempts++;
+      acc.addLine('data: {"error":{"code":429,"message":"Daily quota exceeded",'
+          '"metadata":{"limit_source":"openrouter_free_tier_daily"}}}');
+      return 200;
+    },
+        canRetry: () => true,
+        beforeRetry: () async {},
+        waitFor: (attempt, planned) => benchmarkRetryWait(
+              attempt: attempt,
+              planned: planned,
+              rateLimited: acc.errorCode == 429,
+              rateLimit: acc.rateLimit,
+            ),
+        backoff: noWait);
+    expect(attempts, 1);
+    expect(acc.error, 'Daily quota exceeded');
   });
 
   test('the wait a retry uses is what onRetry reports', () async {

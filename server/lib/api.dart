@@ -12,6 +12,7 @@ import 'account_database.dart';
 import 'ai_benchmark_store.dart';
 import 'ai_book_review.dart';
 import 'ai_detector_review.dart';
+import 'ai_effort.dart';
 import 'ai_image.dart';
 import 'ai_mode_routing.dart';
 import 'ai_mistral_models.dart';
@@ -3336,6 +3337,7 @@ class Api {
         'modeWeights': {
           for (final mode in modes.keys) mode: aiModeWeightTenths(mode) / 10,
         },
+        'effortWeights': assistantEffortWeights,
         'supportUsed': aiUsage.supportMessagesUsed(user.id),
         'supportLimit': kSupportMessagesPerDay,
         'webSearchUsed': aiUsage.webSearchesUsed(user.id),
@@ -3916,8 +3918,11 @@ class Api {
   /// the operator's key for this one call (the Tests tab's own-key runs).
   Future<(int, String)> _callAiUpstream(
       AiModeRoute route, Map<String, dynamic> upstreamBody,
-      {String? apiKey, Uri? endpoint}) {
+      {String? apiKey,
+      Uri? endpoint,
+      Duration timeout = const Duration(seconds: 60)}) {
     return _postJsonWithRetry(
+      timeout: timeout,
       endpoint ?? Uri.parse(route.upstream.endpoint),
       {
         HttpHeaders.authorizationHeader:
@@ -4022,6 +4027,16 @@ class Api {
               'over the coming days, or buy extra credits.');
     }
 
+    // The effort level is decided and charged here, never taken on trust:
+    // the client's own reasoning_effort is replaced by the level's.
+    final effort = planAssistantEffort(body, meteredMode);
+    body
+      ..remove('reasoning_effort')
+      ..['max_tokens'] = effort.maxTokens;
+    if (effort.reasoningEffort != null) {
+      body['reasoning_effort'] = effort.reasoningEffort;
+    }
+
     final candidates = await _aiCandidates(meteredMode,
         aiModeRoutes.resolve(mode, config.configuredAiUpstreams));
     Response paused() => errorResponse(503, 'model_disabled',
@@ -4036,12 +4051,21 @@ class Api {
         if (!last) continue;
         return errorResponse(400, 'unsupported_attachment', 'This model does not support image uploads. Choose another model or a text file.');
       }
-      final upstreamBody = _aiUpstreamBody(body, route);
+      final upstreamBody = _aiUpstreamBody(
+          body,
+          effort.overridesRoute
+              ? AiModeRoute(route.upstream, route.model,
+                  reasoningEffort: effort.reasoningEffort)
+              : route,
+          maxTokensCap: effort.level.maxTokens);
       final maxPrice = _applyAiMaxPrice(candidate.key, route, upstreamBody);
       final int status;
       final String responseBody;
       try {
-        (status, responseBody) = await _callAiUpstream(route, upstreamBody);
+        (status, responseBody) = await _callAiUpstream(route, upstreamBody,
+            timeout: effort.level.index >= AssistantEffort.extra.index
+                ? const Duration(seconds: 170)
+                : const Duration(seconds: 60));
       } catch (e) {
         if (!last) continue;
         return errorResponse(
@@ -4077,7 +4101,8 @@ class Api {
       // If the upstream somehow omits usage, charge a conservative flat
       // amount so metering can't be sidestepped by malformed responses.
       await aiUsage.charge(
-          user.id, tokens > 0 ? tokens : 500, meteredMode, budget);
+          user.id, tokens > 0 ? tokens : 500, meteredMode, budget,
+          effortTenths: effort.weightTenths);
       return Response(status,
           body: responseBody, headers: {'Content-Type': 'application/json'});
     }

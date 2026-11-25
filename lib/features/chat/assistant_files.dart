@@ -220,7 +220,10 @@ class AssistantArtifactStore {
         },
         'type': {
           'type': 'string',
-          'enum': assistantArtifactTypes.keys.toList(),
+          'enum': [
+            for (final type in assistantArtifactTypes.keys)
+              if (!assistantOfficeArtifactTypes.contains(type)) type,
+          ],
         },
         'content': {
           'type': 'string',
@@ -238,6 +241,11 @@ class AssistantArtifactStore {
   }) async {
     final type = input['type'];
     final content = input['content'];
+    if (type is String && assistantOfficeArtifactTypes.contains(type)) {
+      throw const FormatException(
+        'Word, PowerPoint and Excel files are made with create_office_file.',
+      );
+    }
     if (type is! String ||
         !assistantArtifactTypes.containsKey(type) ||
         (requiredType != null && type != requiredType)) {

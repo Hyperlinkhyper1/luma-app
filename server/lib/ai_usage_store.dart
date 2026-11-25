@@ -417,17 +417,20 @@ class AiUsageStore {
 
   /// Charges [tokens] of [mode] to the plan's allowance while it has room,
   /// and to purchased credits once it does not. Either way the better modes
-  /// cost more: the charge is the tokens times the mode's weight.
+  /// cost more: the charge is the tokens times the mode's weight, times
+  /// [effortTenths] / 10 for the Assistant's higher effort levels.
   Future<void> charge(
     String userId,
     int tokens,
     String mode,
-    AiTokenBudget budget,
-  ) async {
+    AiTokenBudget budget, {
+    int effortTenths = 10,
+  }) async {
+    final units = (aiUsageUnits(tokens, mode) * effortTenths + 5) ~/ 10;
     if (_windowsOpen(userId, budget) || creditBalance(userId) <= 0) {
-      return recordTokens(userId, tokens, mode: mode);
+      return recordTokens(userId, tokens, mode: mode, units: units);
     }
-    return _spendCredits(userId, aiUsageUnits(tokens, mode));
+    return _spendCredits(userId, units);
   }
 
   /// Like [charge] for a flat [cost], already in usage units, that must fit

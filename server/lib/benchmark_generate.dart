@@ -41,40 +41,99 @@ const kBenchmarkRetryBackoff = [Duration(seconds: 20), Duration(seconds: 60)];
 /// regular backoff only spends the restart on another 429.
 const kBenchmarkRateLimitBackoff = [Duration(minutes: 2), Duration(minutes: 5)];
 
-/// The longest a restart waits, whatever `Retry-After` asks for.
+/// A longer upstream cooldown ends the run with its rate-limit error.
 const kBenchmarkMaxRetryWait = Duration(minutes: 10);
 
+class BenchmarkRateLimit {
+  const BenchmarkRateLimit({
+    this.retryAfter,
+    this.reset,
+    this.dailyQuotaExhausted = false,
+  });
+
+  factory BenchmarkRateLimit.fromError(Object? error,
+      {String? retryAfter, String? reset}) {
+    final metadata = error is Map ? error['metadata'] : null;
+    final headers = metadata is Map ? metadata['headers'] : null;
+    String? header(String name) {
+      if (headers is! Map) return null;
+      for (final entry in headers.entries) {
+        if (entry.key.toString().toLowerCase() == name) {
+          return entry.value?.toString();
+        }
+      }
+      return null;
+    }
+
+    return BenchmarkRateLimit(
+      retryAfter: retryAfter ?? header(HttpHeaders.retryAfterHeader),
+      reset: reset ?? header('x-ratelimit-reset'),
+      dailyQuotaExhausted: metadata is Map &&
+          metadata['limit_source'] == 'openrouter_free_tier_daily',
+    );
+  }
+
+  factory BenchmarkRateLimit.fromResponse(String body, HttpHeaders headers) {
+    Object? error;
+    try {
+      final decoded = jsonDecode(body);
+      if (decoded is Map) error = decoded['error'];
+    } on FormatException {
+      // Some providers return plain text. The response headers still apply.
+    }
+    return BenchmarkRateLimit.fromError(error,
+        retryAfter: headers.value(HttpHeaders.retryAfterHeader),
+        reset: headers.value('x-ratelimit-reset'));
+  }
+
+  final String? retryAfter;
+  final String? reset;
+  final bool dailyQuotaExhausted;
+}
+
 /// How long to wait before restart [attempt] (0-based) of a run whose last
-/// request failed. A rate-limited request honours the upstream's
-/// `Retry-After` (seconds or an HTTP date), else [kBenchmarkRateLimitBackoff];
-/// anything else keeps [planned].
-Duration benchmarkRetryWait({
+/// request failed. A rate limit uses Retry-After, the OpenRouter reset time,
+/// or the fallback delay. Null means the run should end with the error.
+Duration? benchmarkRetryWait({
   required int attempt,
   required Duration planned,
   required bool rateLimited,
-  String? retryAfter,
+  BenchmarkRateLimit? rateLimit,
   DateTime? now,
 }) {
   if (!rateLimited) return planned;
+  if (rateLimit?.dailyQuotaExhausted ?? false) return null;
+  final time = now ?? DateTime.now();
   Duration? asked;
-  final value = retryAfter?.trim();
+  final value = rateLimit?.retryAfter?.trim();
   if (value != null && value.isNotEmpty) {
     final seconds = int.tryParse(value);
     if (seconds != null) {
-      asked = Duration(seconds: seconds);
+      if (seconds > kBenchmarkMaxRetryWait.inSeconds) return null;
+      asked =
+          Duration(seconds: seconds.clamp(0, kBenchmarkMaxRetryWait.inSeconds));
     } else {
       try {
-        asked = HttpDate.parse(value).difference(now ?? DateTime.now());
-      } on Object {
-        asked = null;
+        asked = HttpDate.parse(value).difference(time);
+      } on HttpException {
+        // Try the reset time when Retry-After is malformed.
       }
     }
   }
-  final fallback = kBenchmarkRateLimitBackoff[
-      attempt.clamp(0, kBenchmarkRateLimitBackoff.length - 1)];
-  var wait = asked ?? fallback;
-  if (wait < planned) wait = planned;
-  return wait > kBenchmarkMaxRetryWait ? kBenchmarkMaxRetryWait : wait;
+  final reset = int.tryParse(rateLimit?.reset?.trim() ?? '');
+  if (asked == null && reset != null && reset > 0) {
+    final ms = reset - time.millisecondsSinceEpoch;
+    if (ms > kBenchmarkMaxRetryWait.inMilliseconds) return null;
+    asked = Duration(
+        milliseconds: ms.clamp(0, kBenchmarkMaxRetryWait.inMilliseconds));
+  }
+  if (asked == null) {
+    return kBenchmarkRateLimitBackoff[
+        attempt.clamp(0, kBenchmarkRateLimitBackoff.length - 1)];
+  }
+  if (asked > kBenchmarkMaxRetryWait) return null;
+  const minimum = Duration(seconds: 1);
+  return asked < minimum ? minimum : asked;
 }
 
 /// The result of a streamed run that ended in a timeout. [total] is the
@@ -151,8 +210,8 @@ bool benchmarkStreamFailedTransiently(ChatStreamAccumulator acc) =>
 /// Restarts a request whose upstream failed on its own end: a dropped
 /// connection, an idle timeout, or a 5xx/timeout error (in the response or
 /// mid-stream). Each restart starts over, never joining two generated pages,
-/// and waits out [backoff] first ([waitFor] may lengthen a wait, for a rate
-/// limit say). Request errors and completed model
+/// and waits out [backoff] first. [waitFor] may override a delay or return
+/// null to give up. Request errors and completed model
 /// responses are never retried. [failedTransiently] says whether a returned
 /// result (an HTTP error status, say) is such a failure.
 Future<T> retryBenchmarkStream<T>(
@@ -162,7 +221,7 @@ Future<T> retryBenchmarkStream<T>(
   required Future<void> Function() beforeRetry,
   bool Function(T result)? failedTransiently,
   void Function(int retry, Duration wait)? onRetry,
-  Duration Function(int attempt, Duration planned)? waitFor,
+  Duration? Function(int attempt, Duration planned)? waitFor,
   List<Duration> backoff = kBenchmarkRetryBackoff,
 }) async {
   bool interrupted() =>
@@ -198,7 +257,9 @@ Future<T> retryBenchmarkStream<T>(
     }
 
     if (attempt >= backoff.length || !canRetry()) return giveUp();
-    final wait = waitFor?.call(attempt, backoff[attempt]) ?? backoff[attempt];
+    final planned = backoff[attempt];
+    final wait = waitFor == null ? planned : waitFor(attempt, planned);
+    if (wait == null) return giveUp();
     onRetry?.call(attempt + 1, wait);
     final until = DateTime.now().add(wait);
     while (canRetry() && DateTime.now().isBefore(until)) {
@@ -547,6 +608,7 @@ class ChatStreamAccumulator {
   String? error;
   int? errorCode;
   int? providerStatus;
+  BenchmarkRateLimit? rateLimit;
   bool done = false;
 
   String get content => _content.toString();
@@ -561,6 +623,7 @@ class ChatStreamAccumulator {
     error = null;
     errorCode = null;
     providerStatus = null;
+    rateLimit = null;
     done = false;
   }
 
@@ -583,6 +646,9 @@ class ChatStreamAccumulator {
     if (err is Map) {
       error = '${err['message'] ?? err['code'] ?? 'Upstream error'}';
       errorCode = int.tryParse('${err['code']}');
+      rateLimit = errorCode == HttpStatus.tooManyRequests
+          ? BenchmarkRateLimit.fromError(err)
+          : null;
     } else if (err is String) {
       error = err;
     }

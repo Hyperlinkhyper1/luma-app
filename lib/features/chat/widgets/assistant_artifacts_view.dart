@@ -2,28 +2,17 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:open_file/open_file.dart';
 
+import '../../../app/widgets.dart';
 import '../../../theme/luma_theme.dart';
 import '../data/chat_repository.dart';
+import 'assistant_file_panel.dart';
 import 'package:luma/l10n/app_localizations.dart';
 
-Future<void> openAssistantArtifact(BuildContext context, String path) async {
-  String? error;
-  try {
-    if (!await File(path).exists()) {
-      error = 'This file is no longer on this device.';
-    } else {
-      final result = await OpenFile.open(path);
-      if (result.type != ResultType.done) error = result.message;
-    }
-  } catch (failure) {
-    error = 'Could not open the file: $failure';
-  }
-  if (error != null && context.mounted) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
-  }
-}
+/// Opens a generated file in luma's own preview rather than handing it to
+/// whatever app the system has registered, which may be none.
+Future<void> openAssistantArtifact(BuildContext context, String path) =>
+    openAssistantFile(context, path);
 
 const _monthNames = [
   'January',
@@ -40,6 +29,8 @@ const _monthNames = [
   'December',
 ];
 
+enum _ArtifactFilter { all, images, files }
+
 class AssistantArtifactsView extends StatefulWidget {
   const AssistantArtifactsView({
     super.key,
@@ -55,7 +46,7 @@ class AssistantArtifactsView extends StatefulWidget {
 class _AssistantArtifactsViewState extends State<AssistantArtifactsView> {
   late final Future<void> _indexed = widget.repository.indexExistingArtifacts();
   String _query = '';
-  String _filter = 'All';
+  _ArtifactFilter _filter = _ArtifactFilter.all;
   bool _searching = false;
   @override
   Widget build(BuildContext context) => FutureBuilder<void>(
@@ -63,21 +54,16 @@ class _AssistantArtifactsViewState extends State<AssistantArtifactsView> {
     builder: (context, indexed) => StreamBuilder<List<ChatArtifactRecord>>(
       stream: widget.repository.watchArtifacts(),
       builder: (context, snapshot) {
-        final isDark = Theme.of(context).brightness == Brightness.dark;
-        final background = isDark
-            ? const Color(0xFF141414)
-            : context.luma.background;
-        final surface = isDark ? const Color(0xFF202020) : context.luma.surface;
-        final border = isDark ? const Color(0xFF333333) : context.luma.border;
-        final selectedFill = isDark
-            ? const Color(0xFF2C2C2C)
-            : context.luma.surfaceHover;
-        final files = (snapshot.data ?? const <ChatArtifactRecord>[])
+        final luma = context.luma;
+        final textTheme = Theme.of(context).textTheme;
+        final t = L.of(context);
+        final artifacts = snapshot.data ?? const <ChatArtifactRecord>[];
+        final files = artifacts
             .where(
               (file) =>
                   file.name.toLowerCase().contains(_query) &&
-                  (_filter == 'All' ||
-                      (_filter == 'Images') ==
+                  (_filter == _ArtifactFilter.all ||
+                      (_filter == _ArtifactFilter.images) ==
                           file.mimeType.startsWith('image/')),
             )
             .toList();
@@ -86,128 +72,112 @@ class _AssistantArtifactsViewState extends State<AssistantArtifactsView> {
           final date = file.createdAt.toLocal();
           months.putIfAbsent(_monthNames[date.month - 1], () => []).add(file);
         }
-        return ColoredBox(
-          color: background,
-          child: Align(
-            alignment: Alignment.topCenter,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1000),
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(24, 48, 24, 40),
-                children: [
+        return Align(
+          alignment: Alignment.topCenter,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1000),
+            child: ListView(
+              padding: context.isPhoneWidth
+                  ? const EdgeInsets.fromLTRB(16, 24, 16, 32)
+                  : const EdgeInsets.fromLTRB(24, 40, 24, 40),
+              children: [
+                Semantics(
+                  header: true,
+                  child: Text(
+                    t.assistantArtifactsTitle,
+                    style: textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: LumaSegmentedTabs(
+                        tabs: [t.commonAll, 'Images', 'Files'],
+                        selectedIndex: _filter.index,
+                        onSelect: (index) => setState(
+                          () => _filter = _ArtifactFilter.values[index],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      tooltip: t.commonSearch,
+                      isSelected: _searching,
+                      icon: Icon(
+                        Icons.search_rounded,
+                        color: luma.textSecondary,
+                      ),
+                      selectedIcon: Icon(
+                        Icons.search_rounded,
+                        color: luma.accent,
+                      ),
+                      onPressed: () => setState(() {
+                        _searching = !_searching;
+                        if (!_searching) _query = '';
+                      }),
+                    ),
+                  ],
+                ),
+                if (_searching)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: TextField(
+                      autofocus: true,
+                      onChanged: (value) =>
+                          setState(() => _query = value.toLowerCase().trim()),
+                      decoration: const InputDecoration(
+                        prefixIcon: Icon(Icons.search_rounded),
+                        hintText: 'Search artifacts',
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 24),
+                if (snapshot.hasError || indexed.hasError)
                   Text(
-                    L.of(context).assistantArtifactsTitle,
-                    style: TextStyle(
-                      fontSize: 30,
-                      fontFamily: 'Georgia',
-                      fontFamilyFallback: const ['Times New Roman', 'serif'],
-                      fontWeight: FontWeight.w500,
-                      color: context.luma.textPrimary,
-                    ),
+                    t.assistantArtifactsLoadFailed,
+                    style: TextStyle(color: luma.danger),
+                  )
+                else if (!snapshot.hasData)
+                  const LinearProgressIndicator()
+                else if (files.isEmpty)
+                  LumaEmptyState(
+                    icon: artifacts.isEmpty
+                        ? Icons.folder_open_rounded
+                        : Icons.search_off_rounded,
+                    title: artifacts.isEmpty
+                        ? t.assistantArtifactsEmpty
+                        : t.commonNoResults,
                   ),
-                  const SizedBox(height: 22),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: Row(
-                            children: [
-                              for (final filter in ['All', 'Images', 'Files'])
-                                Padding(
-                                  padding: const EdgeInsets.only(right: 4),
-                                  child: InkWell(
-                                    borderRadius: BorderRadius.circular(8),
-                                    onTap: () =>
-                                        setState(() => _filter = filter),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 7,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: _filter == filter
-                                            ? selectedFill
-                                            : Colors.transparent,
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Text(
-                                        filter,
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: _filter == filter
-                                              ? FontWeight.w600
-                                              : FontWeight.w400,
-                                          color: _filter == filter
-                                              ? context.luma.textPrimary
-                                              : context.luma.textSecondary,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      IconButton(
-                        tooltip: 'Search',
-                        icon: Icon(
-                          Icons.search_rounded,
-                          size: 20,
-                          color: _searching
-                              ? context.luma.textPrimary
-                              : context.luma.textSecondary,
-                        ),
-                        onPressed: () => setState(() {
-                          _searching = !_searching;
-                          if (!_searching) _query = '';
-                        }),
-                      ),
-                    ],
-                  ),
-                  if (_searching)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 6),
-                      child: TextField(
-                        autofocus: true,
-                        onChanged: (value) =>
-                            setState(() => _query = value.toLowerCase().trim()),
-                        decoration: InputDecoration(
-                          prefixIcon: const Icon(Icons.search_rounded),
-                          hintText: 'Search artifacts',
-                        ),
-                      ),
-                    ),
-                  const SizedBox(height: 28),
-                  if (snapshot.hasError || indexed.hasError)
-                    Text(L.of(context).assistantArtifactsLoadFailed),
-                  if (!snapshot.hasData) const LinearProgressIndicator(),
-                  if (snapshot.hasData && files.isEmpty)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 30),
-                      child: Text(
-                        L.of(context).assistantArtifactsEmpty,
-                        style: TextStyle(color: context.luma.textMuted),
-                      ),
-                    ),
-                  for (final entry in months.entries) ...[
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
+                for (final entry in months.entries) ...[
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Semantics(
+                      header: true,
                       child: Text(
                         entry.key,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: context.luma.textMuted,
+                        style: textTheme.labelLarge?.copyWith(
+                          color: luma.textSecondary,
                         ),
                       ),
                     ),
-                    for (final file in entry.value)
-                      _row(context, file, surface, border),
-                    const SizedBox(height: 22),
-                  ],
+                  ),
+                  LumaCard(
+                    padding: const EdgeInsets.all(6),
+                    child: Material(
+                      type: MaterialType.transparency,
+                      child: Column(
+                        children: [
+                          for (final file in entry.value) _row(context, file),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
                 ],
-              ),
+              ],
             ),
           ),
         );
@@ -215,97 +185,105 @@ class _AssistantArtifactsViewState extends State<AssistantArtifactsView> {
     ),
   );
 
-  Widget _row(
-    BuildContext context,
-    ChatArtifactRecord file,
-    Color surface,
-    Color border,
-  ) {
+  Widget _row(BuildContext context, ChatArtifactRecord file) {
+    final luma = context.luma;
+    final decor = context.lumaDecor;
+    final textTheme = Theme.of(context).textTheme;
+    final t = L.of(context);
     final isPicture = file.mimeType.startsWith('image/');
     final canPreview = isPicture && file.mimeType != 'image/svg+xml';
     final date = file.createdAt.toLocal();
-    final fallbackIcon = Icon(
-      isPicture ? Icons.image_outlined : Icons.code_rounded,
-      size: 20,
-      color: context.luma.textSecondary,
+    const thumbnailSize = 42.0;
+    final fallbackIcon = LumaIconBadge(
+      icon: isPicture ? Icons.image_outlined : Icons.insert_drive_file_outlined,
+      color: luma.accent,
+      size: thumbnailSize,
+    );
+    final created = Text(
+      'Created ${_monthNames[date.month - 1].substring(0, 3)} ${date.day}',
+      style: textTheme.bodySmall?.copyWith(color: luma.textSecondary),
     );
     return InkWell(
-      borderRadius: BorderRadius.circular(10),
+      customBorder: decor.pillShape(),
+      hoverColor: luma.surfaceHover,
       onTap: () => openAssistantArtifact(context, file.path),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6),
+        padding: const EdgeInsetsDirectional.fromSTEB(8, 6, 0, 6),
         child: LayoutBuilder(
-          builder: (context, constraints) => Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                clipBehavior: Clip.antiAlias,
-                decoration: BoxDecoration(
-                  color: surface,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: border),
-                ),
-                child: canPreview
-                    ? Image.file(
-                        File(file.path),
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => fallbackIcon,
-                      )
-                    : fallbackIcon,
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Text(
-                  file.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                    color: context.luma.textPrimary,
-                  ),
-                ),
-              ),
-              if (constraints.maxWidth >= 360)
-                Text(
-                  'Created ${_monthNames[date.month - 1].substring(0, 3)} ${date.day}',
-                  style: TextStyle(fontSize: 13, color: context.luma.textMuted),
-                ),
-              PopupMenuButton<String>(
-                tooltip: 'More',
-                icon: Icon(
-                  Icons.more_vert_rounded,
-                  size: 18,
-                  color: context.luma.textSecondary,
-                ),
-                onSelected: (value) {
-                  if (value == 'open') {
-                    openAssistantArtifact(context, file.path);
-                  } else if (value == 'save') {
-                    _save(context, file);
-                  } else if (value == 'chat' && file.conversationId != null) {
-                    widget.onOpenChat(file.conversationId!);
-                  }
-                },
-                itemBuilder: (_) => [
-                  PopupMenuItem(
-                    value: 'open',
-                    child: Text(L.of(context).commonOpen),
-                  ),
-                  PopupMenuItem(
-                    value: 'save',
-                    child: Text(L.of(context).assistantArtifactSaveCopy),
-                  ),
-                  if (file.conversationId != null)
-                    PopupMenuItem(
-                      value: 'chat',
-                      child: Text(L.of(context).assistantArtifactViewChat),
+          builder: (context, constraints) {
+            final showInlineDate =
+                constraints.maxWidth >= 360 &&
+                MediaQuery.textScalerOf(context).scale(12) <= 16;
+            return Row(
+              children: [
+                if (canPreview)
+                  ClipPath.shape(
+                    shape: decor.shape(
+                      BorderRadius.circular(
+                        thumbnailSize * decor.badgeRadiusFactor,
+                      ),
                     ),
-                ],
-              ),
-            ],
-          ),
+                    child: Image.file(
+                      File(file.path),
+                      width: thumbnailSize,
+                      height: thumbnailSize,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => fallbackIcon,
+                    ),
+                  )
+                else
+                  fallbackIcon,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        file.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: textTheme.titleMedium,
+                      ),
+                      if (!showInlineDate) created,
+                    ],
+                  ),
+                ),
+                if (showInlineDate) ...[const SizedBox(width: 16), created],
+                PopupMenuButton<String>(
+                  tooltip: t.commonMore,
+                  color: luma.surface,
+                  surfaceTintColor: Colors.transparent,
+                  shape: decor.pillShape(side: BorderSide(color: luma.border)),
+                  icon: Icon(
+                    Icons.more_vert_rounded,
+                    size: 18,
+                    color: luma.textSecondary,
+                  ),
+                  onSelected: (value) {
+                    if (value == 'open') {
+                      openAssistantArtifact(context, file.path);
+                    } else if (value == 'save') {
+                      _save(context, file);
+                    } else if (value == 'chat' && file.conversationId != null) {
+                      widget.onOpenChat(file.conversationId!);
+                    }
+                  },
+                  itemBuilder: (_) => [
+                    PopupMenuItem(value: 'open', child: Text(t.commonOpen)),
+                    PopupMenuItem(
+                      value: 'save',
+                      child: Text(t.assistantArtifactSaveCopy),
+                    ),
+                    if (file.conversationId != null)
+                      PopupMenuItem(
+                        value: 'chat',
+                        child: Text(t.assistantArtifactViewChat),
+                      ),
+                  ],
+                ),
+              ],
+            );
+          },
         ),
       ),
     );

@@ -6,7 +6,7 @@ import test from 'node:test';
 const source = readFileSync(new URL('../lib/api_benchmark_generate.dart', import.meta.url), 'utf8');
 const script = source.match(/const _bgScript = r'''([\s\S]*?)''';/)[1];
 
-async function render(jobs) {
+async function render(jobs, now = Date.now()) {
   const elements = new Map();
   function element(id) {
     if (id === 'aiPickerData') return null;
@@ -18,6 +18,7 @@ async function render(jobs) {
     return elements.get(id);
   }
   runInNewContext(script, {
+    Date: { now: () => now },
     document: { getElementById: element, addEventListener() {}, querySelector() { return null; }, querySelectorAll() { return []; } },
     window: { addEventListener() {} },
     setTimeout() {}, clearTimeout() {},
@@ -72,4 +73,15 @@ test('every outcome renders independently of lifecycle and escapes provider deta
   assert.match(retrying, /Upstream retries: 1 \/ 2/);
   assert.match(retrying, /Last upstream failure: Upstream idle timeout exceeded/);
   assert.match(await render([{ ...job, status: 'stopped' }]), />Stopped</);
+});
+
+test('a rate limited run shows the cooldown and the provider detail', async () => {
+  const now = 1760000000000;
+  const html = await render([{ ...job, status: 'running', phase: 'rate_limited',
+    upstreamRetries: 2, upstreamRetryLimit: 2, retryAtMs: now + 120000,
+    retryReason: 'HTTP 429: Rate limit exceeded: free-models-per-min.',
+  }], now);
+  assert.match(html, />Rate limited, waiting to retry</);
+  assert.match(html, /Retry in 2m 00s/);
+  assert.match(html, /Last upstream failure: HTTP 429: Rate limit exceeded: free-models-per-min\./);
 });

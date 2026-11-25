@@ -123,8 +123,7 @@ final List<AiProviderInfo> kAiProviders = [
   ),
 ];
 
-/// The providers the user brings their own key for, in the order the API
-/// screen and the model picker list them.
+/// The providers the user brings their own key for, in API settings order.
 List<AiProviderInfo> get kApiKeyProviders => [
   for (final p in kAiProviders)
     if (p.modelFor != null) p,

@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import '../../account/plan.dart';
 import '../../l10n/current_l.dart';
+import 'assistant_auto_router.dart';
 import 'providers/ai_client.dart';
 import 'providers/ai_modes.dart';
 import 'providers/ai_providers.dart';
@@ -18,11 +19,14 @@ bool composeModesUnlocked(String? planId) =>
 
 /// Deep research runs on Nebula and Pulsar, whose agents work in parallel,
 /// and on the on-device Luma Assistant, whose agents take turns because
-/// there is only one local model to go around.
+/// there is only one local model to go around. Luma Auto runs it on the
+/// strongest mode the plan has.
 bool deepResearchAvailable(String providerId, String aiMode) {
   if (providerId == AiProviderId.local.name) return true;
   return providerId == AiProviderId.google.name &&
-      (aiMode == AiMode.smarter.name || aiMode == AiMode.smartest.name);
+      (aiMode == AiMode.smarter.name ||
+          aiMode == AiMode.smartest.name ||
+          aiMode == kAutoAiMode);
 }
 
 bool deepResearchRunsInParallel(String providerId) =>
@@ -45,14 +49,32 @@ class AssistantActivity {
     required this.done,
     required this.parallel,
     this.writing = false,
-  }) : mode = AssistantComposeMode.deepResearch;
+  }) : mode = AssistantComposeMode.deepResearch,
+       round = 0,
+       rounds = 0,
+       improving = false;
 
   const AssistantActivity.picture()
     : mode = AssistantComposeMode.picture,
       questions = const [],
       done = const {},
       parallel = false,
-      writing = false;
+      writing = false,
+      round = 0,
+      rounds = 0,
+      improving = false;
+
+  /// Ultra Reasoning checking its draft ([improving] false) or rewriting it
+  /// to fix what the check found, in [round] of at most [rounds].
+  const AssistantActivity.review({
+    required this.round,
+    required this.rounds,
+    this.improving = false,
+  }) : mode = AssistantComposeMode.deepResearch,
+       questions = const [],
+       done = const {},
+       parallel = false,
+       writing = false;
 
   final AssistantComposeMode mode;
 
@@ -65,6 +87,12 @@ class AssistantActivity {
 
   /// Every agent is back and the final answer is being written.
   final bool writing;
+
+  final int round;
+  final int rounds;
+  final bool improving;
+
+  bool get reviewing => rounds > 0;
 }
 
 /// Deep research: a lead call splits the question into focused

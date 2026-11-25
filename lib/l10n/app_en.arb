@@ -992,6 +992,22 @@
   "assistantSuggestWeekPrompt": "What's on my calendar this week?",
   "assistantSuggestNotePrompt": "Save a note that says ",
   "assistantToggleSidebar": "Toggle sidebar",
+  "assistantDetailsTitle": "Chat details",
+  "assistantDetailsShow": "Show chat details",
+  "assistantDetailsHide": "Hide chat details",
+  "assistantDetailsEnvironment": "Environment",
+  "assistantDetailsChatMode": "Chat",
+  "assistantDetailsContext": "Context",
+  "assistantDetailsContextUsed": "{percent}% used",
+  "@assistantDetailsContextUsed": {"placeholders": {"percent": {"type": "int"}}},
+  "assistantDetailsContextPending": "Fills in after the first reply.",
+  "assistantDetailsInputTokens": "Last input",
+  "assistantDetailsOutputTokens": "Last output",
+  "assistantDetailsYourMessages": "Your messages",
+  "assistantDetailsReplies": "Replies",
+  "assistantDetailsFiles": "Files",
+  "assistantDetailsNoFiles": "Files the assistant makes in this chat show up here.",
+  "assistantDetailsFileMissing": "missing",
   "assistantChats": "Chats",
   "assistantUsage": "Usage",
   "assistantContextWindow": "Context window",
@@ -1112,6 +1128,11 @@
   "assistantApiInUse": "In use",
   "assistantApiGetKey": "Get a key",
   "assistantApiManage": "Manage API keys",
+  "assistantApiAddKey": "Add API key",
+  "assistantApiAddModel": "Add model",
+  "assistantApiProvider": "Provider",
+  "assistantApiModelId": "Model ID",
+  "assistantApiSaveKeyFailed": "Could not save the API key.",
   "aiSettingsApiKeysMoved": "API keys for Claude, OpenAI, OpenRouter and Google are managed in the Assistant, under Settings → API.",
   "assistantSettingsLanguage": "Response language",
   "assistantSettingsLanguageHint": "The language the assistant answers you in.",
@@ -25517,6 +25538,8 @@
   "assistantArtifactSaveCopy": "Save a copy",
   "assistantArtifactViewChat": "View chat",
   "assistantProjectsAll": "All projects",
+  "assistantProjectsTitle": "Projects",
+  "assistantProjectsSubtitle": "Keep chats and memory together for each project.",
   "assistantProjectsNew": "New project",
   "assistantProjectsLoadFailed": "Could not load projects.",
   "assistantProjectsEmpty": "Create your first project to start a dedicated chat space.",
@@ -25526,6 +25549,36 @@
   "assistantProjectNoChats": "No chats in this project yet.",
   "assistantProjectDelete": "Delete project",
   "assistantProjectDeleteMessage": "This removes the project and its memory. Its chats return to the main chat list; generated files stay in Artifacts.",
+  "assistantProjectChatCount": "{count, plural, =0{No chats} =1{1 chat} other{{count} chats}}",
+  "@assistantProjectChatCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "assistantProjectMemorySaved": "Memory saved",
+  "assistantProjectMemoryNone": "No memory yet",
+  "assistantProjectLastActive": "Active {date}",
+  "@assistantProjectLastActive": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "assistantProjectDescriptionFallback": "Chats here use your global memory and this project’s memory.",
+  "assistantProjectNoChatsTitle": "Start the first chat",
+  "assistantProjectNoChatsBody": "Chats you start here stay grouped in this project and share its memory.",
+  "assistantProjectStartChat": "Start a chat",
+  "assistantProjectMemoryEmpty": "No project memory yet. Add notes here or ask the assistant to remember a project fact.",
+  "assistantProjectAddMemory": "Add memory",
+  "assistantProjectHowTitle": "How projects work",
+  "assistantProjectHowChats": "Every chat started here is filed under this project.",
+  "assistantProjectHowMemory": "Project memory is only shared with this project’s chats.",
+  "assistantProjectHowDelete": "Deleting the project keeps its chats and files.",
+  "assistantProjectNoArtifactsTitle": "No artifacts yet",
+  "assistantProjectNoArtifactsBody": "Pictures and files the assistant makes in this project’s chats show up here.",
   "assistantUploadFiles": "Upload files",
   "assistantUploadFilesHint": "Text, PDF and supported images",
   "assistantRequiresOrbitOrNova": "Requires Orbit or Nova",
@@ -25570,5 +25623,116 @@
   "steamCs2InventoryPrivacy": "Open Steam privacy settings",
   "steamCs2InventoryRefreshNote": "While CS2 Market is open, luma checks your inventory every six hours. Items you sell or trade away are removed when it next checks. Disconnecting keeps imported items.",
   "steamCs2Disconnect": "Disconnect",
-  "steamCs2RefreshInventory": "Refresh inventory"
+  "steamCs2RefreshInventory": "Refresh inventory",
+  "assistantPreviewNotFound": "This file is no longer on this device.",
+  "assistantPreviewNoApp": "No app on this device opens this kind of file.",
+  "assistantPreviewSaveError": "The file is open in another app, so only luma's copy is up to date.",
+  "assistantPreviewOpenExternally": "Open in another app",
+  "assistantPreviewShowInFolder": "Show in folder",
+  "assistantPreviewClose": "Close preview",
+  "assistantPreviewWorking": "Working on the file…",
+  "assistantPreviewReadingOutline": "Reading the outline",
+  "assistantPreviewReading": "Reading {part}",
+  "@assistantPreviewReading": {
+    "placeholders": {
+      "part": {
+        "type": "String"
+      }
+    }
+  },
+  "assistantPreviewWriting": "Writing {part}",
+  "@assistantPreviewWriting": {
+    "placeholders": {
+      "part": {
+        "type": "String"
+      }
+    }
+  },
+  "assistantPreviewDeleting": "Removing {part}",
+  "@assistantPreviewDeleting": {
+    "placeholders": {
+      "part": {
+        "type": "String"
+      }
+    }
+  },
+  "assistantPreviewPartBlock": "block {range}",
+  "@assistantPreviewPartBlock": {
+    "placeholders": {
+      "range": {
+        "type": "String"
+      }
+    }
+  },
+  "assistantPreviewPartSlide": "slide {range}",
+  "@assistantPreviewPartSlide": {
+    "placeholders": {
+      "range": {
+        "type": "String"
+      }
+    }
+  },
+  "assistantPreviewTagReading": "Reading",
+  "assistantPreviewTagWriting": "Writing",
+  "assistantPreviewTagDeleting": "Removing",
+  "assistantPreviewEmptyDocument": "The assistant is starting this file…",
+  "assistantPreviewUnsupported": "luma can't preview this file.",
+  "assistantPreviewNoPdfText": "This PDF has no readable text.",
+  "assistantEffortTitle": "Effort",
+  "assistantEffortDescription": "Higher effort means more thorough responses, but takes longer and uses your limits faster.",
+  "assistantEffortLow": "Low",
+  "assistantEffortMedium": "Medium",
+  "assistantEffortHigh": "High",
+  "assistantEffortExtra": "Extra",
+  "assistantEffortMax": "Max",
+  "assistantEffortRecommended": "Recommended",
+  "assistantEffortUsage": "{multiplier}× or more usage",
+  "@assistantEffortUsage": {
+    "placeholders": {
+      "multiplier": {
+        "type": "String"
+      }
+    }
+  },
+  "assistantEffortBadge": "{level} effort",
+  "@assistantEffortBadge": {
+    "placeholders": {
+      "level": {
+        "type": "String"
+      }
+    }
+  },
+  "assistantUltraReasoning": "Ultra Reasoning",
+  "assistantUltraReasoningDescription": "Researches first, then checks and improves its answer over several rounds at Max effort. Takes much longer and uses far more of your limits.",
+  "assistantUltraReasoningPlan": "Requires Nova",
+  "assistantUltraChecking": "Checking the answer ({round}/{rounds})",
+  "@assistantUltraChecking": {
+    "placeholders": {
+      "round": {
+        "type": "int"
+      },
+      "rounds": {
+        "type": "int"
+      }
+    }
+  },
+  "assistantUltraImproving": "Improving the answer ({round}/{rounds})",
+  "@assistantUltraImproving": {
+    "placeholders": {
+      "round": {
+        "type": "int"
+      },
+      "rounds": {
+        "type": "int"
+      }
+    }
+  },
+  "assistantUltraBadge": "{checks, plural, =1{Ultra Reasoning · checked once} other{Ultra Reasoning · checked {checks} times}}",
+  "@assistantUltraBadge": {
+    "placeholders": {
+      "checks": {
+        "type": "int"
+      }
+    }
+  }
 }

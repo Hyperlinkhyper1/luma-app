@@ -3269,6 +3269,96 @@ abstract class L {
   /// **'Toggle sidebar'**
   String get assistantToggleSidebar;
 
+  /// No description provided for @assistantDetailsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Chat details'**
+  String get assistantDetailsTitle;
+
+  /// No description provided for @assistantDetailsShow.
+  ///
+  /// In en, this message translates to:
+  /// **'Show chat details'**
+  String get assistantDetailsShow;
+
+  /// No description provided for @assistantDetailsHide.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide chat details'**
+  String get assistantDetailsHide;
+
+  /// No description provided for @assistantDetailsEnvironment.
+  ///
+  /// In en, this message translates to:
+  /// **'Environment'**
+  String get assistantDetailsEnvironment;
+
+  /// No description provided for @assistantDetailsChatMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Chat'**
+  String get assistantDetailsChatMode;
+
+  /// No description provided for @assistantDetailsContext.
+  ///
+  /// In en, this message translates to:
+  /// **'Context'**
+  String get assistantDetailsContext;
+
+  /// No description provided for @assistantDetailsContextUsed.
+  ///
+  /// In en, this message translates to:
+  /// **'{percent}% used'**
+  String assistantDetailsContextUsed(int percent);
+
+  /// No description provided for @assistantDetailsContextPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Fills in after the first reply.'**
+  String get assistantDetailsContextPending;
+
+  /// No description provided for @assistantDetailsInputTokens.
+  ///
+  /// In en, this message translates to:
+  /// **'Last input'**
+  String get assistantDetailsInputTokens;
+
+  /// No description provided for @assistantDetailsOutputTokens.
+  ///
+  /// In en, this message translates to:
+  /// **'Last output'**
+  String get assistantDetailsOutputTokens;
+
+  /// No description provided for @assistantDetailsYourMessages.
+  ///
+  /// In en, this message translates to:
+  /// **'Your messages'**
+  String get assistantDetailsYourMessages;
+
+  /// No description provided for @assistantDetailsReplies.
+  ///
+  /// In en, this message translates to:
+  /// **'Replies'**
+  String get assistantDetailsReplies;
+
+  /// No description provided for @assistantDetailsFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Files'**
+  String get assistantDetailsFiles;
+
+  /// No description provided for @assistantDetailsNoFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Files the assistant makes in this chat show up here.'**
+  String get assistantDetailsNoFiles;
+
+  /// No description provided for @assistantDetailsFileMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'missing'**
+  String get assistantDetailsFileMissing;
+
   /// No description provided for @assistantChats.
   ///
   /// In en, this message translates to:
@@ -3622,6 +3712,36 @@ abstract class L {
   /// In en, this message translates to:
   /// **'Manage API keys'**
   String get assistantApiManage;
+
+  /// No description provided for @assistantApiAddKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Add API key'**
+  String get assistantApiAddKey;
+
+  /// No description provided for @assistantApiAddModel.
+  ///
+  /// In en, this message translates to:
+  /// **'Add model'**
+  String get assistantApiAddModel;
+
+  /// No description provided for @assistantApiProvider.
+  ///
+  /// In en, this message translates to:
+  /// **'Provider'**
+  String get assistantApiProvider;
+
+  /// No description provided for @assistantApiModelId.
+  ///
+  /// In en, this message translates to:
+  /// **'Model ID'**
+  String get assistantApiModelId;
+
+  /// No description provided for @assistantApiSaveKeyFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not save the API key.'**
+  String get assistantApiSaveKeyFailed;
 
   /// No description provided for @aiSettingsApiKeysMoved.
   ///
@@ -68723,6 +68843,18 @@ abstract class L {
   /// **'All projects'**
   String get assistantProjectsAll;
 
+  /// No description provided for @assistantProjectsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Projects'**
+  String get assistantProjectsTitle;
+
+  /// No description provided for @assistantProjectsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep chats and memory together for each project.'**
+  String get assistantProjectsSubtitle;
+
   /// No description provided for @assistantProjectsNew.
   ///
   /// In en, this message translates to:
@@ -68776,6 +68908,102 @@ abstract class L {
   /// In en, this message translates to:
   /// **'This removes the project and its memory. Its chats return to the main chat list; generated files stay in Artifacts.'**
   String get assistantProjectDeleteMessage;
+
+  /// No description provided for @assistantProjectChatCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No chats} =1{1 chat} other{{count} chats}}'**
+  String assistantProjectChatCount(int count);
+
+  /// No description provided for @assistantProjectMemorySaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Memory saved'**
+  String get assistantProjectMemorySaved;
+
+  /// No description provided for @assistantProjectMemoryNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No memory yet'**
+  String get assistantProjectMemoryNone;
+
+  /// No description provided for @assistantProjectLastActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Active {date}'**
+  String assistantProjectLastActive(String date);
+
+  /// No description provided for @assistantProjectDescriptionFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'Chats here use your global memory and this project’s memory.'**
+  String get assistantProjectDescriptionFallback;
+
+  /// No description provided for @assistantProjectNoChatsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Start the first chat'**
+  String get assistantProjectNoChatsTitle;
+
+  /// No description provided for @assistantProjectNoChatsBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Chats you start here stay grouped in this project and share its memory.'**
+  String get assistantProjectNoChatsBody;
+
+  /// No description provided for @assistantProjectStartChat.
+  ///
+  /// In en, this message translates to:
+  /// **'Start a chat'**
+  String get assistantProjectStartChat;
+
+  /// No description provided for @assistantProjectMemoryEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No project memory yet. Add notes here or ask the assistant to remember a project fact.'**
+  String get assistantProjectMemoryEmpty;
+
+  /// No description provided for @assistantProjectAddMemory.
+  ///
+  /// In en, this message translates to:
+  /// **'Add memory'**
+  String get assistantProjectAddMemory;
+
+  /// No description provided for @assistantProjectHowTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'How projects work'**
+  String get assistantProjectHowTitle;
+
+  /// No description provided for @assistantProjectHowChats.
+  ///
+  /// In en, this message translates to:
+  /// **'Every chat started here is filed under this project.'**
+  String get assistantProjectHowChats;
+
+  /// No description provided for @assistantProjectHowMemory.
+  ///
+  /// In en, this message translates to:
+  /// **'Project memory is only shared with this project’s chats.'**
+  String get assistantProjectHowMemory;
+
+  /// No description provided for @assistantProjectHowDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleting the project keeps its chats and files.'**
+  String get assistantProjectHowDelete;
+
+  /// No description provided for @assistantProjectNoArtifactsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No artifacts yet'**
+  String get assistantProjectNoArtifactsTitle;
+
+  /// No description provided for @assistantProjectNoArtifactsBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Pictures and files the assistant makes in this project’s chats show up here.'**
+  String get assistantProjectNoArtifactsBody;
 
   /// No description provided for @assistantUploadFiles.
   ///
@@ -69046,6 +69274,216 @@ abstract class L {
   /// In en, this message translates to:
   /// **'Refresh inventory'**
   String get steamCs2RefreshInventory;
+
+  /// No description provided for @assistantPreviewNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'This file is no longer on this device.'**
+  String get assistantPreviewNotFound;
+
+  /// No description provided for @assistantPreviewNoApp.
+  ///
+  /// In en, this message translates to:
+  /// **'No app on this device opens this kind of file.'**
+  String get assistantPreviewNoApp;
+
+  /// No description provided for @assistantPreviewSaveError.
+  ///
+  /// In en, this message translates to:
+  /// **'The file is open in another app, so only luma\'s copy is up to date.'**
+  String get assistantPreviewSaveError;
+
+  /// No description provided for @assistantPreviewOpenExternally.
+  ///
+  /// In en, this message translates to:
+  /// **'Open in another app'**
+  String get assistantPreviewOpenExternally;
+
+  /// No description provided for @assistantPreviewShowInFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Show in folder'**
+  String get assistantPreviewShowInFolder;
+
+  /// No description provided for @assistantPreviewClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close preview'**
+  String get assistantPreviewClose;
+
+  /// No description provided for @assistantPreviewWorking.
+  ///
+  /// In en, this message translates to:
+  /// **'Working on the file…'**
+  String get assistantPreviewWorking;
+
+  /// No description provided for @assistantPreviewReadingOutline.
+  ///
+  /// In en, this message translates to:
+  /// **'Reading the outline'**
+  String get assistantPreviewReadingOutline;
+
+  /// No description provided for @assistantPreviewReading.
+  ///
+  /// In en, this message translates to:
+  /// **'Reading {part}'**
+  String assistantPreviewReading(String part);
+
+  /// No description provided for @assistantPreviewWriting.
+  ///
+  /// In en, this message translates to:
+  /// **'Writing {part}'**
+  String assistantPreviewWriting(String part);
+
+  /// No description provided for @assistantPreviewDeleting.
+  ///
+  /// In en, this message translates to:
+  /// **'Removing {part}'**
+  String assistantPreviewDeleting(String part);
+
+  /// No description provided for @assistantPreviewPartBlock.
+  ///
+  /// In en, this message translates to:
+  /// **'block {range}'**
+  String assistantPreviewPartBlock(String range);
+
+  /// No description provided for @assistantPreviewPartSlide.
+  ///
+  /// In en, this message translates to:
+  /// **'slide {range}'**
+  String assistantPreviewPartSlide(String range);
+
+  /// No description provided for @assistantPreviewTagReading.
+  ///
+  /// In en, this message translates to:
+  /// **'Reading'**
+  String get assistantPreviewTagReading;
+
+  /// No description provided for @assistantPreviewTagWriting.
+  ///
+  /// In en, this message translates to:
+  /// **'Writing'**
+  String get assistantPreviewTagWriting;
+
+  /// No description provided for @assistantPreviewTagDeleting.
+  ///
+  /// In en, this message translates to:
+  /// **'Removing'**
+  String get assistantPreviewTagDeleting;
+
+  /// No description provided for @assistantPreviewEmptyDocument.
+  ///
+  /// In en, this message translates to:
+  /// **'The assistant is starting this file…'**
+  String get assistantPreviewEmptyDocument;
+
+  /// No description provided for @assistantPreviewUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'luma can\'t preview this file.'**
+  String get assistantPreviewUnsupported;
+
+  /// No description provided for @assistantPreviewNoPdfText.
+  ///
+  /// In en, this message translates to:
+  /// **'This PDF has no readable text.'**
+  String get assistantPreviewNoPdfText;
+
+  /// No description provided for @assistantEffortTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Effort'**
+  String get assistantEffortTitle;
+
+  /// No description provided for @assistantEffortDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Higher effort means more thorough responses, but takes longer and uses your limits faster.'**
+  String get assistantEffortDescription;
+
+  /// No description provided for @assistantEffortLow.
+  ///
+  /// In en, this message translates to:
+  /// **'Low'**
+  String get assistantEffortLow;
+
+  /// No description provided for @assistantEffortMedium.
+  ///
+  /// In en, this message translates to:
+  /// **'Medium'**
+  String get assistantEffortMedium;
+
+  /// No description provided for @assistantEffortHigh.
+  ///
+  /// In en, this message translates to:
+  /// **'High'**
+  String get assistantEffortHigh;
+
+  /// No description provided for @assistantEffortExtra.
+  ///
+  /// In en, this message translates to:
+  /// **'Extra'**
+  String get assistantEffortExtra;
+
+  /// No description provided for @assistantEffortMax.
+  ///
+  /// In en, this message translates to:
+  /// **'Max'**
+  String get assistantEffortMax;
+
+  /// No description provided for @assistantEffortRecommended.
+  ///
+  /// In en, this message translates to:
+  /// **'Recommended'**
+  String get assistantEffortRecommended;
+
+  /// No description provided for @assistantEffortUsage.
+  ///
+  /// In en, this message translates to:
+  /// **'{multiplier}× or more usage'**
+  String assistantEffortUsage(String multiplier);
+
+  /// No description provided for @assistantEffortBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'{level} effort'**
+  String assistantEffortBadge(String level);
+
+  /// No description provided for @assistantUltraReasoning.
+  ///
+  /// In en, this message translates to:
+  /// **'Ultra Reasoning'**
+  String get assistantUltraReasoning;
+
+  /// No description provided for @assistantUltraReasoningDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Researches first, then checks and improves its answer over several rounds at Max effort. Takes much longer and uses far more of your limits.'**
+  String get assistantUltraReasoningDescription;
+
+  /// No description provided for @assistantUltraReasoningPlan.
+  ///
+  /// In en, this message translates to:
+  /// **'Requires Nova'**
+  String get assistantUltraReasoningPlan;
+
+  /// No description provided for @assistantUltraChecking.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking the answer ({round}/{rounds})'**
+  String assistantUltraChecking(int round, int rounds);
+
+  /// No description provided for @assistantUltraImproving.
+  ///
+  /// In en, this message translates to:
+  /// **'Improving the answer ({round}/{rounds})'**
+  String assistantUltraImproving(int round, int rounds);
+
+  /// No description provided for @assistantUltraBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'{checks, plural, =1{Ultra Reasoning · checked once} other{Ultra Reasoning · checked {checks} times}}'**
+  String assistantUltraBadge(int checks);
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

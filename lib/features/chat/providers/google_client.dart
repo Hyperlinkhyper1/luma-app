@@ -1,3 +1,4 @@
+import '../assistant_effort.dart';
 import 'ai_modes.dart';
 import 'openai_compatible_client.dart';
 
@@ -6,14 +7,18 @@ import 'openai_compatible_client.dart';
 /// with three modes (see [AiMode]); the wire protocol underneath is
 /// Gemini's OpenAI-compat layer.
 class GoogleClient extends OpenAiCompatibleClient {
-  GoogleClient({AiMode mode = AiMode.normal})
-    : super(
-        baseUrl:
-            'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
-        defaultModel: mode.geminiModel,
-        providerLabel: 'Luma AI',
-        reasoningEffort: mode.reasoningEffort,
-      );
+  GoogleClient({
+    AiMode mode = AiMode.normal,
+    AssistantEffort effort = AssistantEffort.medium,
+  }) : super(
+         baseUrl:
+             'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
+         defaultModel: mode.geminiModel,
+         providerLabel: 'Luma AI',
+         reasoningEffort: effort.reasoningEffortFor(mode.reasoningEffort),
+         maxOutputTokens: effort.maxOutputTokens,
+         timeout: effort.timeout,
+       );
 }
 
 /// Google Gemini with the user's own AI Studio key, picked from the API
@@ -41,18 +46,27 @@ class GeminiClient extends OpenAiCompatibleClient {
 /// As with the Mistral proxy, the "apiKey" callers pass to [chat] is the
 /// sync bearer token, not a Google key.
 class GoogleProxyClient extends OpenAiCompatibleClient {
-  GoogleProxyClient({required String serverUrl, AiMode mode = AiMode.normal})
-    : super(
-        baseUrl: _proxyUrl(serverUrl),
-        defaultModel: mode.name,
-        providerLabel: 'Luma AI',
-        // The server forwards whatever's in the request body (beyond the
-        // model/max_tokens it overrides itself) straight to Google, so
-        // sending this here is enough — no server-side mode→effort
-        // mapping needed alongside its existing mode→model one.
-        reasoningEffort: mode.reasoningEffort,
-        viaLumaServer: true,
-      );
+  GoogleProxyClient({
+    required String serverUrl,
+    AiMode mode = AiMode.normal,
+    this.effort = AssistantEffort.medium,
+  }) : super(
+         baseUrl: _proxyUrl(serverUrl),
+         defaultModel: mode.name,
+         providerLabel: 'Luma AI',
+         // Only the level is sent. The server decides the reasoning
+         // setting and output budget for it and charges the usage, so
+         // nothing here can make a turn cheaper than it is. The raw
+         // reasoning_effort is for servers from before effort levels; newer
+         // ones replace it with their own.
+         reasoningEffort: effort.reasoningEffortFor(mode.reasoningEffort),
+         maxOutputTokens: effort.maxOutputTokens,
+         timeout: effort.timeout,
+         extraBody: {'luma_effort': effort.name},
+         viaLumaServer: true,
+       );
+
+  final AssistantEffort effort;
 
   static String _proxyUrl(String serverUrl) {
     var url = serverUrl.trim();

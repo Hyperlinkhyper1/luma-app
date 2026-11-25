@@ -1782,6 +1782,53 @@ class LZh extends L {
   String get assistantToggleSidebar => '切换侧边栏';
 
   @override
+  String get assistantDetailsTitle => '对话详情';
+
+  @override
+  String get assistantDetailsShow => '显示对话详情';
+
+  @override
+  String get assistantDetailsHide => '隐藏对话详情';
+
+  @override
+  String get assistantDetailsEnvironment => '环境';
+
+  @override
+  String get assistantDetailsChatMode => '对话';
+
+  @override
+  String get assistantDetailsContext => '上下文';
+
+  @override
+  String assistantDetailsContextUsed(int percent) {
+    return '已用 $percent%';
+  }
+
+  @override
+  String get assistantDetailsContextPending => '第一次回复后显示。';
+
+  @override
+  String get assistantDetailsInputTokens => '上次输入';
+
+  @override
+  String get assistantDetailsOutputTokens => '上次输出';
+
+  @override
+  String get assistantDetailsYourMessages => '你的消息';
+
+  @override
+  String get assistantDetailsReplies => '回复';
+
+  @override
+  String get assistantDetailsFiles => '文件';
+
+  @override
+  String get assistantDetailsNoFiles => '助手在此对话中创建的文件会显示在这里。';
+
+  @override
+  String get assistantDetailsFileMissing => '已丢失';
+
+  @override
   String get assistantChats => '对话';
 
   @override
@@ -1978,6 +2025,21 @@ class LZh extends L {
 
   @override
   String get assistantApiManage => '管理 API 密钥';
+
+  @override
+  String get assistantApiAddKey => '添加 API 密钥';
+
+  @override
+  String get assistantApiAddModel => '添加模型';
+
+  @override
+  String get assistantApiProvider => '提供商';
+
+  @override
+  String get assistantApiModelId => '模型 ID';
+
+  @override
+  String get assistantApiSaveKeyFailed => '无法保存 API 密钥。';
 
   @override
   String get aiSettingsApiKeysMoved =>
@@ -39954,6 +40016,12 @@ class LZh extends L {
   String get assistantProjectsAll => '全部项目';
 
   @override
+  String get assistantProjectsTitle => '项目';
+
+  @override
+  String get assistantProjectsSubtitle => '按项目把聊天和记忆放在一起。';
+
+  @override
   String get assistantProjectsNew => '新建项目';
 
   @override
@@ -39980,6 +40048,64 @@ class LZh extends L {
   @override
   String get assistantProjectDeleteMessage =>
       '这会删除该项目及其记忆。其中的聊天会回到主聊天列表；生成的文件保留在“产出文件”中。';
+
+  @override
+  String assistantProjectChatCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 个聊天',
+      zero: '暂无聊天',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get assistantProjectMemorySaved => '已保存记忆';
+
+  @override
+  String get assistantProjectMemoryNone => '暂无记忆';
+
+  @override
+  String assistantProjectLastActive(String date) {
+    return '$date 活跃';
+  }
+
+  @override
+  String get assistantProjectDescriptionFallback => '这里的聊天会使用你的全局记忆和此项目的记忆。';
+
+  @override
+  String get assistantProjectNoChatsTitle => '开始第一个聊天';
+
+  @override
+  String get assistantProjectNoChatsBody => '在这里开始的聊天会归入此项目，并共享它的记忆。';
+
+  @override
+  String get assistantProjectStartChat => '开始聊天';
+
+  @override
+  String get assistantProjectMemoryEmpty => '还没有项目记忆。可以在这里添加笔记，或让助手记住一个项目事实。';
+
+  @override
+  String get assistantProjectAddMemory => '添加记忆';
+
+  @override
+  String get assistantProjectHowTitle => '项目如何运作';
+
+  @override
+  String get assistantProjectHowChats => '在这里开始的每个聊天都会归入此项目。';
+
+  @override
+  String get assistantProjectHowMemory => '项目记忆只与此项目的聊天共享。';
+
+  @override
+  String get assistantProjectHowDelete => '删除项目后，其聊天和文件仍会保留。';
+
+  @override
+  String get assistantProjectNoArtifactsTitle => '暂无产出文件';
+
+  @override
+  String get assistantProjectNoArtifactsBody => '助手在此项目聊天中生成的图片和文件会显示在这里。';
 
   @override
   String get assistantUploadFiles => '上传文件';
@@ -40120,4 +40246,135 @@ class LZh extends L {
 
   @override
   String get steamCs2RefreshInventory => '刷新库存';
+
+  @override
+  String get assistantPreviewNotFound => '此设备上已没有这个文件。';
+
+  @override
+  String get assistantPreviewNoApp => '此设备上没有可以打开这类文件的应用。';
+
+  @override
+  String get assistantPreviewSaveError => '文件已在其他应用中打开，只有 luma 中的副本是最新的。';
+
+  @override
+  String get assistantPreviewOpenExternally => '在其他应用中打开';
+
+  @override
+  String get assistantPreviewShowInFolder => '在文件夹中显示';
+
+  @override
+  String get assistantPreviewClose => '关闭预览';
+
+  @override
+  String get assistantPreviewWorking => '正在处理文件…';
+
+  @override
+  String get assistantPreviewReadingOutline => '正在阅读大纲';
+
+  @override
+  String assistantPreviewReading(String part) {
+    return '正在阅读$part';
+  }
+
+  @override
+  String assistantPreviewWriting(String part) {
+    return '正在写入$part';
+  }
+
+  @override
+  String assistantPreviewDeleting(String part) {
+    return '正在删除$part';
+  }
+
+  @override
+  String assistantPreviewPartBlock(String range) {
+    return '第 $range 块';
+  }
+
+  @override
+  String assistantPreviewPartSlide(String range) {
+    return '第 $range 张幻灯片';
+  }
+
+  @override
+  String get assistantPreviewTagReading => '阅读中';
+
+  @override
+  String get assistantPreviewTagWriting => '写入中';
+
+  @override
+  String get assistantPreviewTagDeleting => '删除中';
+
+  @override
+  String get assistantPreviewEmptyDocument => '助手正在开始这个文件…';
+
+  @override
+  String get assistantPreviewUnsupported => 'luma 无法预览此文件。';
+
+  @override
+  String get assistantPreviewNoPdfText => '此 PDF 没有可读文本。';
+
+  @override
+  String get assistantEffortTitle => '思考强度';
+
+  @override
+  String get assistantEffortDescription => '强度越高，回答越周全，但耗时更长，也会更快用完你的额度。';
+
+  @override
+  String get assistantEffortLow => '低';
+
+  @override
+  String get assistantEffortMedium => '中';
+
+  @override
+  String get assistantEffortHigh => '高';
+
+  @override
+  String get assistantEffortExtra => '超高';
+
+  @override
+  String get assistantEffortMax => '最高';
+
+  @override
+  String get assistantEffortRecommended => '推荐';
+
+  @override
+  String assistantEffortUsage(String multiplier) {
+    return '$multiplier× 或更多用量';
+  }
+
+  @override
+  String assistantEffortBadge(String level) {
+    return '$level强度';
+  }
+
+  @override
+  String get assistantUltraReasoning => 'Ultra Reasoning';
+
+  @override
+  String get assistantUltraReasoningDescription =>
+      '先进行研究，再以最高强度多轮检查并改进答案。耗时更长，也会消耗更多额度。';
+
+  @override
+  String get assistantUltraReasoningPlan => '需要 Nova';
+
+  @override
+  String assistantUltraChecking(int round, int rounds) {
+    return '正在检查答案（$round/$rounds）';
+  }
+
+  @override
+  String assistantUltraImproving(int round, int rounds) {
+    return '正在改进答案（$round/$rounds）';
+  }
+
+  @override
+  String assistantUltraBadge(int checks) {
+    String _temp0 = intl.Intl.pluralLogic(
+      checks,
+      locale: localeName,
+      other: 'Ultra Reasoning · 已检查 $checks 次',
+    );
+    return '$_temp0';
+  }
 }

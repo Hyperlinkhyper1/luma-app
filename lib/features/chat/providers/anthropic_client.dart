@@ -32,7 +32,7 @@ class AnthropicClient implements AiClient {
   /// Current models think before answering, and that thinking counts
   /// against this cap, so it has to leave room for both.
   static const _maxOutputTokens = 16000;
-  static const _maxToolHops = 5;
+  static const _maxToolHops = 24;
 
   /// Models that accept the server-side fallback for refused requests.
   static const _fallbackModels = {

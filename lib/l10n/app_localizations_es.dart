@@ -1868,6 +1868,55 @@ class LEs extends L {
   String get assistantToggleSidebar => 'Mostrar/ocultar barra lateral';
 
   @override
+  String get assistantDetailsTitle => 'Detalles del chat';
+
+  @override
+  String get assistantDetailsShow => 'Mostrar detalles del chat';
+
+  @override
+  String get assistantDetailsHide => 'Ocultar detalles del chat';
+
+  @override
+  String get assistantDetailsEnvironment => 'Entorno';
+
+  @override
+  String get assistantDetailsChatMode => 'Chat';
+
+  @override
+  String get assistantDetailsContext => 'Contexto';
+
+  @override
+  String assistantDetailsContextUsed(int percent) {
+    return '$percent% usado';
+  }
+
+  @override
+  String get assistantDetailsContextPending =>
+      'Se completa tras la primera respuesta.';
+
+  @override
+  String get assistantDetailsInputTokens => 'Última entrada';
+
+  @override
+  String get assistantDetailsOutputTokens => 'Última salida';
+
+  @override
+  String get assistantDetailsYourMessages => 'Tus mensajes';
+
+  @override
+  String get assistantDetailsReplies => 'Respuestas';
+
+  @override
+  String get assistantDetailsFiles => 'Archivos';
+
+  @override
+  String get assistantDetailsNoFiles =>
+      'Los archivos que el asistente cree en este chat aparecerán aquí.';
+
+  @override
+  String get assistantDetailsFileMissing => 'no encontrado';
+
+  @override
   String get assistantChats => 'Chats';
 
   @override
@@ -2075,6 +2124,21 @@ class LEs extends L {
 
   @override
   String get assistantApiManage => 'Gestionar claves API';
+
+  @override
+  String get assistantApiAddKey => 'Añadir clave API';
+
+  @override
+  String get assistantApiAddModel => 'Añadir modelo';
+
+  @override
+  String get assistantApiProvider => 'Proveedor';
+
+  @override
+  String get assistantApiModelId => 'ID del modelo';
+
+  @override
+  String get assistantApiSaveKeyFailed => 'No se pudo guardar la clave API.';
 
   @override
   String get aiSettingsApiKeysMoved =>
@@ -42322,6 +42386,13 @@ class LEs extends L {
   String get assistantProjectsAll => 'Todos los proyectos';
 
   @override
+  String get assistantProjectsTitle => 'Proyectos';
+
+  @override
+  String get assistantProjectsSubtitle =>
+      'Mantén juntos los chats y la memoria de cada proyecto.';
+
+  @override
   String get assistantProjectsNew => 'Nuevo proyecto';
 
   @override
@@ -42352,6 +42423,72 @@ class LEs extends L {
   @override
   String get assistantProjectDeleteMessage =>
       'Se eliminarán el proyecto y su memoria. Sus chats vuelven a la lista principal; los archivos generados se quedan en Artefactos.';
+
+  @override
+  String assistantProjectChatCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count chats',
+      one: '1 chat',
+      zero: 'Sin chats',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get assistantProjectMemorySaved => 'Memoria guardada';
+
+  @override
+  String get assistantProjectMemoryNone => 'Aún sin memoria';
+
+  @override
+  String assistantProjectLastActive(String date) {
+    return 'Activo el $date';
+  }
+
+  @override
+  String get assistantProjectDescriptionFallback =>
+      'Los chats de aquí usan tu memoria global y la memoria de este proyecto.';
+
+  @override
+  String get assistantProjectNoChatsTitle => 'Empieza el primer chat';
+
+  @override
+  String get assistantProjectNoChatsBody =>
+      'Los chats que empieces aquí se agrupan en este proyecto y comparten su memoria.';
+
+  @override
+  String get assistantProjectStartChat => 'Empezar un chat';
+
+  @override
+  String get assistantProjectMemoryEmpty =>
+      'Aún no hay memoria del proyecto. Añade notas aquí o pide al asistente que recuerde un dato del proyecto.';
+
+  @override
+  String get assistantProjectAddMemory => 'Añadir memoria';
+
+  @override
+  String get assistantProjectHowTitle => 'Cómo funcionan los proyectos';
+
+  @override
+  String get assistantProjectHowChats =>
+      'Cada chat que empieces aquí se guarda en este proyecto.';
+
+  @override
+  String get assistantProjectHowMemory =>
+      'La memoria del proyecto solo se comparte con los chats de este proyecto.';
+
+  @override
+  String get assistantProjectHowDelete =>
+      'Eliminar el proyecto conserva sus chats y archivos.';
+
+  @override
+  String get assistantProjectNoArtifactsTitle => 'Aún no hay artefactos';
+
+  @override
+  String get assistantProjectNoArtifactsBody =>
+      'Las imágenes y archivos que el asistente crea en los chats de este proyecto aparecen aquí.';
 
   @override
   String get assistantUploadFiles => 'Subir archivos';
@@ -42500,4 +42637,142 @@ class LEs extends L {
 
   @override
   String get steamCs2RefreshInventory => 'Actualizar inventario';
+
+  @override
+  String get assistantPreviewNotFound =>
+      'Este archivo ya no está en este dispositivo.';
+
+  @override
+  String get assistantPreviewNoApp =>
+      'Ninguna app de este dispositivo abre este tipo de archivo.';
+
+  @override
+  String get assistantPreviewSaveError =>
+      'El archivo está abierto en otra app, así que solo la copia de luma está actualizada.';
+
+  @override
+  String get assistantPreviewOpenExternally => 'Abrir en otra app';
+
+  @override
+  String get assistantPreviewShowInFolder => 'Mostrar en la carpeta';
+
+  @override
+  String get assistantPreviewClose => 'Cerrar vista previa';
+
+  @override
+  String get assistantPreviewWorking => 'Trabajando en el archivo…';
+
+  @override
+  String get assistantPreviewReadingOutline => 'Leyendo el esquema';
+
+  @override
+  String assistantPreviewReading(String part) {
+    return 'Leyendo $part';
+  }
+
+  @override
+  String assistantPreviewWriting(String part) {
+    return 'Escribiendo $part';
+  }
+
+  @override
+  String assistantPreviewDeleting(String part) {
+    return 'Quitando $part';
+  }
+
+  @override
+  String assistantPreviewPartBlock(String range) {
+    return 'bloque $range';
+  }
+
+  @override
+  String assistantPreviewPartSlide(String range) {
+    return 'diapositiva $range';
+  }
+
+  @override
+  String get assistantPreviewTagReading => 'Leyendo';
+
+  @override
+  String get assistantPreviewTagWriting => 'Escribiendo';
+
+  @override
+  String get assistantPreviewTagDeleting => 'Quitando';
+
+  @override
+  String get assistantPreviewEmptyDocument =>
+      'El asistente está empezando este archivo…';
+
+  @override
+  String get assistantPreviewUnsupported =>
+      'luma no puede mostrar este archivo.';
+
+  @override
+  String get assistantPreviewNoPdfText => 'Este PDF no tiene texto legible.';
+
+  @override
+  String get assistantEffortTitle => 'Esfuerzo';
+
+  @override
+  String get assistantEffortDescription =>
+      'Más esfuerzo da respuestas más completas, pero tarda más y gasta tus límites más rápido.';
+
+  @override
+  String get assistantEffortLow => 'Bajo';
+
+  @override
+  String get assistantEffortMedium => 'Medio';
+
+  @override
+  String get assistantEffortHigh => 'Alto';
+
+  @override
+  String get assistantEffortExtra => 'Extra';
+
+  @override
+  String get assistantEffortMax => 'Máx.';
+
+  @override
+  String get assistantEffortRecommended => 'Recomendado';
+
+  @override
+  String assistantEffortUsage(String multiplier) {
+    return '$multiplier× o más de uso';
+  }
+
+  @override
+  String assistantEffortBadge(String level) {
+    return 'Esfuerzo: $level';
+  }
+
+  @override
+  String get assistantUltraReasoning => 'Ultra Reasoning';
+
+  @override
+  String get assistantUltraReasoningDescription =>
+      'Primero investiga y luego revisa y mejora su respuesta en varias rondas con esfuerzo Máx. Tarda mucho más y gasta mucho más de tus límites.';
+
+  @override
+  String get assistantUltraReasoningPlan => 'Requiere Nova';
+
+  @override
+  String assistantUltraChecking(int round, int rounds) {
+    return 'Revisando la respuesta ($round/$rounds)';
+  }
+
+  @override
+  String assistantUltraImproving(int round, int rounds) {
+    return 'Mejorando la respuesta ($round/$rounds)';
+  }
+
+  @override
+  String assistantUltraBadge(int checks) {
+    String _temp0 = intl.Intl.pluralLogic(
+      checks,
+      locale: localeName,
+      other: 'Ultra Reasoning · revisado $checks veces',
+      one: 'Ultra Reasoning · revisado una vez',
+    );
+    return '$_temp0';
+  }
 }

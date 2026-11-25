@@ -1129,6 +1129,107 @@ const s = "y";
         expect(result['httpStatus'], 200, reason: '$result');
       }, createHttpClient: (_) => _BenchmarkPromptClient(upstream));
     });
+    test('Ling Pagoda efforts wait for the same free route and its reset',
+        () async {
+      final efforts = <String>[];
+      final started = <DateTime>[];
+      late DateTime reset;
+      HttpClientResponse respond(Map<String, dynamic> body) {
+        efforts.add(body['reasoning']['effort'] as String);
+        started.add(DateTime.now());
+        if (efforts.length == 1) {
+          reset = DateTime.now().add(const Duration(seconds: 1));
+          return _BenchmarkPromptResponse(
+              HttpStatus.tooManyRequests,
+              jsonEncode({
+                'error': {
+                  'message': 'Rate limit exceeded: free-models-per-min.',
+                  'code': 429,
+                  'metadata': {
+                    'limit_source': 'openrouter_free_tier_per_minute',
+                    'headers': {
+                      'X-RateLimit-Reset': '${reset.millisecondsSinceEpoch}'
+                    },
+                  },
+                },
+              }));
+        }
+        final completion = jsonEncode({
+          'choices': [
+            {
+              'delta': {'content': original},
+              'finish_reason': 'stop'
+            },
+          ],
+        });
+        return _BenchmarkPromptResponse(
+            HttpStatus.ok, 'data: $completion\n\ndata: [DONE]\n\n');
+      }
+
+      final ids = <String>{};
+      const path = '/admin/benchmarks/generate';
+      Future<List<Map>> jobs() async => [
+            for (final job in (await request('GET', path))['jobs'] as List)
+              if (ids.contains(job['id'])) job as Map,
+          ];
+
+      await HttpOverrides.runZoned(() async {
+        final response = await request('POST', path, body: {
+          'upstream': 'openrouter',
+          'model': 'inclusionai/ling-3.2-flash:free',
+          'name': 'Ling 3.2 Flash (free)',
+          'multi': true,
+          'efforts': ['xhigh', 'low'],
+          'kinds': ['pagoda'],
+        });
+        expect(response['httpStatus'], 200, reason: '$response');
+        final runs = (response['jobs'] as List).cast<Map>();
+        ids.addAll(runs.map((job) => job['id'] as String));
+        try {
+          expect(runs.map((job) => job['waiting']), [false, true]);
+          final deadline = DateTime.now().add(const Duration(seconds: 8));
+          var sawCooldown = false;
+          List<Map> state;
+          do {
+            state = await jobs();
+            final rateLimited =
+                state.where((j) => j['phase'] == 'rate_limited');
+            if (rateLimited.isNotEmpty) {
+              final retry = rateLimited.single;
+              expect(retry['effort'], 'xhigh');
+              expect(retry['retryReason'], contains('free-models-per-min'));
+              expect(retry['retryAtMs'],
+                  greaterThanOrEqualTo(reset.millisecondsSinceEpoch));
+              expect(state.singleWhere((j) => j['effort'] == 'low')['waiting'],
+                  isTrue);
+              sawCooldown = true;
+            }
+            if (state.every((job) => job['status'] != 'running')) break;
+            await Future<void>.delayed(const Duration(milliseconds: 20));
+          } while (DateTime.now().isBefore(deadline));
+          expect(sawCooldown, isTrue);
+          expect(efforts, ['xhigh', 'xhigh', 'low']);
+          expect(started[1].isBefore(reset), isFalse);
+          expect(state.map((job) => job['resultStatus']), everyElement('PASS'));
+        } finally {
+          for (final job in await jobs()) {
+            if (job['status'] == 'running') {
+              await request('POST', '$path/${job['id']}/stop');
+            }
+          }
+          for (var n = 0; n < 100; n++) {
+            final remaining = await jobs();
+            if (remaining.every((job) => job['status'] != 'running')) break;
+            await Future<void>.delayed(const Duration(milliseconds: 20));
+          }
+          for (final job in await jobs()) {
+            await request('POST', '$path/${job['id']}/dismiss');
+          }
+        }
+      },
+          createHttpClient: (_) => _BenchmarkPromptClient(
+              _BenchmarkPromptRequest(respond: respond)));
+    });
     test('regenerating checks the test exists, matches and is not busy',
         () async {
       await save();
@@ -1702,6 +1803,9 @@ class _BenchmarkPromptClient implements HttpClient {
 }
 
 class _BenchmarkPromptRequest implements HttpClientRequest {
+  _BenchmarkPromptRequest({this.respond});
+
+  final HttpClientResponse Function(Map<String, dynamic>)? respond;
   final body = Completer<Map<String, dynamic>>();
 
   @override
@@ -1713,7 +1817,8 @@ class _BenchmarkPromptRequest implements HttpClientRequest {
   }
 
   @override
-  Future<HttpClientResponse> close() async => _BenchmarkPromptResponse();
+  Future<HttpClientResponse> close() async =>
+      respond?.call(await body.future) ?? _BenchmarkPromptResponse();
 
   @override
   dynamic noSuchMethod(Invocation invocation) => null;
@@ -1726,8 +1831,12 @@ class _BenchmarkPromptHeaders implements HttpHeaders {
 
 class _BenchmarkPromptResponse extends Stream<List<int>>
     implements HttpClientResponse {
+  _BenchmarkPromptResponse(
+      [this.statusCode = HttpStatus.badRequest, this.body = '']);
+
   @override
-  int get statusCode => HttpStatus.badRequest;
+  final int statusCode;
+  final String body;
 
   @override
   final HttpHeaders headers = _BenchmarkPromptHeaders();
@@ -1735,7 +1844,7 @@ class _BenchmarkPromptResponse extends Stream<List<int>>
   @override
   StreamSubscription<List<int>> listen(void Function(List<int>)? onData,
           {Function? onError, void Function()? onDone, bool? cancelOnError}) =>
-      const Stream<List<int>>.empty().listen(onData,
+      Stream<List<int>>.value(utf8.encode(body)).listen(onData,
           onError: onError, onDone: onDone, cancelOnError: cancelOnError);
 
   @override

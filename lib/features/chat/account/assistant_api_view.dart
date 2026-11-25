@@ -93,23 +93,31 @@ class _ProviderCardState extends State<_ProviderCard> {
 
   Future<void> _save() async {
     final t = L.of(context);
+    final settings = widget.settings;
+    final providerId = _id;
     final key = _key.text.trim();
+    final model = _model.text;
     if (key.isEmpty && _savedMasked == null) {
       _snack(t.aiSettingsEnterKeyFirst);
       return;
     }
     setState(() => _saving = true);
-    widget.settings.setAiModel(_id, _model.text);
-    if (key.isNotEmpty) {
-      await (await AiKeyStore.load()).saveKey(_id, key);
-      _key.clear();
+    try {
+      if (key.isNotEmpty) {
+        await (await AiKeyStore.load()).saveKey(providerId, key);
+      }
+      settings.setAiModel(providerId, model);
+      if (!mounted) return;
+      if (key.isNotEmpty) {
+        _key.clear();
+        _savedMasked = _mask(key);
+      }
+      _snack(t.aiSettingsKeySaved);
+    } catch (_) {
+      _snack(t.assistantApiSaveKeyFailed);
+    } finally {
+      if (mounted) setState(() => _saving = false);
     }
-    if (!mounted) return;
-    setState(() {
-      _saving = false;
-      if (key.isNotEmpty) _savedMasked = _mask(key);
-    });
-    _snack(t.aiSettingsKeySaved);
   }
 
   Future<void> _test() async {
@@ -287,7 +295,10 @@ class _ProviderCardState extends State<_ProviderCard> {
             icon: Icons.chat_bubble_outline_rounded,
             onTap: _savedMasked == null
                 ? null
-                : () => widget.settings.setAiProviderId(_id),
+                : () => widget.settings.selectAiModel(
+                    _id,
+                    widget.settings.aiModelFor(_id) ?? provider.defaultModel!,
+                  ),
           ),
       ],
     );

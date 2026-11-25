@@ -90,7 +90,10 @@ class SettingsController extends ChangeNotifier {
     required String aiProviderId,
     required String aiMode,
     String pictureTier = 'standard',
+    String assistantEffort = 'medium',
+    bool ultraReasoning = false,
     Map<String, String> aiModels = const {},
+    Map<String, List<String>> savedAiModels = const {},
     required Map<String, int> modelUsage,
     required List<String> navOrder,
     required List<String> visitedCountries,
@@ -115,7 +118,10 @@ class SettingsController extends ChangeNotifier {
        _aiProviderId = aiProviderId,
        _aiMode = aiMode,
        _pictureTier = pictureTier,
+       _assistantEffort = assistantEffort,
+       _ultraReasoning = ultraReasoning,
        _aiModels = aiModels,
+       _savedAiModels = savedAiModels,
        _modelUsage = modelUsage,
        _navOrder = navOrder,
        _visitedCountries = visitedCountries,
@@ -165,7 +171,10 @@ class SettingsController extends ChangeNotifier {
   String _aiProviderId;
   String _aiMode;
   Map<String, String> _aiModels;
+  Map<String, List<String>> _savedAiModels;
   String _pictureTier;
+  String _assistantEffort;
+  bool _ultraReasoning;
 
   /// Lifetime successful-message count per model, keyed by
   /// `modelUsageKeyFor(...)` (see providers/ai_usage.dart) — e.g.
@@ -359,21 +368,63 @@ class SettingsController extends ChangeNotifier {
     _changed();
   }
 
-  /// The model the user picked on the API screen for a bring-your-own-key
-  /// provider, or null to use that provider's default. Local to this device,
-  /// like the keys themselves.
+  /// The Assistant's effort level (`AssistantEffort.name`) for Luma AI. A
+  /// local per-device choice, like [aiMode]; the server charges for it.
+  String get assistantEffort => _assistantEffort;
+
+  void setAssistantEffort(String effort) {
+    if (effort == _assistantEffort) return;
+    _assistantEffort = effort;
+    _changed();
+  }
+
+  /// Ultra Reasoning: research, then check and improve the answer over
+  /// several rounds at the highest effort.
+  bool get ultraReasoning => _ultraReasoning;
+
+  void setUltraReasoning(bool on) {
+    if (on == _ultraReasoning) return;
+    _ultraReasoning = on;
+    _changed();
+  }
+
+  /// The selected model for a bring-your-own-key provider, or null to use
+  /// its default. Local to this device, like the keys themselves.
   String? aiModelFor(String providerId) => _aiModels[providerId];
 
+  /// Includes the single model already configured by older installs.
+  List<String> savedAiModelsFor(String providerId) =>
+      {...?_savedAiModels[providerId], ?_aiModels[providerId]}.toList();
+
+  void selectAiModel(String providerId, String model) {
+    final value = model.trim();
+    if (value.isEmpty) return;
+    final modelChanged = _updateAiModel(providerId, value);
+    if (_aiProviderId == providerId && !modelChanged) return;
+    _aiProviderId = providerId;
+    _changed();
+  }
+
   void setAiModel(String providerId, String? model) {
-    final value = model?.trim() ?? '';
-    if ((_aiModels[providerId] ?? '') == value) return;
+    if (_updateAiModel(providerId, model?.trim() ?? '')) _changed();
+  }
+
+  bool _updateAiModel(String providerId, String value) {
+    if ((_aiModels[providerId] ?? '') == value) return false;
+    _savedAiModels = {
+      ..._savedAiModels,
+      providerId: {
+        ...savedAiModelsFor(providerId),
+        if (value.isNotEmpty) value,
+      }.toList(),
+    };
     _aiModels = Map.of(_aiModels);
     if (value.isEmpty) {
       _aiModels.remove(providerId);
     } else {
       _aiModels[providerId] = value;
     }
-    _changed();
+    return true;
   }
 
   /// Lifetime successful-message count per model (see [_modelUsage]).
@@ -567,7 +618,10 @@ class SettingsController extends ChangeNotifier {
     _aiProviderId = 'google';
     _aiMode = 'normal';
     _pictureTier = 'standard';
+    _assistantEffort = 'medium';
+    _ultraReasoning = false;
     _aiModels = const {};
+    _savedAiModels = const {};
     _modelUsage = const {};
     _navOrder = const [];
     _visitedCountries = const [];
@@ -639,7 +693,14 @@ class SettingsController extends ChangeNotifier {
 
   // ---- Persistence ----------------------------------------------------------
 
-  Future<void> _persist() async {
+  Future<void> _pendingWrite = Future.value();
+
+  Future<void> _persist() {
+    if (_file == null) return Future.value();
+    return _pendingWrite = _pendingWrite.then((_) => _writeSettings());
+  }
+
+  Future<void> _writeSettings() async {
     final file = _file;
     if (file == null) return;
     try {
@@ -664,7 +725,10 @@ class SettingsController extends ChangeNotifier {
           'aiProviderId': _aiProviderId,
           'aiMode': _aiMode,
           'pictureTier': _pictureTier,
+          'assistantEffort': _assistantEffort,
+          'ultraReasoning': _ultraReasoning,
           'aiModels': _aiModels,
+          'savedAiModels': _savedAiModels,
           'modelUsage': _modelUsage,
           'trackBackendAiUsage': _trackBackendAiUsage,
           'navOrder': _navOrder,
@@ -729,7 +793,10 @@ class SettingsController extends ChangeNotifier {
       },
       aiMode: data['aiMode'] as String? ?? 'normal',
       pictureTier: data['pictureTier'] == 'pro' ? 'pro' : 'standard',
+      assistantEffort: data['assistantEffort'] as String? ?? 'medium',
+      ultraReasoning: data['ultraReasoning'] == true,
       aiModels: _parseStringMap(data['aiModels']),
+      savedAiModels: _parseSavedAiModels(data['savedAiModels']),
       modelUsage: _parseModelUsage(data['modelUsage']),
       navOrder: _parseNavOrder(data['navOrder']),
       visitedCountries: _parseStringList(data['visitedCountries']),
@@ -774,6 +841,18 @@ class SettingsController extends ChangeNotifier {
       for (final entry in raw.entries)
         if (entry.key is String && entry.value is String)
           entry.key as String: entry.value as String,
+    };
+  }
+
+  static Map<String, List<String>> _parseSavedAiModels(Object? raw) {
+    if (raw is! Map) return const {};
+    return {
+      for (final entry in raw.entries)
+        if (entry.key is String && entry.value is List)
+          entry.key as String: {
+            for (final model in _parseStringList(entry.value))
+              if (model.trim().isNotEmpty) model.trim(),
+          }.toList(),
     };
   }
 

@@ -156,13 +156,13 @@ class BenchmarkGenJob {
   /// a dropped stream) and the run started over, and the last such failure.
   int upstreamRetries = 0;
   String? retryReason;
+  int? retryAtMs;
 
   /// Every upstream failure that made the run start over, oldest first, so
   /// a run that finally gives up still says what went wrong before.
   List<String> retryReasons = [];
 
-  /// The last error response's `Retry-After`, for the next restart's wait.
-  String? retryAfter;
+  BenchmarkRateLimit? rateLimit;
   String? error;
   Map<String, Object> publish = const {};
   bool hasOutput = false;
@@ -207,6 +207,7 @@ class BenchmarkGenJob {
         'upstreamRetries': upstreamRetries,
         'upstreamRetryLimit': kBenchmarkRetryBackoff.length,
         'retryReason': retryReason,
+        'retryAtMs': retryAtMs,
         'retryReasons': retryReasons,
         'error': error,
         'hasOutput': hasOutput,
@@ -351,11 +352,20 @@ extension BenchmarkGenerateApi on Api {
   }
 
   void _scheduleBenchmarkGen() {
-    var available =
-        _maxRunning - _benchmarkGenJobs.where((j) => j.active).length;
+    bool usesFreeRoute(BenchmarkGenJob job) =>
+        job.route.upstream == AiUpstream.openrouter &&
+        job.route.model.endsWith(':free');
+    final active = _benchmarkGenJobs.where((j) => j.active);
+    var available = _maxRunning - active.length;
+    final activeFreeModels = <String>{
+      for (final job in active)
+        if (usesFreeRoute(job)) job.route.model,
+    };
     for (final job in _benchmarkGenJobs) {
       if (available <= 0) break;
       if (job.status != 'running' || job.active) continue;
+      if (usesFreeRoute(job) && !activeFreeModels.add(job.route.model))
+        continue;
       job.active = true;
       if (job.batchId == null) {
         job.startedAtMs = DateTime.now().millisecondsSinceEpoch;
@@ -906,11 +916,17 @@ extension BenchmarkGenerateApi on Api {
       BenchmarkGenJob job, ChatStreamAccumulator acc) async {
     final deadline =
         DateTime.fromMillisecondsSinceEpoch(job.startedAtMs).add(_totalTimeout);
+    String? httpFailure;
+    bool rateLimited() =>
+        job.httpStatus == HttpStatus.tooManyRequests ||
+        acc.errorCode == HttpStatus.tooManyRequests ||
+        acc.providerStatus == HttpStatus.tooManyRequests;
     final (status, errorBody) = await retryBenchmarkCompacted(
       acc,
       () => retryBenchmarkStream(
         acc,
         () async {
+          httpFailure = null;
           var result = await _streamBenchmarkGen(job, acc,
               withMaxTokens: job.outputCapSent);
           // Some models cap output below what was asked and refuse the request
@@ -923,6 +939,9 @@ extension BenchmarkGenerateApi on Api {
               !job.stopRequested) {
             result = await _streamBenchmarkGen(job, acc, withMaxTokens: false);
           }
+          if (result.$1 != HttpStatus.ok) {
+            httpFailure = _benchmarkUpstreamError(job, result.$1, result.$2);
+          }
           return result;
         },
         canRetry: () => !job.stopRequested && DateTime.now().isBefore(deadline),
@@ -934,21 +953,19 @@ extension BenchmarkGenerateApi on Api {
         waitFor: (attempt, planned) => benchmarkRetryWait(
           attempt: attempt,
           planned: planned,
-          rateLimited: job.httpStatus == HttpStatus.tooManyRequests ||
-              acc.errorCode == HttpStatus.tooManyRequests ||
-              acc.providerStatus == HttpStatus.tooManyRequests,
-          retryAfter: job.retryAfter,
+          rateLimited: rateLimited(),
+          rateLimit: job.rateLimit ?? acc.rateLimit,
         ),
         onRetry: (retry, wait) {
           job.client?.close(force: true);
           job.client = null;
           job.upstreamRetries = retry;
           job.retryReason = acc.error ??
-              (job.httpStatus != null && job.httpStatus != HttpStatus.ok
-                  ? 'HTTP ${job.httpStatus}'
-                  : 'The stream stopped before the reply finished');
+              httpFailure ??
+              'The stream stopped before the reply finished';
           job.retryReasons = [...job.retryReasons, job.retryReason!];
-          job.phase = 'retrying';
+          job.retryAtMs = DateTime.now().add(wait).millisecondsSinceEpoch;
+          job.phase = rateLimited() ? 'rate_limited' : 'retrying';
           stderr.writeln('[luma] benchmark ${job.sceneId}: upstream failed '
               '(${job.retryReason}); retry $retry in ${wait.inSeconds}s');
         },
@@ -986,7 +1003,8 @@ extension BenchmarkGenerateApi on Api {
       job.status = 'stopped';
     } else if (status != HttpStatus.ok) {
       job.status = 'failed';
-      job.error = _benchmarkUpstreamError(job, status, errorBody);
+      job.error =
+          httpFailure ?? _benchmarkUpstreamError(job, status, errorBody);
     } else if (acc.error != null) {
       job.status = 'failed';
       job.error = acc.error;
@@ -1279,6 +1297,8 @@ extension BenchmarkGenerateApi on Api {
       ..connectionTimeout = const Duration(seconds: 30);
     job.client = client;
     job.phase = 'connecting';
+    job.retryAtMs = null;
+    job.rateLimit = null;
     job.outputCapSent = withMaxTokens;
     final deadline =
         DateTime.fromMillisecondsSinceEpoch(job.startedAtMs).add(_totalTimeout);
@@ -1294,15 +1314,16 @@ extension BenchmarkGenerateApi on Api {
     }
     req.headers.contentType = ContentType.json;
     req.add(utf8.encode(jsonEncode(body)));
-    job.retryAfter = null;
     final res = await req.close().timeout(_idleTimeout);
     job.httpStatus = res.statusCode;
     if (res.statusCode != HttpStatus.ok) {
-      job.retryAfter = res.headers.value(HttpHeaders.retryAfterHeader);
       final text = await res
           .transform(utf8.decoder)
           .join()
           .timeout(const Duration(seconds: 30), onTimeout: () => '');
+      if (res.statusCode == HttpStatus.tooManyRequests) {
+        job.rateLimit = BenchmarkRateLimit.fromResponse(text, res.headers);
+      }
       return (
         res.statusCode,
         text.length > 4000 ? text.substring(0, 4000) : text
@@ -2430,14 +2451,14 @@ const _bgScript = r'''
   });
 
   const PHASE = { connecting: 'Connecting', thinking: 'Thinking', writing: 'Writing', saving: 'Saving', compacting: 'Retrying more compactly',
-    retrying: 'Upstream failed, retrying',
+    retrying: 'Upstream failed, retrying', rate_limited: 'Rate limited, waiting to retry',
     submitting: 'Submitting', queued: 'Queued', generating: 'In batch' };
   function renderRuns(jobs) {
     lastJobs = jobs || [];
     const queued = lastJobs.filter((j) => j.waiting && !j.batchId).length;
     const going = lastJobs.filter((j) => j.status === 'running' && !j.waiting).length;
     const head = queued ? '<div class="bg-queue"><span><b>' + going + '</b> running · <b>' + queued + '</b> queued'
-      + ' · 3 run at a time</span><button type="button" class="btn btn-ghost btn-sm" data-queue="cancel">Cancel queued</button></div>' : '';
+      + ' · up to 3 run at a time</span><button type="button" class="btn btn-ghost btn-sm" data-queue="cancel">Cancel queued</button></div>' : '';
     runsBox.innerHTML = head + lastJobs.map((j) => {
       const running = j.status === 'running';
       const took = elapsed((j.finishedAtMs || Date.now()) - j.startedAtMs);
@@ -2458,6 +2479,7 @@ const _bgScript = r'''
       }
       if (j.autoCompact) bits.push('Automatic compact retry: ' + j.compactAttempt + ' / 2');
       if (j.upstreamRetries) bits.push('Upstream retries: ' + j.upstreamRetries + ' / ' + (j.upstreamRetryLimit || 2));
+      if (running && j.retryAtMs) bits.push('Retry in ' + elapsed(Math.max(0, j.retryAtMs - Date.now())));
       bits.push('Output cap: ' + (j.outputCapSent === false ? (j.autoCompact ? 'none (model maximum)' : 'provider default (requested ' + kfmt(j.maxTokens) + ')') : kfmt(j.maxTokens)));
       if (j.batch && running) bits.push('OpenRouter batch ' + (j.batchStatus || 'not submitted yet').replace(/_/g, ' '));
       bits.push(took);

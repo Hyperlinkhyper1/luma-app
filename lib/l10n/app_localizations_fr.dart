@@ -1874,6 +1874,55 @@ class LFr extends L {
   String get assistantToggleSidebar => 'Afficher/masquer la barre latérale';
 
   @override
+  String get assistantDetailsTitle => 'Détails de la discussion';
+
+  @override
+  String get assistantDetailsShow => 'Afficher les détails';
+
+  @override
+  String get assistantDetailsHide => 'Masquer les détails';
+
+  @override
+  String get assistantDetailsEnvironment => 'Environnement';
+
+  @override
+  String get assistantDetailsChatMode => 'Discussion';
+
+  @override
+  String get assistantDetailsContext => 'Contexte';
+
+  @override
+  String assistantDetailsContextUsed(int percent) {
+    return '$percent % utilisé';
+  }
+
+  @override
+  String get assistantDetailsContextPending =>
+      'Se remplit après la première réponse.';
+
+  @override
+  String get assistantDetailsInputTokens => 'Dernière entrée';
+
+  @override
+  String get assistantDetailsOutputTokens => 'Dernière sortie';
+
+  @override
+  String get assistantDetailsYourMessages => 'Vos messages';
+
+  @override
+  String get assistantDetailsReplies => 'Réponses';
+
+  @override
+  String get assistantDetailsFiles => 'Fichiers';
+
+  @override
+  String get assistantDetailsNoFiles =>
+      'Les fichiers créés par l\'assistant dans cette discussion apparaissent ici.';
+
+  @override
+  String get assistantDetailsFileMissing => 'introuvable';
+
+  @override
   String get assistantChats => 'Discussions';
 
   @override
@@ -2082,6 +2131,22 @@ class LFr extends L {
 
   @override
   String get assistantApiManage => 'Gérer les clés API';
+
+  @override
+  String get assistantApiAddKey => 'Ajouter une clé API';
+
+  @override
+  String get assistantApiAddModel => 'Ajouter un modèle';
+
+  @override
+  String get assistantApiProvider => 'Fournisseur';
+
+  @override
+  String get assistantApiModelId => 'Identifiant du modèle';
+
+  @override
+  String get assistantApiSaveKeyFailed =>
+      'Impossible d’enregistrer la clé API.';
 
   @override
   String get aiSettingsApiKeysMoved =>
@@ -42401,6 +42466,13 @@ class LFr extends L {
   String get assistantProjectsAll => 'Tous les projets';
 
   @override
+  String get assistantProjectsTitle => 'Projets';
+
+  @override
+  String get assistantProjectsSubtitle =>
+      'Regroupez discussions et mémoire pour chaque projet.';
+
+  @override
   String get assistantProjectsNew => 'Nouveau projet';
 
   @override
@@ -42431,6 +42503,72 @@ class LFr extends L {
   @override
   String get assistantProjectDeleteMessage =>
       'Le projet et sa mémoire seront supprimés. Ses discussions reviennent dans la liste principale ; les fichiers générés restent dans Artefacts.';
+
+  @override
+  String assistantProjectChatCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count discussions',
+      one: '1 discussion',
+      zero: 'Aucune discussion',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get assistantProjectMemorySaved => 'Mémoire enregistrée';
+
+  @override
+  String get assistantProjectMemoryNone => 'Pas encore de mémoire';
+
+  @override
+  String assistantProjectLastActive(String date) {
+    return 'Actif le $date';
+  }
+
+  @override
+  String get assistantProjectDescriptionFallback =>
+      'Les discussions ici utilisent votre mémoire globale et celle de ce projet.';
+
+  @override
+  String get assistantProjectNoChatsTitle => 'Lancer la première discussion';
+
+  @override
+  String get assistantProjectNoChatsBody =>
+      'Les discussions lancées ici restent regroupées dans ce projet et partagent sa mémoire.';
+
+  @override
+  String get assistantProjectStartChat => 'Lancer une discussion';
+
+  @override
+  String get assistantProjectMemoryEmpty =>
+      'Pas encore de mémoire de projet. Ajoutez des notes ici ou demandez à l’assistant de retenir un fait sur le projet.';
+
+  @override
+  String get assistantProjectAddMemory => 'Ajouter de la mémoire';
+
+  @override
+  String get assistantProjectHowTitle => 'Fonctionnement des projets';
+
+  @override
+  String get assistantProjectHowChats =>
+      'Chaque discussion lancée ici est rangée dans ce projet.';
+
+  @override
+  String get assistantProjectHowMemory =>
+      'La mémoire du projet n’est partagée qu’avec les discussions de ce projet.';
+
+  @override
+  String get assistantProjectHowDelete =>
+      'Supprimer le projet conserve ses discussions et ses fichiers.';
+
+  @override
+  String get assistantProjectNoArtifactsTitle => 'Pas encore d’artefacts';
+
+  @override
+  String get assistantProjectNoArtifactsBody =>
+      'Les images et fichiers créés par l’assistant dans les discussions de ce projet apparaissent ici.';
 
   @override
   String get assistantUploadFiles => 'Importer des fichiers';
@@ -42579,4 +42717,143 @@ class LFr extends L {
 
   @override
   String get steamCs2RefreshInventory => 'Actualiser l’inventaire';
+
+  @override
+  String get assistantPreviewNotFound =>
+      'Ce fichier n\'est plus sur cet appareil.';
+
+  @override
+  String get assistantPreviewNoApp =>
+      'Aucune app de cet appareil n\'ouvre ce type de fichier.';
+
+  @override
+  String get assistantPreviewSaveError =>
+      'Le fichier est ouvert dans une autre app ; seule la copie de luma est à jour.';
+
+  @override
+  String get assistantPreviewOpenExternally => 'Ouvrir dans une autre app';
+
+  @override
+  String get assistantPreviewShowInFolder => 'Afficher dans le dossier';
+
+  @override
+  String get assistantPreviewClose => 'Fermer l\'aperçu';
+
+  @override
+  String get assistantPreviewWorking => 'Travail sur le fichier…';
+
+  @override
+  String get assistantPreviewReadingOutline => 'Lecture du plan';
+
+  @override
+  String assistantPreviewReading(String part) {
+    return 'Lecture de $part';
+  }
+
+  @override
+  String assistantPreviewWriting(String part) {
+    return 'Écriture de $part';
+  }
+
+  @override
+  String assistantPreviewDeleting(String part) {
+    return 'Suppression de $part';
+  }
+
+  @override
+  String assistantPreviewPartBlock(String range) {
+    return 'bloc $range';
+  }
+
+  @override
+  String assistantPreviewPartSlide(String range) {
+    return 'diapositive $range';
+  }
+
+  @override
+  String get assistantPreviewTagReading => 'Lecture';
+
+  @override
+  String get assistantPreviewTagWriting => 'Écriture';
+
+  @override
+  String get assistantPreviewTagDeleting => 'Suppression';
+
+  @override
+  String get assistantPreviewEmptyDocument =>
+      'L\'assistant commence ce fichier…';
+
+  @override
+  String get assistantPreviewUnsupported =>
+      'luma ne peut pas afficher ce fichier.';
+
+  @override
+  String get assistantPreviewNoPdfText =>
+      'Ce PDF ne contient aucun texte lisible.';
+
+  @override
+  String get assistantEffortTitle => 'Effort';
+
+  @override
+  String get assistantEffortDescription =>
+      'Plus d’effort donne des réponses plus approfondies, mais prend plus de temps et consomme vos limites plus vite.';
+
+  @override
+  String get assistantEffortLow => 'Faible';
+
+  @override
+  String get assistantEffortMedium => 'Moyen';
+
+  @override
+  String get assistantEffortHigh => 'Élevé';
+
+  @override
+  String get assistantEffortExtra => 'Extra';
+
+  @override
+  String get assistantEffortMax => 'Max';
+
+  @override
+  String get assistantEffortRecommended => 'Recommandé';
+
+  @override
+  String assistantEffortUsage(String multiplier) {
+    return '$multiplier× ou plus d’utilisation';
+  }
+
+  @override
+  String assistantEffortBadge(String level) {
+    return 'Effort : $level';
+  }
+
+  @override
+  String get assistantUltraReasoning => 'Ultra Reasoning';
+
+  @override
+  String get assistantUltraReasoningDescription =>
+      'Fait d’abord des recherches, puis vérifie et améliore sa réponse en plusieurs passes à l’effort Max. Beaucoup plus long et consomme bien plus de vos limites.';
+
+  @override
+  String get assistantUltraReasoningPlan => 'Nécessite Nova';
+
+  @override
+  String assistantUltraChecking(int round, int rounds) {
+    return 'Vérification de la réponse ($round/$rounds)';
+  }
+
+  @override
+  String assistantUltraImproving(int round, int rounds) {
+    return 'Amélioration de la réponse ($round/$rounds)';
+  }
+
+  @override
+  String assistantUltraBadge(int checks) {
+    String _temp0 = intl.Intl.pluralLogic(
+      checks,
+      locale: localeName,
+      other: 'Ultra Reasoning · vérifié $checks fois',
+      one: 'Ultra Reasoning · vérifié une fois',
+    );
+    return '$_temp0';
+  }
 }

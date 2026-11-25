@@ -2098,6 +2098,7 @@ class AiServerStatus {
     required this.webSearchLimit,
     this.modes = const {},
     this.modeWeights = const {},
+    this.effortWeights = const {},
     this.modeVersions = const {},
     this.pictureConfigured = false,
     this.pictureWeeklyPct,
@@ -2152,6 +2153,10 @@ class AiServerStatus {
   /// How fast each mode drains the one shared allowance, as a multiple of
   /// Aurora (1.0). The usage numbers in [modes] are the same for every mode.
   final Map<String, double> modeWeights;
+
+  /// How much faster each Assistant effort level drains usage, as the
+  /// server charges it. Empty from servers without effort levels.
+  final Map<String, double> effortWeights;
   final Map<String, String> modeVersions;
 
   /// The allowance's current numbers: the shared usage every mode reports.
@@ -2225,6 +2230,12 @@ class AiServerStatus {
       },
       modeWeights: {
         if (usage['modeWeights'] case final Map rawWeights)
+          for (final entry in rawWeights.entries)
+            if (entry.key is String && entry.value is num)
+              entry.key as String: (entry.value as num).toDouble(),
+      },
+      effortWeights: {
+        if (usage['effortWeights'] case final Map rawWeights)
           for (final entry in rawWeights.entries)
             if (entry.key is String && entry.value is num)
               entry.key as String: (entry.value as num).toDouble(),

@@ -210,7 +210,7 @@ void main() {
     await _openMenu(tester);
     await tester.tap(find.text('Artifact generation'));
     await tester.pumpAndSettle();
-    await tester.tapAt(const Offset(780, 580));
+    await tester.tapAt(const Offset(790, 12));
     await tester.pumpAndSettle();
     expect(find.text('Artifact generation'), findsNothing);
     expect(find.text('CSV spreadsheet (.csv)'), findsNothing);

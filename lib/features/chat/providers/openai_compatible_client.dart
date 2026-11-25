@@ -22,6 +22,7 @@ class OpenAiCompatibleClient implements AiClient {
     this.maxTokensField = 'max_tokens',
     this.extraHeaders = const {},
     this.timeout = const Duration(seconds: 120),
+    this.extraBody = const {},
   });
 
   final String baseUrl;
@@ -60,7 +61,10 @@ class OpenAiCompatibleClient implements AiClient {
   /// short timeout turns a slow answer into a failure.
   final Duration timeout;
 
-  static const _maxToolHops = 5;
+  /// Added to every request body, e.g. the luma server's `luma_effort`.
+  final Map<String, Object> extraBody;
+
+  static const _maxToolHops = 24;
 
   @override
   Future<AiChatResult> chat({
@@ -202,6 +206,7 @@ class OpenAiCompatibleClient implements AiClient {
       if (tools.isNotEmpty) 'tools': tools,
       if (reasoningEffort != null) 'reasoning_effort': reasoningEffort,
       if (disableResponseStorage) 'store': false,
+      ...extraBody,
     };
 
     final client = viaLumaServer ? GatedServerClient() : http.Client();

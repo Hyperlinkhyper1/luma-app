@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:luma/app/widgets.dart';
 import 'package:luma/features/chat/assistant_compose_mode.dart';
 import 'package:luma/features/chat/chat_page.dart';
 import 'package:luma/features/chat/chat_scope.dart';
@@ -17,6 +18,7 @@ import 'package:luma/settings/settings_controller.dart';
 import 'package:luma/settings/settings_scope.dart';
 import 'package:luma/sync/sync_service.dart';
 import 'package:luma/theme/luma_theme.dart';
+import 'package:luma/theme/theme_style.dart';
 
 class _Sync extends ChangeNotifier implements SyncService {
   @override
@@ -38,12 +40,12 @@ void main() {
     settings.dispose();
     await db.close();
   });
-  Widget host(Widget body) => SettingsScope(
+  Widget host(Widget body, {ThemeData? theme}) => SettingsScope(
     controller: settings,
     child: ChatScope(
       repository: repository,
       child: MaterialApp(
-        theme: LumaTheme.dark,
+        theme: theme ?? LumaTheme.dark,
         localizationsDelegates: L.localizationsDelegates,
         supportedLocales: L.supportedLocales,
         home: Scaffold(body: body),
@@ -127,7 +129,19 @@ void main() {
         projectId: project,
       );
       await repository.addMessage(chat, 'user', 'Hi');
-      await repository.createConversation(title: 'Main chat');
+      final main = await repository.createConversation(title: 'Main chat');
+      await repository.addArtifact(
+        conversationId: chat,
+        name: 'project-report.pdf',
+        path: 'missing/project-report.pdf',
+        mimeType: 'application/pdf',
+      );
+      await repository.addArtifact(
+        conversationId: main,
+        name: 'main-notes.txt',
+        path: 'missing/main-notes.txt',
+        mimeType: 'text/plain',
+      );
     });
     await tester.pumpWidget(
       host(
@@ -147,29 +161,71 @@ void main() {
     expect(find.text('Project chat'), findsOneWidget);
     expect(find.text('Main chat'), findsNothing);
     expect(find.text('A private project fact'), findsOneWidget);
+    expect(find.text('project-report.pdf'), findsNothing);
+    await tester.tap(find.text('Artifacts · 1'));
+    await tester.pumpAndSettle();
+    expect(find.text('project-report.pdf'), findsOneWidget);
+    expect(find.text('main-notes.txt'), findsNothing);
+    expect(find.text('Project chat'), findsNothing);
     expect(tester.takeException(), isNull);
     await tester.runAsync(db.close);
     await tester.pumpWidget(const SizedBox());
     await tester.pumpAndSettle();
   });
 
-  testWidgets('artifact library lists existing files at 320px', (tester) async {
+  testWidgets('themed artifact library filters and opens actions at 320px', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(320, 700);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
-    await tester.runAsync(
-      () => repository.addArtifact(
+    await tester.runAsync(() async {
+      await repository.addArtifact(
         name: 'report.csv',
         path: '${Directory.systemTemp.path}/missing.csv',
         mimeType: 'text/csv',
-      ),
-    );
+        createdAt: DateTime(2026, 11, 3),
+      );
+      await repository.addArtifact(
+        name: 'diagram.svg',
+        path: '${Directory.systemTemp.path}/missing.svg',
+        mimeType: 'image/svg+xml',
+        createdAt: DateTime(2026, 11, 4),
+      );
+    });
+    final theme = LumaTheme.from(Brightness.dark, null, LumaThemeStyle.coffee);
     await tester.pumpWidget(
-      host(AssistantArtifactsView(repository: repository, onOpenChat: (_) {})),
+      host(
+        AssistantArtifactsView(repository: repository, onOpenChat: (_) {}),
+        theme: theme,
+      ),
     );
     await tester.runAsync(() async {
       await Future<void>.delayed(const Duration(milliseconds: 40));
     });
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<Text>(find.text('Artifacts')).style?.fontFamily,
+      theme.textTheme.headlineMedium?.fontFamily,
+    );
+    expect(find.byType(LumaCard), findsOneWidget);
+    final accent = theme.extension<LumaPalette>()!.accent;
+    expect(tester.widget<Text>(find.text('All')).style?.color, accent);
+    expect(find.text('report.csv'), findsOneWidget);
+    expect(find.text('diagram.svg'), findsOneWidget);
+    await tester.tap(find.text('Images'));
+    await tester.pumpAndSettle();
+    expect(find.text('diagram.svg'), findsOneWidget);
+    expect(find.text('report.csv'), findsNothing);
+    await tester.tap(find.text('Files'));
+    await tester.pumpAndSettle();
+    expect(find.text('diagram.svg'), findsNothing);
+    await tester.tap(find.byTooltip('Search'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'diagram');
+    await tester.pumpAndSettle();
+    expect(find.text('No results'), findsOneWidget);
+    await tester.tap(find.byTooltip('Search'));
     await tester.pumpAndSettle();
     expect(find.text('report.csv'), findsOneWidget);
     await tester.tap(find.byTooltip('More'));

@@ -9,11 +9,15 @@ import '../../settings/settings_controller.dart';
 import '../../sync/sync_service.dart';
 import '../plugins/installed/ai_usage/ai_usage_repository.dart';
 import 'ai_key_store.dart';
+import 'assistant_auto_router.dart';
 import 'assistant_compose_mode.dart';
+import 'assistant_effort.dart';
+import 'assistant_ultra_reasoning.dart';
 import 'assistant_files.dart';
 import 'ai_tools.dart';
 import 'chat_usage.dart';
 import 'memory/assistant_memory_repository.dart';
+import 'office/assistant_workbench.dart';
 import 'data/chat_repository.dart';
 import 'providers/ai_client.dart';
 import 'providers/ai_modes.dart';
@@ -48,6 +52,7 @@ class ChatController extends ChangeNotifier {
     LumaImageClient Function(String serverUrl)? imageClientFor,
     Future<Directory> Function()? imageDirectory,
     AssistantArtifactStore? artifactStore,
+    AssistantWorkbench? workbench,
   }) : _repository = repository,
        _keyStore = keyStore,
        _tools = tools,
@@ -59,7 +64,23 @@ class ChatController extends ChangeNotifier {
        _imageClientFor =
            imageClientFor ?? ((url) => LumaImageClient(serverUrl: url)),
        _imageDirectory = imageDirectory ?? _defaultImageDirectory,
-       _artifactStore = artifactStore ?? AssistantArtifactStore(repository);
+       _artifactStore = artifactStore ?? AssistantArtifactStore(repository),
+       workbench = workbench ?? AssistantWorkbench(repository) {
+    this.workbench.addListener(_onWorkbenchChanged);
+  }
+
+  /// The Word, PowerPoint and Excel files replies build, and the file the
+  /// preview panel shows.
+  final AssistantWorkbench workbench;
+  bool _workbenchHadFile = false;
+
+  /// The chat layout makes room for the preview panel, so it rebuilds when a
+  /// file opens or closes, not on every edit inside one.
+  void _onWorkbenchChanged() {
+    if (workbench.hasFile == _workbenchHadFile) return;
+    _workbenchHadFile = workbench.hasFile;
+    notifyListeners();
+  }
 
   final ChatRepository _repository;
   final AiKeyStore _keyStore;
@@ -139,12 +160,18 @@ class ChatController extends ChangeNotifier {
   bool _sending = false;
   bool get isSending => _sending;
 
+  /// Whether the next turn can take pictures as input. [chatMode] and
+  /// [pictureTier] replace the selected ones for a turn Luma Auto routed.
+  /// With Auto selected and nothing routed yet, any model that could take
+  /// the picture counts, since Auto sends picture messages to one.
   Future<bool> supportsImageInput({
     AssistantComposeMode mode = AssistantComposeMode.chat,
+    AiMode? chatMode,
+    String? pictureTier,
   }) async {
     if (mode == AssistantComposeMode.picture) {
       final status = await _syncService?.aiStatus();
-      return _settings.pictureTier == 'pro'
+      return (pictureTier ?? _settings.pictureTier) == 'pro'
           ? status?.pictureProImageInput ?? false
           : status?.pictureImageInput ?? false;
     }
@@ -152,12 +179,93 @@ class ChatController extends ChangeNotifier {
     if (provider == 'openai' || provider == 'anthropic') return true;
     if (provider != 'google') return false;
     if (await _keyStore.readKey(provider) != null) return true;
-    final selected = aiModeById(_settings.aiMode);
-    final chatMode = selected.availableForPlan(_settings.selectedPlanId)
+    final status = await _syncService?.aiStatus();
+    if (chatMode == null && _autoSelected) {
+      return AiMode.values.any(
+            (m) =>
+                m.availableForPlan(_settings.selectedPlanId) &&
+                (status?.imageInputModes[m.name] ?? false),
+          ) ||
+          (status?.pictureImageInput ?? false) ||
+          (status?.pictureProImageInput ?? false);
+    }
+    final selected = chatMode ?? aiModeById(_settings.aiMode);
+    final usable = selected.availableForPlan(_settings.selectedPlanId)
         ? selected
         : AiMode.normal;
-    return (await _syncService?.aiStatus())?.imageInputModes[chatMode.name] ??
-        false;
+    return status?.imageInputModes[usable.name] ?? false;
+  }
+
+  bool get _autoSelected =>
+      isAutoAiMode(_settings.aiProviderId, _settings.aiMode);
+
+  /// Luma Auto's pick for one message, or null when Auto isn't selected.
+  /// An explicit + menu mode or file type wins over the route's own; only
+  /// the model then comes from Auto.
+  Future<AutoRoute?> _autoRouteFor(
+    int conversationId,
+    String text, {
+    required AssistantComposeMode mode,
+    required String? artifactType,
+    required List<AssistantAttachment> attachments,
+  }) async {
+    if (!_autoSelected) return null;
+    final sync = _syncService;
+    final status = sync != null && sync.serverReady
+        ? await sync.aiStatus()
+        : null;
+    final history = await _repository.loadMessages(conversationId);
+    final replies = history.where((m) => m.role == 'assistant');
+    final route = routeAutoRequest(
+      text,
+      AutoRouteContext(
+        planId: _settings.selectedPlanId,
+        pictureAvailable:
+            (status?.pictureConfigured ?? false) &&
+            status?.pictureWeeklyPct != null,
+        pictureProAvailable:
+            (status?.pictureProConfigured ?? false) &&
+            status?.pictureProWeeklyPct != null,
+        imageAttachments: attachments.where((a) => a.isImage).length,
+        textAttachments: attachments.where((a) => !a.isImage).length,
+        lastReplyWasPicture:
+            replies.isNotEmpty &&
+            chatImagePathOf(replies.last.metadataJson) != null,
+      ),
+    );
+    if (artifactType != null) {
+      return AutoRoute(
+        kind: AutoRouteKind.file,
+        chatMode: route.chatMode == AiMode.normal
+            ? AiMode.smarter
+            : route.chatMode,
+        artifactType: artifactType,
+      );
+    }
+    if (mode == AssistantComposeMode.chat) return route;
+    final strongest = AiMode.values.lastWhere(
+      (m) => m.availableForPlan(_settings.selectedPlanId),
+    );
+    return switch (mode) {
+      AssistantComposeMode.deepResearch => AutoRoute(
+        kind: AutoRouteKind.research,
+        chatMode: strongest,
+        composeMode: mode,
+      ),
+      AssistantComposeMode.picture => AutoRoute(
+        kind: route.kind == AutoRouteKind.pictureEdit
+            ? AutoRouteKind.pictureEdit
+            : AutoRouteKind.picture,
+        chatMode: AiMode.normal,
+        composeMode: mode,
+        pictureTier: _settings.pictureTier,
+      ),
+      _ => AutoRoute(
+        kind: route.kind,
+        chatMode: route.chatMode,
+        composeMode: mode,
+      ),
+    };
   }
 
   /// The reply being written for the message in flight, for providers that
@@ -170,6 +278,8 @@ class ChatController extends ChangeNotifier {
 
   @override
   void dispose() {
+    workbench.removeListener(_onWorkbenchChanged);
+    workbench.dispose();
     draftReply.dispose();
     activity.dispose();
     super.dispose();
@@ -191,6 +301,7 @@ class ChatController extends ChangeNotifier {
   }) async {
     if (_sending) return;
     _sending = true;
+    workbench.modelActive = true;
     notifyListeners();
     try {
       await _sendMessage(
@@ -202,6 +313,7 @@ class ChatController extends ChangeNotifier {
       );
     } finally {
       _sending = false;
+      workbench.modelActive = false;
       draftReply.value = '';
       activity.value = null;
       notifyListeners();
@@ -247,11 +359,26 @@ class ChatController extends ChangeNotifier {
       await _repository.addMessage(conversationId, 'error', error.message);
       return;
     }
+    final auto = await _autoRouteFor(
+      conversationId,
+      userText,
+      mode: mode,
+      artifactType: artifactType,
+      attachments: attachments,
+    );
+    if (auto != null) {
+      mode = auto.composeMode;
+      artifactType = auto.artifactType;
+    }
     final needsImageCapability =
         mode != AssistantComposeMode.picture ||
         attachments.any((a) => a.isImage);
     final imageInput = needsImageCapability
-        ? await supportsImageInput(mode: mode)
+        ? await supportsImageInput(
+            mode: mode,
+            chatMode: auto?.chatMode,
+            pictureTier: auto?.pictureTier,
+          )
         : false;
     if (attachments.length > 3 ||
         attachments.any((a) => a.isImage && !imageInput) ||
@@ -265,7 +392,12 @@ class ChatController extends ChangeNotifier {
       return;
     }
     if (mode == AssistantComposeMode.picture) {
-      return _sendPicture(conversationId, userText, attachments: attachments);
+      return _sendPicture(
+        conversationId,
+        userText,
+        attachments: attachments,
+        auto: auto,
+      );
     }
     final usingLocalModel = providerId == AiProviderId.local.name;
     var apiKey = usingLocalModel
@@ -280,16 +412,39 @@ class ChatController extends ChangeNotifier {
     final serverAvailable = sync != null && sync.serverReady;
     AiMode? googleMode;
 
+    // Ultra Reasoning takes over plain and research turns on Luma AI; plan
+    // mode and file requests keep their own flow.
+    final ultra =
+        ultraReasoningActive(
+          enabled: _settings.ultraReasoning,
+          planId: _settings.selectedPlanId,
+          providerId: providerId,
+        ) &&
+        artifactType == null &&
+        (mode == AssistantComposeMode.chat ||
+            mode == AssistantComposeMode.deepResearch);
+    final effort = ultra
+        ? AssistantEffort.max
+        : AssistantEffort.parse(_settings.assistantEffort);
+
     if (providerId == AiProviderId.google.name) {
-      final selectedMode = aiModeById(_settings.aiMode);
+      final selectedMode = ultra
+          ? AiMode.values.lastWhere(
+              (m) => m.availableForPlan(_settings.selectedPlanId),
+            )
+          : auto?.chatMode ?? aiModeById(_settings.aiMode);
       final mode = googleMode =
           selectedMode.availableForPlan(_settings.selectedPlanId)
           ? selectedMode
           : AiMode.normal;
       if (apiKey != null) {
-        client = GoogleClient(mode: mode);
+        client = GoogleClient(mode: mode, effort: effort);
       } else if (serverAvailable) {
-        client = GoogleProxyClient(serverUrl: sync.serverUrl!, mode: mode);
+        client = GoogleProxyClient(
+          serverUrl: sync.serverUrl!,
+          mode: mode,
+          effort: effort,
+        );
         apiKey = sync.authToken!;
       }
     } else if (providerId == AiProviderId.mistral.name &&
@@ -346,6 +501,7 @@ class ChatController extends ChangeNotifier {
         for (final tool in baseTools)
           if (filesAllowed || tool.name != 'generate_qr_code') tool,
         if (filesAllowed) AssistantArtifactStore.schema,
+        if (filesAllowed) ...AssistantWorkbench.schemas,
       ];
       final generated = <Map<String, dynamic>>[];
 
@@ -354,6 +510,7 @@ class ChatController extends ChangeNotifier {
         Map<String, dynamic> input,
       ) async {
         if (name == AssistantArtifactStore.toolName ||
+            AssistantWorkbench.toolNames.contains(name) ||
             name == 'generate_qr_code') {
           if (!assistantFilesAllowed(_settings.selectedPlanId)) {
             return {
@@ -361,6 +518,11 @@ class ChatController extends ChangeNotifier {
               'message': assistantFilePlanMessage,
             };
           }
+        }
+        if (AssistantWorkbench.toolNames.contains(name)) {
+          final result = await workbench.execute(conversationId, name, input);
+          if (result['status'] == 'created') generated.add(result);
+          return result;
         }
         if (name == AssistantArtifactStore.toolName) {
           try {
@@ -413,12 +575,35 @@ class ChatController extends ChangeNotifier {
       }
 
       final AiChatResult result;
-      if (mode == AssistantComposeMode.deepResearch) {
+      UltraReasoningResult? ultraResult;
+      final effortPrompt = effortSupported(providerId) ? effort.prompt : null;
+      if (ultra) {
+        ultraResult = await UltraReasoning(
+          client: client,
+          apiKey: apiKey,
+          parallel: deepResearchRunsInParallel(providerId),
+          systemPrompt: [
+            _fullSystemPrompt(toolSchemas, project),
+            ?effortPrompt,
+          ].join('\n\n'),
+          tools: [
+            for (final tool in toolSchemas)
+              if (tool.name == 'web_search') tool,
+          ],
+          executeTool: executeTool,
+          onActivity: (value) => activity.value = value,
+          onText: (text) => draftReply.value = text,
+        ).run(turns);
+        result = ultraResult.result;
+      } else if (mode == AssistantComposeMode.deepResearch) {
         result = await DeepResearch(
           client: client,
           apiKey: apiKey,
           parallel: deepResearchRunsInParallel(providerId),
-          systemPrompt: _fullSystemPrompt(toolSchemas, project),
+          systemPrompt: [
+            _fullSystemPrompt(toolSchemas, project),
+            ?effortPrompt,
+          ].join('\n\n'),
           agentTools: [
             for (final tool in toolSchemas)
               if (tool.name == 'web_search') tool,
@@ -438,8 +623,14 @@ class ChatController extends ChangeNotifier {
           history: turns,
           systemPrompt: [
             _fullSystemPrompt(toolSchemas, project),
+            ?effortPrompt,
             if (planning) kPlanModePrompt,
-            if (artifactType != null)
+            if (artifactType != null &&
+                assistantOfficeArtifactTypes.contains(artifactType))
+              'Create a .$artifactType file for this request: start it with create_office_file, '
+                  'then build it section by section with edit_office_file. '
+                  'Report success only after the last edit succeeds.'
+            else if (artifactType != null)
               'Create a .$artifactType file for this request using create_artifact. '
                   'Supply complete content and report success only after the tool succeeds.',
           ].join('\n\n'),
@@ -458,20 +649,33 @@ class ChatController extends ChangeNotifier {
       final metadata =
           jsonDecode(result.metadataJson ?? '{}') as Map<String, dynamic>;
       if (generated.isNotEmpty) metadata['artifacts'] = generated;
+      if (ultraResult != null) {
+        metadata['ultra'] = {
+          'checks': ultraResult.checks,
+          'revisions': ultraResult.revisions,
+        };
+      } else if (effortSupported(providerId) &&
+          effort != AssistantEffort.recommended) {
+        metadata['effort'] = effort.name;
+      }
       await _repository.addMessage(
         conversationId,
         artifactMissing ? 'error' : 'assistant',
         artifactMissing
             ? 'The model did not create the requested file. Try again or choose another model.'
             : result.text,
-        metadataJson: chatMetadataWithComposeMode(
-          chatMetadataWithUsage(jsonEncode(metadata), result.usage),
-          mode,
+        metadataJson: chatMetadataWithAutoRoute(
+          chatMetadataWithComposeMode(
+            chatMetadataWithUsage(jsonEncode(metadata), result.usage),
+            mode,
+          ),
+          ultra ? null : auto,
         ),
       );
       _settings.recordModelUsage(
         modelUsageKeyFor(providerId, mode: googleMode),
       );
+      if (auto != null) _settings.recordModelUsage(kAutoModelUsageKey);
       final usage = result.usage;
       if (usage != null &&
           client is! GoogleProxyClient &&
@@ -502,6 +706,7 @@ class ChatController extends ChangeNotifier {
     int conversationId,
     String prompt, {
     List<AssistantAttachment> attachments = const [],
+    AutoRoute? auto,
   }) async {
     final sync = _syncService;
     if (sync == null || !sync.serverReady) {
@@ -512,7 +717,8 @@ class ChatController extends ChangeNotifier {
       );
       return;
     }
-    final selected = aiModeById(_settings.aiMode);
+    final tier = auto?.pictureTier ?? _settings.pictureTier;
+    final selected = auto?.chatMode ?? aiModeById(_settings.aiMode);
     final mode = selected.availableForPlan(_settings.selectedPlanId)
         ? selected
         : AiMode.normal;
@@ -527,7 +733,10 @@ class ChatController extends ChangeNotifier {
       final lastPath = pictureContext.lastImagePath;
       if (lastPath != null &&
           attachments.length < 3 &&
-          await supportsImageInput(mode: AssistantComposeMode.picture)) {
+          await supportsImageInput(
+            mode: AssistantComposeMode.picture,
+            pictureTier: tier,
+          )) {
         final file = File(lastPath);
         if (await file.exists() && await file.length() <= 4 * 1024 * 1024) {
           final lower = lastPath.toLowerCase();
@@ -557,7 +766,7 @@ class ChatController extends ChangeNotifier {
         authToken: sync.authToken!,
         prompt: pictureContext.promptFor(prompt, editingImage: previous != null),
         mode: mode.name,
-        tier: _settings.pictureTier,
+        tier: tier,
         images: [
           ?previous,
           for (final attachment in attachments)
@@ -584,11 +793,15 @@ class ChatController extends ChangeNotifier {
         conversationId,
         'assistant',
         image.text ?? '',
-        metadataJson: chatMetadataWithComposeMode(
-          jsonEncode({'imagePath': file.path}),
-          AssistantComposeMode.picture,
+        metadataJson: chatMetadataWithAutoRoute(
+          chatMetadataWithComposeMode(
+            jsonEncode({'imagePath': file.path}),
+            AssistantComposeMode.picture,
+          ),
+          auto,
         ),
       );
+      if (auto != null) _settings.recordModelUsage(kAutoModelUsageKey);
     } on AiError catch (e) {
       await _repository.addMessage(conversationId, 'error', e.message);
     } catch (e) {

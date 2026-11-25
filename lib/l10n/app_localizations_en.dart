@@ -1857,6 +1857,55 @@ class LEn extends L {
   String get assistantToggleSidebar => 'Toggle sidebar';
 
   @override
+  String get assistantDetailsTitle => 'Chat details';
+
+  @override
+  String get assistantDetailsShow => 'Show chat details';
+
+  @override
+  String get assistantDetailsHide => 'Hide chat details';
+
+  @override
+  String get assistantDetailsEnvironment => 'Environment';
+
+  @override
+  String get assistantDetailsChatMode => 'Chat';
+
+  @override
+  String get assistantDetailsContext => 'Context';
+
+  @override
+  String assistantDetailsContextUsed(int percent) {
+    return '$percent% used';
+  }
+
+  @override
+  String get assistantDetailsContextPending =>
+      'Fills in after the first reply.';
+
+  @override
+  String get assistantDetailsInputTokens => 'Last input';
+
+  @override
+  String get assistantDetailsOutputTokens => 'Last output';
+
+  @override
+  String get assistantDetailsYourMessages => 'Your messages';
+
+  @override
+  String get assistantDetailsReplies => 'Replies';
+
+  @override
+  String get assistantDetailsFiles => 'Files';
+
+  @override
+  String get assistantDetailsNoFiles =>
+      'Files the assistant makes in this chat show up here.';
+
+  @override
+  String get assistantDetailsFileMissing => 'missing';
+
+  @override
   String get assistantChats => 'Chats';
 
   @override
@@ -2061,6 +2110,21 @@ class LEn extends L {
 
   @override
   String get assistantApiManage => 'Manage API keys';
+
+  @override
+  String get assistantApiAddKey => 'Add API key';
+
+  @override
+  String get assistantApiAddModel => 'Add model';
+
+  @override
+  String get assistantApiProvider => 'Provider';
+
+  @override
+  String get assistantApiModelId => 'Model ID';
+
+  @override
+  String get assistantApiSaveKeyFailed => 'Could not save the API key.';
 
   @override
   String get aiSettingsApiKeysMoved =>
@@ -41873,6 +41937,13 @@ class LEn extends L {
   String get assistantProjectsAll => 'All projects';
 
   @override
+  String get assistantProjectsTitle => 'Projects';
+
+  @override
+  String get assistantProjectsSubtitle =>
+      'Keep chats and memory together for each project.';
+
+  @override
   String get assistantProjectsNew => 'New project';
 
   @override
@@ -41901,6 +41972,72 @@ class LEn extends L {
   @override
   String get assistantProjectDeleteMessage =>
       'This removes the project and its memory. Its chats return to the main chat list; generated files stay in Artifacts.';
+
+  @override
+  String assistantProjectChatCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count chats',
+      one: '1 chat',
+      zero: 'No chats',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get assistantProjectMemorySaved => 'Memory saved';
+
+  @override
+  String get assistantProjectMemoryNone => 'No memory yet';
+
+  @override
+  String assistantProjectLastActive(String date) {
+    return 'Active $date';
+  }
+
+  @override
+  String get assistantProjectDescriptionFallback =>
+      'Chats here use your global memory and this project’s memory.';
+
+  @override
+  String get assistantProjectNoChatsTitle => 'Start the first chat';
+
+  @override
+  String get assistantProjectNoChatsBody =>
+      'Chats you start here stay grouped in this project and share its memory.';
+
+  @override
+  String get assistantProjectStartChat => 'Start a chat';
+
+  @override
+  String get assistantProjectMemoryEmpty =>
+      'No project memory yet. Add notes here or ask the assistant to remember a project fact.';
+
+  @override
+  String get assistantProjectAddMemory => 'Add memory';
+
+  @override
+  String get assistantProjectHowTitle => 'How projects work';
+
+  @override
+  String get assistantProjectHowChats =>
+      'Every chat started here is filed under this project.';
+
+  @override
+  String get assistantProjectHowMemory =>
+      'Project memory is only shared with this project’s chats.';
+
+  @override
+  String get assistantProjectHowDelete =>
+      'Deleting the project keeps its chats and files.';
+
+  @override
+  String get assistantProjectNoArtifactsTitle => 'No artifacts yet';
+
+  @override
+  String get assistantProjectNoArtifactsBody =>
+      'Pictures and files the assistant makes in this project’s chats show up here.';
 
   @override
   String get assistantUploadFiles => 'Upload files';
@@ -42047,4 +42184,141 @@ class LEn extends L {
 
   @override
   String get steamCs2RefreshInventory => 'Refresh inventory';
+
+  @override
+  String get assistantPreviewNotFound =>
+      'This file is no longer on this device.';
+
+  @override
+  String get assistantPreviewNoApp =>
+      'No app on this device opens this kind of file.';
+
+  @override
+  String get assistantPreviewSaveError =>
+      'The file is open in another app, so only luma\'s copy is up to date.';
+
+  @override
+  String get assistantPreviewOpenExternally => 'Open in another app';
+
+  @override
+  String get assistantPreviewShowInFolder => 'Show in folder';
+
+  @override
+  String get assistantPreviewClose => 'Close preview';
+
+  @override
+  String get assistantPreviewWorking => 'Working on the file…';
+
+  @override
+  String get assistantPreviewReadingOutline => 'Reading the outline';
+
+  @override
+  String assistantPreviewReading(String part) {
+    return 'Reading $part';
+  }
+
+  @override
+  String assistantPreviewWriting(String part) {
+    return 'Writing $part';
+  }
+
+  @override
+  String assistantPreviewDeleting(String part) {
+    return 'Removing $part';
+  }
+
+  @override
+  String assistantPreviewPartBlock(String range) {
+    return 'block $range';
+  }
+
+  @override
+  String assistantPreviewPartSlide(String range) {
+    return 'slide $range';
+  }
+
+  @override
+  String get assistantPreviewTagReading => 'Reading';
+
+  @override
+  String get assistantPreviewTagWriting => 'Writing';
+
+  @override
+  String get assistantPreviewTagDeleting => 'Removing';
+
+  @override
+  String get assistantPreviewEmptyDocument =>
+      'The assistant is starting this file…';
+
+  @override
+  String get assistantPreviewUnsupported => 'luma can\'t preview this file.';
+
+  @override
+  String get assistantPreviewNoPdfText => 'This PDF has no readable text.';
+
+  @override
+  String get assistantEffortTitle => 'Effort';
+
+  @override
+  String get assistantEffortDescription =>
+      'Higher effort means more thorough responses, but takes longer and uses your limits faster.';
+
+  @override
+  String get assistantEffortLow => 'Low';
+
+  @override
+  String get assistantEffortMedium => 'Medium';
+
+  @override
+  String get assistantEffortHigh => 'High';
+
+  @override
+  String get assistantEffortExtra => 'Extra';
+
+  @override
+  String get assistantEffortMax => 'Max';
+
+  @override
+  String get assistantEffortRecommended => 'Recommended';
+
+  @override
+  String assistantEffortUsage(String multiplier) {
+    return '$multiplier× or more usage';
+  }
+
+  @override
+  String assistantEffortBadge(String level) {
+    return '$level effort';
+  }
+
+  @override
+  String get assistantUltraReasoning => 'Ultra Reasoning';
+
+  @override
+  String get assistantUltraReasoningDescription =>
+      'Researches first, then checks and improves its answer over several rounds at Max effort. Takes much longer and uses far more of your limits.';
+
+  @override
+  String get assistantUltraReasoningPlan => 'Requires Nova';
+
+  @override
+  String assistantUltraChecking(int round, int rounds) {
+    return 'Checking the answer ($round/$rounds)';
+  }
+
+  @override
+  String assistantUltraImproving(int round, int rounds) {
+    return 'Improving the answer ($round/$rounds)';
+  }
+
+  @override
+  String assistantUltraBadge(int checks) {
+    String _temp0 = intl.Intl.pluralLogic(
+      checks,
+      locale: localeName,
+      other: 'Ultra Reasoning · checked $checks times',
+      one: 'Ultra Reasoning · checked once',
+    );
+    return '$_temp0';
+  }
 }
