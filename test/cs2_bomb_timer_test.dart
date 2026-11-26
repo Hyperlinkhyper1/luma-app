@@ -109,7 +109,7 @@ void main() {
   group('Cs2BombTimerOptions', () {
     test('survive a JSON round trip', () {
       const options = Cs2BombTimerOptions(
-        token: '0123456789abcdef0123',
+        token: 'testtesttesttest',
         fuseSeconds: 45,
         overlayX: 100,
         overlayY: -20,

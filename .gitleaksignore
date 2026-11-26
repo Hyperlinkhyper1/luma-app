@@ -1,3 +1,5 @@
 # Test fixture: the legacy key client_secret_storage_test.dart uses to
 # decrypt its own sample ciphertexts. Not a credential for anything.
 7e8db9bb4f9ac8f28744a3999c54bce9aab7aba9:test/client_secret_storage_test.dart:generic-api-key:18
+# Historical CS2 options fixture used only for a JSON round trip.
+fbd05abbd2c1dff02cdc4dbe97e571ea3c3a8dc7:test/cs2_bomb_timer_test.dart:generic-api-key:112
