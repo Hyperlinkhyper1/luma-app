@@ -8,8 +8,10 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"math"
 	"os"
 	"strings"
+	"time"
 
 	dem "github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs"
 	"github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/common"
@@ -21,7 +23,17 @@ type result struct {
 	Map    string   `json:"map"`
 	Blocks []string `json:"blocks"`
 	Digest string   `json:"digest"`
+	Heat   [][3]int `json:"heat"`
 }
+
+// Every alive player's position, sampled once per heatInterval of live
+// round time (freeze time and warmup are skipped), as [x, y, team].
+const (
+	heatInterval   = 5 * time.Second
+	heatMaxSamples = 200000
+	heatTeamT      = 2
+	heatTeamCT     = 3
+)
 
 func main() {
 	if len(os.Args) != 2 {
@@ -75,6 +87,8 @@ func parse(reader io.Reader) (result, error) {
 	var rounds int
 	var attempt byte
 	var plant byte
+	var live bool
+	var nextSample time.Duration
 
 	finishBlock := func() {
 		if block.Len() > 0 {
@@ -92,8 +106,52 @@ func parse(reader io.Reader) (result, error) {
 	})
 	parser.RegisterEventHandler(func(events.RoundStart) {
 		active = true
+		live = false
 		attempt = 0
 		plant = 0
+	})
+	parser.RegisterEventHandler(func(events.RoundFreezetimeEnd) {
+		live = true
+		nextSample = parser.CurrentTime()
+	})
+	parser.RegisterEventHandler(func(events.FrameDone) {
+		if !live || !active || len(data.Heat) >= heatMaxSamples {
+			return
+		}
+		now := parser.CurrentTime()
+		if now < nextSample {
+			return
+		}
+		nextSample = now + heatInterval
+		game := parser.GameState()
+		if game.IsWarmupPeriod() || !game.IsMatchStarted() {
+			return
+		}
+		for _, player := range game.Participants().Playing() {
+			if player == nil || !player.IsAlive() {
+				continue
+			}
+			var team int
+			switch player.Team {
+			case common.TeamTerrorists:
+				team = heatTeamT
+			case common.TeamCounterTerrorists:
+				team = heatTeamCT
+			default:
+				continue
+			}
+			position := player.Position()
+			if math.IsNaN(position.X) || math.IsNaN(position.Y) ||
+				math.Abs(position.X) > 65536 || math.Abs(position.Y) > 65536 {
+				continue
+			}
+			data.Heat = append(data.Heat, [3]int{
+				int(math.Round(position.X)), int(math.Round(position.Y)), team,
+			})
+			if len(data.Heat) >= heatMaxSamples {
+				return
+			}
+		}
 	})
 	parser.RegisterEventHandler(func(events.TeamSideSwitch) { split = true })
 	parser.RegisterEventHandler(func(events.MatchStart) { split = true })
@@ -104,6 +162,7 @@ func parse(reader io.Reader) (result, error) {
 		plant = site(e.Site)
 	})
 	parser.RegisterEventHandler(func(e events.RoundEnd) {
+		live = false
 		game := parser.GameState()
 		if !active || game.IsWarmupPeriod() || !game.IsMatchStarted() {
 			return
@@ -134,6 +193,9 @@ func parse(reader io.Reader) (result, error) {
 		return result{}, err
 	}
 	finishBlock()
+	if data.Heat == nil {
+		data.Heat = [][3]int{}
+	}
 	if rounds == 0 || rounds > 500 || data.Map == "" {
 		return result{}, errors.New("no supported rounds")
 	}

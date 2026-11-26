@@ -32,6 +32,7 @@ import 'benchmark_repair.dart';
 import 'chat_store.dart';
 import 'classroom.dart';
 import 'cs2_dataset_store.dart';
+import 'cs2_heatmap.dart';
 import 'cs2_offline_store.dart';
 import 'cs2_replay.dart';
 import 'decider_test.dart';
@@ -525,6 +526,7 @@ class Api {
   final AiModelCatalogStore aiCatalog;
   final AiBenchmarkStore aiBenchmarks;
   late final _cs2Datasets = Cs2DatasetStore(config.dataDir);
+  late final _cs2Heatmaps = Cs2HeatmapStore(config.dataDir);
   late final _cs2ReplayImporter = Cs2ReplayImporter(
       Platform.environment['LUMA_CS2_REPLAY_PARSER'] ?? 'luma-cs2-replay');
 
@@ -883,6 +885,7 @@ class Api {
       ..get('/admin/databases/cs2', _requireAdmin(_adminCs2Datasets))
       ..post('/admin/databases/cs2/cases', _requireAdmin(_adminCs2Cases))
       ..post('/admin/databases/cs2/replay', _requireAdmin(_adminCs2Replay))
+      ..get('/admin/databases/cs2/heatmap', _requireAdmin(_adminCs2Heatmap))
       ..post('/admin/databases/cs2/publish', _requireAdmin(_adminCs2Publish))
       ..get('/admin/users', _requireAdmin(_adminUsers))
       ..get('/admin/fishing-waters/state', _requireAdmin(fishingWaters.state))

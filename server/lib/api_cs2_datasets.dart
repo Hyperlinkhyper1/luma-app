@@ -48,13 +48,33 @@ extension _Cs2DatasetRoutes on Api {
       user.planId != 'core' && kPlanQuotaBytes.containsKey(user.planId);
 
   Future<Response> _cs2PrivateReplay(Request request, StoredUser user) =>
-      _cs2ReplayImporter.import(request, (match, digest) {
+      _cs2ReplayImporter.import(request, (match, digest, heat) {
         return jsonResponse(200, {...match.toJson(), 'digest': digest})
             .change(headers: {'Cache-Control': 'private, no-store'});
       });
 
   Response _adminCs2Datasets(Request request) =>
-      jsonResponse(200, _cs2Datasets.status);
+      jsonResponse(200, _adminCs2Status());
+
+  Map<String, Object?> _adminCs2Status() {
+    final heat = _cs2Heatmaps.samplesByMap;
+    return {
+      ..._cs2Datasets.status,
+      'heatmaps': [
+        for (final id in (heat.keys.toList()..sort()))
+          {'id': id, 'name': cs2MapName(id), 'samples': heat[id]},
+      ],
+    };
+  }
+
+  Response _adminCs2Heatmap(Request request) {
+    final map = cs2BombMapId(request.url.queryParameters['map'] ?? '');
+    if (map == null) {
+      return errorResponse(400, 'invalid_map', 'Choose a de_ map.');
+    }
+    return jsonResponse(200, _cs2Heatmaps.describe(map))
+        .change(headers: {'Cache-Control': 'private, no-store'});
+  }
 
   Future<Response> _adminCs2Cases(Request request) =>
       _adminCs2Mutation(request, (body) async {
@@ -105,10 +125,18 @@ extension _Cs2DatasetRoutes on Api {
   }
 
   Future<Response> _adminCs2Replay(Request request) =>
-      _cs2ReplayImporter.import(request, (match, digest) async {
+      _cs2ReplayImporter.import(request, (match, digest, heat) async {
         try {
           await _cs2Datasets.stage(match, digest: digest);
-          return _adminCs2Datasets(request);
+          await _cs2Heatmaps.add(match.map, heat);
+          return jsonResponse(200, {
+            ..._adminCs2Status(),
+            'replayHeatmap': {
+              'map': match.map,
+              'name': cs2MapName(match.map),
+              ...heat.toJson(),
+            },
+          });
         } on FormatException catch (error) {
           return errorResponse(400, 'invalid_cases', error.message.toString());
         }

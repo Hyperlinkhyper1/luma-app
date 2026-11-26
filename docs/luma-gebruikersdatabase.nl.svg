@@ -1,0 +1,223 @@
+<svg xmlns="http://www.w3.org/2000/svg" xml:lang="nl"
+     viewBox="0 0 1240 1568" width="1240" height="1568"
+     role="img" aria-labelledby="title description"
+     font-family="Inter, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <title id="title">Hoe Luma het account van de gebruiker bewaart</title>
+  <desc id="description">De gebruiker maakt een account aan, logt in en gebruikt Luma op twee apparaten. De database gebruikt het account-ID om bij te houden welke sessies, gekoppelde accounts en IP-adressen bij de gebruiker horen.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#1F2D3D"/>
+    </marker>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#218257"/>
+    </marker>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#0B1F3A" flood-opacity="0.10"/>
+    </filter>
+    <style>
+      .title { fill: #0B1F3A; font-size: 30px; font-weight: 800; }
+      .subtitle { fill: #4A6382; font-size: 17px; }
+      .panel { fill: #EAF0F7; stroke: #4A90E2; stroke-width: 3; }
+      .tab { fill: #5B9BEF; }
+      .tab-text { fill: #0B1F3A; font-size: 18px; font-weight: 800; letter-spacing: 0.4px; }
+      .panel-title { fill: #0F2A4A; font-size: 20px; font-weight: 700; }
+      .note { fill: #4A6382; font-size: 14px; }
+      .box { fill: #FFFFFF; stroke: #3D7FD9; stroke-width: 2; }
+      .gray { fill: #F7F9FC; stroke: #8A9BB0; stroke-width: 1.6; }
+      .heading { fill: #0F2A4A; font-size: 17px; font-weight: 700; }
+      .body { fill: #2B4A6F; font-size: 14px; }
+      .small { font-size: 13px; }
+      .mono { font-family: Consolas, 'Liberation Mono', monospace; }
+      .center { text-anchor: middle; }
+      .end { text-anchor: end; }
+      .line { fill: none; stroke: #1F2D3D; stroke-width: 1.8; }
+      .flow { marker-end: url(#arrow); }
+      .relation { fill: none; stroke: #3D7FD9; stroke-width: 2; }
+      .relation-text { fill: #275C9F; font-size: 13px; font-weight: 700; }
+      .sync { fill: none; stroke: #218257; stroke-width: 2; }
+      .sync-text { fill: #186A47; font-size: 14px; font-weight: 700; }
+    </style>
+  </defs>
+
+  <rect width="1240" height="1568" fill="#F3F5F9"/>
+  <rect x="16" y="16" width="1208" height="1536" rx="22" fill="#FFFFFF" filter="url(#shadow)"/>
+  <text x="48" y="64" class="title">Hoe Luma het account van de gebruiker bewaart</text>
+  <text x="48" y="92" class="subtitle">Van een account aanmaken tot gegevens ophalen op een tweede apparaat</text>
+
+  <g aria-label="Manieren om in te loggen">
+    <rect x="140" y="120" width="414" height="62" rx="7" class="gray"/>
+    <text x="347" y="147" class="heading center">E-mail + Luma-wachtwoord</text>
+    <text x="347" y="168" class="body center">De gebruiker meldt zich aan in de app</text>
+    <rect x="686" y="120" width="414" height="62" rx="7" class="gray"/>
+    <text x="893" y="147" class="heading center">Google of GitHub</text>
+    <text x="893" y="168" class="body center">Via de browser, daarna het Luma-wachtwoord</text>
+  </g>
+
+  <g aria-label="Stap 1. Het account">
+    <rect x="40" y="226" width="1160" height="432" rx="14" class="panel"/>
+    <rect x="40" y="204" width="366" height="40" rx="10" class="tab"/>
+    <text x="58" y="231" class="tab-text">STAP 1 · HET ACCOUNT</text>
+    <text x="64" y="260" class="panel-title">Een account maken of inloggen</text>
+
+    <path d="M347 182 V198 H893 V182" class="line"/>
+    <path d="M620 198 V279" class="line flow"/>
+    <path d="M620 347 V363" class="line"/>
+    <path d="M620 363 H436 V379" class="line flow"/>
+    <path d="M620 363 H1009 V379" class="line flow"/>
+    <path d="M436 438 V478" class="line flow"/>
+    <path d="M436 457 H179 V478" class="line flow"/>
+    <path d="M436 457 H693 V478" class="line flow"/>
+    <path d="M1009 438 V478" class="line flow"/>
+    <path d="M179 553 V568 H436 V553" class="line"/>
+    <path d="M305 568 V584" class="line flow"/>
+
+    <rect x="390" y="280" width="460" height="67" rx="7" class="box"/>
+    <text x="620" y="306" class="heading center">De app maakt twee sleutels uit het wachtwoord</text>
+    <text x="620" y="328" class="body center">De inlogsleutel gaat naar de server. De andere blijft op het apparaat.</text>
+
+    <rect x="64" y="380" width="744" height="58" rx="7" class="box"/>
+    <text x="436" y="405" class="heading center">Nieuw account</text>
+    <text x="436" y="426" class="body center">De gebruiker krijgt een account-ID. De server bewaart een hash van de inlogsleutel.</text>
+    <rect x="842" y="380" width="334" height="58" rx="7" class="box"/>
+    <text x="1009" y="405" class="heading center">Bestaand account</text>
+    <text x="1009" y="426" class="body center">Luma zoekt op e-mail of gekoppeld account</text>
+
+    <rect x="64" y="479" width="230" height="74" rx="7" class="gray"/>
+    <text x="179" y="504" class="heading center">Handmatig</text>
+    <text x="179" y="526" class="body center">De gebruiker wacht op akkoord</text>
+    <text x="179" y="544" class="note small center">Dit is de standaardinstelling</text>
+
+    <rect x="321" y="479" width="230" height="74" rx="7" class="gray"/>
+    <text x="436" y="504" class="heading center">E-mail bevestigen</text>
+    <text x="436" y="526" class="body center">Met een code</text>
+    <text x="436" y="544" class="note small center">of via Google of GitHub</text>
+
+    <rect x="578" y="479" width="230" height="74" rx="7" class="gray"/>
+    <text x="693" y="504" class="heading center">Open instelling</text>
+    <text x="693" y="526" class="body center">Het account is meteen actief</text>
+
+    <rect x="842" y="479" width="334" height="74" rx="7" class="box"/>
+    <text x="1009" y="504" class="heading center">Klopt de inlogsleutel?</text>
+    <text x="1009" y="526" class="body center">De server checkt de hash</text>
+    <text x="1009" y="544" class="body small center">en kijkt of de gebruiker mag inloggen</text>
+
+    <rect x="128" y="585" width="354" height="54" rx="7" class="box"/>
+    <text x="305" y="608" class="heading center">De beheerder keurt het account goed</text>
+    <text x="305" y="628" class="body center">Het account is nu actief</text>
+  </g>
+
+  <g aria-label="De gebruiker is ingelogd">
+    <path d="M305 639 V685 H1009 V553 M693 553 V685" class="line"/>
+    <path d="M620 685 V704" class="line flow"/>
+    <text x="322" y="675" class="note small">de gebruiker logt daarna in</text>
+    <text x="1022" y="675" class="note small">als alles klopt</text>
+    <rect x="387" y="705" width="466" height="62" rx="7" class="box"/>
+    <text x="620" y="732" class="heading center">De gebruiker is ingelogd</text>
+    <text x="620" y="753" class="body center">Het apparaat krijgt een token. De server bewaart de hash ervan.</text>
+  </g>
+
+  <g aria-label="Stap 2. De database">
+    <rect x="40" y="826" width="778" height="354" rx="14" class="panel"/>
+    <rect x="40" y="804" width="330" height="40" rx="10" class="tab"/>
+    <text x="58" y="831" class="tab-text">STAP 2 · DE DATABASE</text>
+    <text x="64" y="863" class="panel-title">Wat bewaart Luma over de gebruiker?</text>
+    <text x="794" y="862" class="note mono end">accounts/accounts.sqlite</text>
+
+    <path d="M177 977 V1047 M429 977 V1047 M681 977 V1047" class="relation"/>
+    <text x="189" y="1017" class="relation-text">0 of meer</text>
+    <text x="441" y="1017" class="relation-text">0 tot 2</text>
+    <text x="693" y="1017" class="relation-text">0 tot 8</text>
+
+    <rect x="64" y="885" width="730" height="92" rx="7" class="box"/>
+    <text x="429" y="911" class="heading mono center">users</text>
+    <text x="429" y="936" class="body center">Account-ID, uniek e-mailadres, accountstatus, abonnement en opslaglimiet</text>
+    <text x="429" y="958" class="body center">Inloghash, gegevens om sleutels te maken en soms ook herstelgegevens</text>
+
+    <rect x="64" y="1047" width="226" height="90" rx="7" class="box"/>
+    <text x="177" y="1073" class="heading mono center">sessions</text>
+    <text x="177" y="1098" class="body center">Tokenhash en apparaatnaam</text>
+    <text x="177" y="1119" class="body center">Begin en einde van de sessie</text>
+
+    <rect x="316" y="1047" width="226" height="90" rx="7" class="box"/>
+    <text x="429" y="1073" class="heading mono center">oauth_identities</text>
+    <text x="429" y="1098" class="body center">Gekoppeld Google- of GitHub-ID</text>
+    <text x="429" y="1119" class="body center">Maximaal één per dienst</text>
+
+    <rect x="568" y="1047" width="226" height="90" rx="7" class="box"/>
+    <text x="681" y="1073" class="heading mono center">user_recent_ips</text>
+    <text x="681" y="1098" class="body center">Recente IP-adressen</text>
+    <text x="681" y="1119" class="body center">Bij account maken of inloggen</text>
+
+    <text x="64" y="1164" class="note">De drie tabellen gebruiken het account-ID. Bij het verwijderen van het account verdwijnen deze rijen ook.</text>
+  </g>
+
+  <g aria-label="Mag de app bij de server?">
+    <rect x="850" y="826" width="350" height="354" rx="14" class="panel"/>
+    <rect x="850" y="804" width="220" height="40" rx="10" class="tab"/>
+    <text x="868" y="831" class="tab-text">TOEGANG</text>
+    <text x="874" y="863" class="panel-title">Mag de app bij de server?</text>
+
+    <path d="M620 767 V786 H1150 V873 H1025 V885" class="line flow"/>
+    <path d="M1025 948 V970" class="line flow"/>
+    <path d="M1025 1048 V1064 H944 V1081" class="line flow"/>
+    <path d="M1025 1064 H1106 V1081" class="line flow"/>
+
+    <rect x="874" y="886" width="302" height="62" rx="7" class="box"/>
+    <text x="1025" y="912" class="heading center">De app mag de server gebruiken</text>
+    <text x="1025" y="934" class="body center">Ingelogd met een goedgekeurd account</text>
+
+    <rect x="874" y="971" width="302" height="77" rx="7" class="gray"/>
+    <text x="1025" y="996" class="heading center">De server checkt het token</text>
+    <text x="1025" y="1018" class="body center">Bij welk account hoort het?</text>
+    <text x="1025" y="1037" class="body small center">Is de sessie geldig en mag de gebruiker erin?</text>
+
+    <rect x="874" y="1082" width="140" height="59" rx="7" class="box"/>
+    <text x="944" y="1107" class="heading center">Toegang</text>
+    <text x="944" y="1128" class="body small center">Met het account-ID</text>
+
+    <rect x="1036" y="1082" width="140" height="59" rx="7" class="gray"/>
+    <text x="1106" y="1107" class="heading center">Geen toegang</text>
+    <text x="1106" y="1128" class="body small center">Het verzoek stopt</text>
+  </g>
+
+  <g aria-label="Stap 3. Op twee apparaten">
+    <rect x="40" y="1242" width="1160" height="251" rx="14" class="panel"/>
+    <rect x="40" y="1220" width="326" height="40" rx="10" class="tab"/>
+    <text x="58" y="1247" class="tab-text">STAP 3 · OP TWEE APPARATEN</text>
+    <text x="64" y="1281" class="panel-title">Gegevens op een ander apparaat</text>
+    <text x="1176" y="1280" class="note end">Bij uploaden checkt de server de versie en hoeveel ruimte er nog is</text>
+
+    <path d="M944 1141 V1201 H620 V1311" class="line flow"/>
+    <path d="M398 1361 H451" class="sync" marker-start="url(#arrow-green)" marker-end="url(#arrow-green)"/>
+    <path d="M789 1361 H842" class="sync" marker-start="url(#arrow-green)" marker-end="url(#arrow-green)"/>
+
+    <rect x="64" y="1312" width="330" height="98" rx="7" class="box"/>
+    <text x="229" y="1340" class="heading center">Apparaat A</text>
+    <text x="229" y="1365" class="body center">Versleutelt de wijzigingen</text>
+    <text x="229" y="1386" class="body center">en stuurt ze naar de server</text>
+
+    <rect x="455" y="1312" width="330" height="98" rx="7" class="box"/>
+    <text x="620" y="1340" class="heading center">De server bewaart de bestanden</text>
+    <text x="620" y="1365" class="body small mono center">blobs/&lt;userId&gt;/&lt;collectie&gt;.bin</text>
+    <text x="620" y="1386" class="body small center">Met de versie, grootte en datum erbij</text>
+
+    <rect x="846" y="1312" width="330" height="98" rx="7" class="box"/>
+    <text x="1011" y="1340" class="heading center">Apparaat B</text>
+    <text x="1011" y="1365" class="body center">Haalt de gegevens op</text>
+    <text x="1011" y="1386" class="body center">en maakt ze weer leesbaar</text>
+
+    <text x="620" y="1443" class="sync-text center">De gebruiker kan op beide apparaten gegevens ophalen en versturen. De sleutel blijft op het apparaat.</text>
+    <text x="620" y="1471" class="note center">Familie en Secure Chat slaan hun eigen gegevens op en gebruiken ook het account-ID.</text>
+  </g>
+
+  <g aria-label="Legenda">
+    <rect x="48" y="1520" width="22" height="14" rx="3" class="box"/>
+    <text x="80" y="1532" class="note">stap of opslag</text>
+    <rect x="217" y="1520" width="22" height="14" rx="3" class="gray"/>
+    <text x="249" y="1532" class="note">invoer, keuze of uitkomst</text>
+    <path d="M465 1527 H493" class="relation"/>
+    <text x="503" y="1532" class="note">tabellen die bij elkaar horen</text>
+    <path d="M705 1527 H733" class="sync"/>
+    <text x="743" y="1532" class="note">versleutelde gegevens delen</text>
+  </g>
+</svg>

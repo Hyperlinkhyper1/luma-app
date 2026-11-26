@@ -5,18 +5,38 @@ import 'dart:io';
 import 'package:cs2_dataset/cs2_dataset.dart';
 import 'package:shelf/shelf.dart';
 
+import 'cs2_heatmap.dart';
 import 'util.dart';
 
+/// Streams an uploaded replay to a private scratch folder, runs the parser on
+/// it and hands back the extracted rounds and positions. The replay itself is
+/// never kept: its folder is deleted as soon as the parser is done, whatever
+/// the outcome, and anything a crash left behind is swept on startup.
 class Cs2ReplayImporter {
-  Cs2ReplayImporter(this.executable);
+  Cs2ReplayImporter(
+    this.executable, {
+    this.arguments = const [],
+    Directory? scratchRoot,
+  }) : scratchRoot = scratchRoot ??
+            Directory('${Directory.systemTemp.path}/luma-cs2-replays') {
+    _sweep();
+  }
 
   final String executable;
+
+  /// Placed before the replay path; lets tests run a script as the parser.
+  final List<String> arguments;
+
+  /// Holds one sub-folder per replay being processed, and nothing else.
+  final Directory scratchRoot;
+
   static final _digestPattern = RegExp(r'^[a-f0-9]{64}$');
   var _busy = false;
 
   Future<Response> import(
     Request request,
-    FutureOr<Response> Function(Cs2Match match, String digest) accept,
+    FutureOr<Response> Function(Cs2Match match, String digest, Cs2Heatmap heat)
+        accept,
   ) async {
     final name = request.url.queryParameters['name']?.toLowerCase() ?? '';
     if (request.headers['content-type'] != 'application/octet-stream' ||
@@ -33,7 +53,8 @@ class Cs2ReplayImporter {
     _busy = true;
     Directory? scratch;
     try {
-      scratch = await Directory.systemTemp.createTemp('luma-cs2-');
+      await scratchRoot.create(recursive: true);
+      scratch = await scratchRoot.createTemp('replay-');
       final file = File('${scratch.path}/replay');
       final sink = await file.open(mode: FileMode.writeOnly);
       var length = 0;
@@ -58,10 +79,15 @@ class Cs2ReplayImporter {
 
       final process = await Process.start(
         executable,
-        [file.path],
+        [...arguments, file.path],
         workingDirectory: scratch.path,
         includeParentEnvironment: false,
-        environment: {'GOMAXPROCS': '2', 'GOMEMLIMIT': '256MiB'},
+        environment: {
+          'GOMAXPROCS': '2',
+          'GOMEMLIMIT': '256MiB',
+          if (Platform.isWindows)
+            'SYSTEMROOT': Platform.environment['SYSTEMROOT'] ?? r'C:\Windows',
+        },
       );
       final output = utf8.decoder.bind(process.stdout).join();
       final errors = process.stderr.drain<void>();
@@ -75,7 +101,10 @@ class Cs2ReplayImporter {
         if (digest is! String || !_digestPattern.hasMatch(digest)) {
           throw const FormatException('Invalid replay digest.');
         }
-        return await accept(match, digest);
+        final heat = Cs2Heatmap.fromSamples(decoded['heat'] ?? const []);
+        await _discard(scratch);
+        scratch = null;
+        return await accept(match, digest, heat);
       } on FormatException {
         return _unreadable();
       } on TypeError {
@@ -97,10 +126,39 @@ class Cs2ReplayImporter {
           'Replay processing is unavailable on this server.');
     } finally {
       try {
-        await scratch?.delete(recursive: true);
+        if (scratch != null) await _discard(scratch);
       } finally {
         _busy = false;
       }
+    }
+  }
+
+  /// Deletes a replay folder. On Windows a just-killed parser can hold the
+  /// file for a moment, so retry briefly; a failure must never replace the
+  /// response, and the startup sweep catches anything still left.
+  static Future<void> _discard(Directory folder) async {
+    for (var attempt = 0; attempt < 5; attempt++) {
+      try {
+        if (await folder.exists()) await folder.delete(recursive: true);
+        return;
+      } on FileSystemException {
+        await Future<void>.delayed(Duration(milliseconds: 100 << attempt));
+      }
+    }
+  }
+
+  void _sweep() {
+    try {
+      if (!scratchRoot.existsSync()) return;
+      for (final entry in scratchRoot.listSync(followLinks: false)) {
+        try {
+          entry.deleteSync(recursive: true);
+        } on FileSystemException {
+          continue;
+        }
+      }
+    } on FileSystemException {
+      return;
     }
   }
 
