@@ -10,6 +10,7 @@ import 'ai_mode_routing.dart';
 import 'benchmark_github.dart' show GithubTransport;
 import 'fish_species_file.dart';
 import 'util.dart';
+import 'wiki_flags.dart';
 
 /// One Luau run in the isolated renderer: exit code and output.
 typedef LuauRunner = Future<({int code, String stdout, String stderr})>
@@ -595,10 +596,8 @@ class FishLibrary {
   void _requestWikiRefresh() {
     final dir = wikiDir;
     if (dir == null || !Directory(dir).existsSync()) return;
-    try {
-      File('$dir/.fish-refresh-request')
-          .writeAsStringSync(_clock().toIso8601String());
-    } catch (_) {}
+    requestWikiFlag(WikiFlag.fishRefresh,
+        wikiDir: dir, dataDir: dataDir, now: _clock());
   }
 
   // ---- AI jobs -----------------------------------------------------------

@@ -65,6 +65,7 @@ import 'team_discord.dart';
 import 'team_library.dart';
 import 'util.dart';
 import 'web_search.dart';
+import 'wiki_flags.dart';
 
 part 'api_benchmark_generate.dart';
 part 'api_benchmark_repair.dart';
@@ -10129,10 +10130,22 @@ border-radius:999px;padding:2px 8px}
     return Response.found('/admin/website');
   }
 
-  void _requestWikiBuild() {
-    File('${config.wikiDir}/.build-request')
-        .writeAsStringSync(DateTime.now().toIso8601String());
+  /// See [requestWikiFlag]: the wiki checkout is read-only in here, so in
+  /// the Docker setup the flag goes through deploy-watcher.sh on the host.
+  bool _requestWikiFlag(WikiFlag flag) {
+    final ok = requestWikiFlag(flag,
+        wikiDir: config.wikiDir!, dataDir: config.dataDir);
+    if (!ok) {
+      stderr.writeln('[luma] could not request a wiki ${flag.name}: neither '
+          '${config.wikiDir} nor ${config.dataDir} is writable');
+    }
+    return ok;
   }
+
+  void _requestWikiBuild() => _requestWikiFlag(WikiFlag.build);
+
+  Response _wikiFlagFailed() => errorResponse(500, 'wiki_flag_failed',
+      'Could not queue the build: the data directory is not writable.');
 
   Future<Response> _adminWebsiteBuild(Request request) async {
     final unavailable = _wikiUnavailable();
@@ -10140,7 +10153,7 @@ border-radius:999px;padding:2px 8px}
     if (!_sameOrigin(request)) {
       return errorResponse(403, 'bad_origin', 'Cross-origin request rejected.');
     }
-    _requestWikiBuild();
+    if (!_requestWikiFlag(WikiFlag.build)) return _wikiFlagFailed();
     return Response.found('/admin/website');
   }
 
@@ -10154,8 +10167,7 @@ border-radius:999px;padding:2px 8px}
     if (!_sameOrigin(request)) {
       return errorResponse(403, 'bad_origin', 'Cross-origin request rejected.');
     }
-    File('${config.wikiDir}/.fish-refresh-request')
-        .writeAsStringSync(DateTime.now().toIso8601String());
+    if (!_requestWikiFlag(WikiFlag.fishRefresh)) return _wikiFlagFailed();
     return Response.found('/admin/website');
   }
 
@@ -10183,10 +10195,15 @@ border-radius:999px;padding:2px 8px}
         if (log.length > 20000) log = log.substring(log.length - 20000);
       } catch (_) {}
     }
-    final pending = File('${config.wikiDir}/.build-request').existsSync() ||
-        File('${config.wikiDir}/.fish-refresh-request').existsSync();
+    final pending = WikiFlag.values.any((flag) => wikiFlagPending(flag,
+        wikiDir: config.wikiDir!, dataDir: config.dataDir));
+    final queued = WikiFlag.values
+        .any((flag) => wikiFlagQueued(flag, dataDir: config.dataDir));
     return jsonResponse(200, {
       'pending': pending,
+      // A request still on the data volume with no live deploy watcher will
+      // never reach the builder; the page says so instead of "Building…".
+      'stalled': queued && !await _deploy.isWatcherAlive,
       'status': jsonDecode(status),
       'log': log,
     });
@@ -10210,6 +10227,15 @@ border-radius:999px;padding:2px 8px}
       .then(function (r) { return r.json(); })
       .then(function (s) {
         var state = (s.status && s.status.state) || '';
+        if (s.stalled) {
+          setBadge('Waiting for the host', 'err');
+          el.style.display = 'block';
+          el.textContent = 'The build is queued, but deploy-watcher.sh is not ' +
+            'running on the host, so nothing will hand it to the wiki builder. ' +
+            'Start it with: sudo systemctl start luma-deploy-watcher';
+          idle = 0;
+          return;
+        }
         var busy = s.pending || state === 'building';
         var fish = state === 'building' && s.status.reason === 'fish library refresh';
         if (busy) setBadge(fish ? 'Refreshing fish…' : 'Building…', 'warn');

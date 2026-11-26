@@ -94,9 +94,25 @@ ufw enable
 curl -fsSL https://get.docker.com | sh
 ```
 
-Recommended (not required): disable SSH password login and use SSH keys —
-`PasswordAuthentication no` in `/etc/ssh/sshd_config`, then
-`systemctl restart ssh`.
+Then lock SSH down to key logins. Bots try passwords on every SSH port
+they find, around the clock. Put your public key on the server first
+(`ssh-copy-id you@server` from your own computer), then on the server:
+
+```bash
+sudo bash ~/luma-app/server/harden-ssh.sh
+```
+
+It turns off password and keyboard-interactive logins and root login, lets
+only your account in, and cuts a connection off after three wrong keys or
+20 seconds. It won't run while your account has no key, and it checks the
+new config with `sshd -t` before applying it. Keep your current session
+open and test a new login before closing it. The script prints how to undo
+it.
+
+If SSH reaches the machine through a Cloudflare Tunnel (`ssh://localhost:22`
+in the tunnel's ingress), put a Cloudflare Access application on that
+hostname with a policy that allows only your own email. Without one, anyone
+who knows the hostname can reach sshd with `cloudflared access ssh`.
 
 ---
 
@@ -266,17 +282,25 @@ systemctl status luma-deploy-watcher
 The dashboard's "System updates" and "Reboot server" buttons run through the
 same watcher, which calls `sudo -n` (never prompts). Without a sudoers rule
 those calls fail — updates are listed but not installed, and the reboot
-reports FAILED. Allow exactly the commands the watcher needs, and nothing
-else (replace `hyperlinkhyper` with the user in `luma-deploy-watcher.service`):
+reports FAILED. Allow exactly the command lines the watcher runs, and
+nothing else (replace `youruser` with the user in
+`luma-deploy-watcher.service`):
 
 ```bash
 sudo tee /etc/sudoers.d/luma-deploy-watcher >/dev/null <<'EOF'
 Defaults!/usr/bin/apt-get env_keep += "DEBIAN_FRONTEND"
-hyperlinkhyper ALL=(root) NOPASSWD: /usr/bin/apt-get, /usr/bin/ubuntu-drivers, /usr/bin/systemctl reboot
+youruser ALL=(root) NOPASSWD: /usr/bin/apt-get update -qq, /usr/bin/apt-get upgrade -y, /usr/bin/apt-get dist-upgrade -y, /usr/bin/apt-get autoremove -y, /usr/bin/ubuntu-drivers autoinstall, /usr/bin/systemctl reboot
 EOF
 sudo chmod 440 /etc/sudoers.d/luma-deploy-watcher
 sudo visudo -c
 ```
+
+Keep the arguments in those lines. An earlier version of this guide allowed
+`/usr/bin/apt-get` with any arguments, and that is a root shell for anything
+running as that user. For example,
+`sudo apt-get update -o APT::Update::Pre-Invoke::=/bin/sh` runs a shell as
+root with no password. If you set that version up, replace the file with
+the one above.
 
 After a reboot everything comes back on its own as long as Docker and the
 watcher are enabled at boot (the containers already carry
@@ -365,6 +389,15 @@ Things the setup above already gives you:
       (`LUMA_ALLOW_REGISTRATION=false`)
 - [x] Container runs as a non-root user; app port never exposed directly
 - [x] Firewall limits the VPS to SSH/80/443
+- [x] The data directory is `0700` and `secret.key` is `0600`; the server
+      sets both on every start
+- [x] The server container can't change anything the host runs. The wiki
+      checkout is mounted read-only except for the two folders the website
+      editor writes. The deploy watcher drives the wiki through its existing
+      containers and never runs a compose file from that shared folder. No
+      Docker socket is mounted, and the host's `/proc` (where every
+      process's command line can be read) is only mounted when you set
+      `LUMA_HOST_PROC_MOUNT=/proc`
 
 Things that stay on your plate:
 
@@ -372,7 +405,18 @@ Things that stay on your plate:
       `unattended-upgrades`)
 - [ ] Keep backups (section 7) — the server is the single copy of the
       *synced* snapshots
-- [ ] Protect SSH (keys, not passwords)
+- [ ] Protect SSH: run `server/harden-ssh.sh` (section 3), and look through
+      `~/.ssh/authorized_keys` for keys you no longer use
+- [ ] Behind a Cloudflare Tunnel: set `LUMA_HTTP_LISTEN=127.0.0.1:80` and
+      `LUMA_HTTPS_LISTEN=127.0.0.1:443` in `.env` so Caddy is reachable only
+      through the tunnel. Docker publishes ports in front of ufw, so the
+      firewall alone does not stop LAN or port-forwarded traffic. Also put a
+      Cloudflare Access application (allow only your email) on the SSH
+      hostname, and another on `/admin` of the sync hostname. Then bots never
+      even see the admin login.
+- [ ] Don't pass secrets as command-line arguments on the host (for example
+      `cloudflared --token …`). Every process can read every command line.
+      Use an environment variable (`TUNNEL_TOKEN`) or a file instead.
 - [ ] If your server is public, close registration once your accounts exist
       so strangers can't use your storage
 

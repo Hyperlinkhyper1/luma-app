@@ -17,13 +17,27 @@ services:
       LUMA_HOST_PROC: /host/proc
     volumes:
       - /opt/luma-sync-data:/data
-      - ../wiki:/wiki
-      # Read-only host procfs for the admin Metrics tab's per-process
-      # breakdown. The container's own /proc lists only its own processes,
-      # while the CPU tile (/proc/stat) is host-wide. Command lines read
-      # from here have tokens, keys and passwords masked before the
-      # dashboard sees them (redactCommandLine in process_metrics.dart).
-      - /proc:/host/proc:ro
+      # The wiki checkout, for the /admin/website editor. Read-only apart
+      # from the two folders the editor writes. The rest of that folder is
+      # the wiki stack itself (its compose file, Dockerfile, build script,
+      # the sources' package.json and git config), which the host and the
+      # wiki's builder run. Mounted writable, code execution in this
+      # container could plant a compose file there and take over the host
+      # the next time anything started the wiki. Publishing still works:
+      # the server queues its build request on /data, and deploy-watcher.sh
+      # moves it into the checkout (see wiki_flags.dart).
+      - ../wiki:/wiki:ro
+      - ../wiki/source/src/content:/wiki/source/src/content
+      - ../wiki/source/public/images/uploads:/wiki/source/public/images/uploads
+      # Host procfs for the admin Metrics tab's per-process breakdown. Off
+      # by default: every host process's command line is readable there,
+      # including tokens passed as arguments (a `cloudflared --token`
+      # container, say), so a compromised server would see them too. The
+      # dashboard masks what it shows (redactCommandLine), but that does not
+      # stop code running in here. Set LUMA_HOST_PROC_MOUNT=/proc in .env to
+      # turn it on. Otherwise /dev/null stands in, nothing is mounted there,
+      # and the tab lists this container's own processes.
+      - ${LUMA_HOST_PROC_MOUNT:-/dev/null}:/host/proc:ro
       # No Docker socket and no repo bind mount here on purpose. The admin
       # dashboard's "Update & restart server" button used to run
       # `git pull && docker compose up -d --build` directly inside this
@@ -112,9 +126,15 @@ services:
       context: .
       dockerfile: Caddy.Dockerfile
     restart: unless-stopped
+    # Every interface by default, which a VPS needs. Behind a Cloudflare
+    # Tunnel (cloudflared on this host dialing https://localhost:443), set
+    # LUMA_HTTP_LISTEN=127.0.0.1:80 and LUMA_HTTPS_LISTEN=127.0.0.1:443 in
+    # .env so nothing on the LAN or the internet reaches Caddy around
+    # Cloudflare. ufw cannot do that part: Docker publishes ports in front
+    # of its rules.
     ports:
-      - "80:80"
-      - "443:443"
+      - "${LUMA_HTTP_LISTEN:-80}:80"
+      - "${LUMA_HTTPS_LISTEN:-443}:443"
     environment:
       LUMA_DOMAIN: ${LUMA_DOMAIN}
       CLOUDFLARE_API_TOKEN: ${CLOUDFLARE_API_TOKEN}

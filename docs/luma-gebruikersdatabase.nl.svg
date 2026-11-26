@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" xml:lang="nl"
-     viewBox="0 0 1240 1568" width="1240" height="1568"
+     viewBox="0 0 1240 1984" width="1240" height="1984"
      role="img" aria-labelledby="title description"
      font-family="Inter, 'Segoe UI', Helvetica, Arial, sans-serif">
   <title id="title">Hoe Luma het account van de gebruiker bewaart</title>
-  <desc id="description">De gebruiker maakt een account aan, logt in en gebruikt Luma op twee apparaten. De database gebruikt het account-ID om bij te houden welke sessies, gekoppelde accounts en IP-adressen bij de gebruiker horen.</desc>
+  <desc id="description">De gebruiker maakt een account aan, logt in en gebruikt Luma op twee apparaten. De database koppelt sessies, gekoppelde accounts en IP-adressen aan het account-ID. Bij het synchroniseren kijkt de app wat er op het apparaat en op de server is veranderd. De apparaten versleutelen en lezen de kopieën zelf.</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M0 0 L10 5 L0 10 Z" fill="#1F2D3D"/>
@@ -39,8 +39,8 @@
     </style>
   </defs>
 
-  <rect width="1240" height="1568" fill="#F3F5F9"/>
-  <rect x="16" y="16" width="1208" height="1536" rx="22" fill="#FFFFFF" filter="url(#shadow)"/>
+  <rect width="1240" height="1984" fill="#F3F5F9"/>
+  <rect x="16" y="16" width="1208" height="1952" rx="22" fill="#FFFFFF" filter="url(#shadow)"/>
   <text x="48" y="64" class="title">Hoe Luma het account van de gebruiker bewaart</text>
   <text x="48" y="92" class="subtitle">Van een account aanmaken tot gegevens ophalen op een tweede apparaat</text>
 
@@ -181,43 +181,84 @@
   </g>
 
   <g aria-label="Stap 3. Op twee apparaten">
-    <rect x="40" y="1242" width="1160" height="251" rx="14" class="panel"/>
+    <rect x="40" y="1242" width="1160" height="670" rx="14" class="panel"/>
     <rect x="40" y="1220" width="326" height="40" rx="10" class="tab"/>
     <text x="58" y="1247" class="tab-text">STAP 3 · OP TWEE APPARATEN</text>
     <text x="64" y="1281" class="panel-title">Gegevens op een ander apparaat</text>
-    <text x="1176" y="1280" class="note end">Bij uploaden checkt de server de versie en hoeveel ruimte er nog is</text>
+    <text x="1176" y="1280" class="note end">Bijvoorbeeld notities, agenda en wachtwoorden</text>
 
-    <path d="M944 1141 V1201 H620 V1311" class="line flow"/>
-    <path d="M398 1361 H451" class="sync" marker-start="url(#arrow-green)" marker-end="url(#arrow-green)"/>
-    <path d="M789 1361 H842" class="sync" marker-start="url(#arrow-green)" marker-end="url(#arrow-green)"/>
+    <path d="M944 1141 V1201 H620 V1307" class="line flow"/>
+    <path d="M620 1370 V1391" class="line flow"/>
+    <path d="M620 1464 V1485 H195 V1505" class="line flow"/>
+    <path d="M478 1485 V1505" class="line flow"/>
+    <path d="M620 1485 H1045 V1505" class="line flow"/>
+    <path d="M762 1485 V1505" class="line flow"/>
 
-    <rect x="64" y="1312" width="330" height="98" rx="7" class="box"/>
-    <text x="229" y="1340" class="heading center">Apparaat A</text>
-    <text x="229" y="1365" class="body center">Versleutelt de wijzigingen</text>
-    <text x="229" y="1386" class="body center">en stuurt ze naar de server</text>
+    <rect x="280" y="1308" width="680" height="62" rx="7" class="box"/>
+    <text x="620" y="1335" class="heading center">De gebruiker logt op beide apparaten in met hetzelfde account</text>
+    <text x="620" y="1356" class="body center">Luma kijkt welke verzamelingen aanstaan en binnen het abonnement vallen.</text>
 
-    <rect x="455" y="1312" width="330" height="98" rx="7" class="box"/>
-    <text x="620" y="1340" class="heading center">De server bewaart de bestanden</text>
-    <text x="620" y="1365" class="body small mono center">blobs/&lt;userId&gt;/&lt;collectie&gt;.bin</text>
-    <text x="620" y="1386" class="body small center">Met de versie, grootte en datum erbij</text>
+    <rect x="310" y="1392" width="620" height="72" rx="7" class="gray"/>
+    <text x="620" y="1420" class="heading center">Wat is er veranderd sinds de vorige sync?</text>
+    <text x="620" y="1443" class="body center">De app checkt per verzameling de inhoud op het apparaat en de versie op de server.</text>
 
-    <rect x="846" y="1312" width="330" height="98" rx="7" class="box"/>
-    <text x="1011" y="1340" class="heading center">Apparaat B</text>
-    <text x="1011" y="1365" class="body center">Haalt de gegevens op</text>
-    <text x="1011" y="1386" class="body center">en maakt ze weer leesbaar</text>
+    <rect x="64" y="1506" width="262" height="92" rx="7" class="box"/>
+    <text x="195" y="1532" class="heading center">Alleen op het apparaat</text>
+    <text x="195" y="1556" class="body center">De app stuurt een nieuwe kopie</text>
+    <text x="195" y="1577" class="body center">naar de server.</text>
 
-    <text x="620" y="1443" class="sync-text center">De gebruiker kan op beide apparaten gegevens ophalen en versturen. De sleutel blijft op het apparaat.</text>
-    <text x="620" y="1471" class="note center">Familie en Secure Chat slaan hun eigen gegevens op en gebruiken ook het account-ID.</text>
+    <rect x="347" y="1506" width="262" height="92" rx="7" class="box"/>
+    <text x="478" y="1532" class="heading center">Alleen op de server</text>
+    <text x="478" y="1556" class="body center">De app haalt de nieuwere</text>
+    <text x="478" y="1577" class="body center">kopie op.</text>
+
+    <rect x="631" y="1506" width="262" height="92" rx="7" class="box"/>
+    <text x="762" y="1532" class="heading center">Aan beide kanten</text>
+    <text x="762" y="1556" class="body center">Meestal wint de nieuwste wijziging.</text>
+    <text x="762" y="1577" class="body center">Soms voegt de app kopieën samen.</text>
+
+    <rect x="914" y="1506" width="262" height="92" rx="7" class="gray"/>
+    <text x="1045" y="1532" class="heading center">Niets veranderd</text>
+    <text x="1045" y="1556" class="body center">De app slaat deze</text>
+    <text x="1045" y="1577" class="body center">verzameling over.</text>
+
+    <text x="64" y="1624" class="note">Synchroniseert een apparaat voor het eerst? Dan haalt de app meestal eerst de bestaande kopie van de server op.</text>
+
+    <text x="64" y="1670" class="panel-title">Voorbeeld · Apparaat A past een notitie aan</text>
+    <text x="1176" y="1669" class="note end">De server houdt per kopie de versie, grootte en datum bij.</text>
+    <path d="M398 1750 H451" class="sync" marker-end="url(#arrow-green)"/>
+    <path d="M789 1750 H842" class="sync" marker-end="url(#arrow-green)"/>
+
+    <rect x="64" y="1690" width="330" height="120" rx="7" class="box"/>
+    <text x="229" y="1719" class="heading center">Apparaat A maakt een kopie</text>
+    <text x="229" y="1744" class="body center">De app versleutelt de hele verzameling</text>
+    <text x="229" y="1765" class="body center">en stuurt de kopie naar de server.</text>
+
+    <rect x="455" y="1690" width="330" height="120" rx="7" class="box"/>
+    <text x="620" y="1719" class="heading center">De server bewaart de kopie</text>
+    <text x="620" y="1744" class="body center">Checkt de versie en de vrije ruimte.</text>
+    <text x="620" y="1765" class="body center">Bij opslaan gaat het versienummer omhoog.</text>
+    <text x="620" y="1789" class="body small mono center">blobs/&lt;userId&gt;/&lt;collectie&gt;.bin</text>
+
+    <rect x="846" y="1690" width="330" height="120" rx="7" class="box"/>
+    <text x="1011" y="1719" class="heading center">Apparaat B haalt de kopie op</text>
+    <text x="1011" y="1744" class="body center">De app ziet het nieuwe versienummer,</text>
+    <text x="1011" y="1765" class="body center">maakt de kopie weer leesbaar</text>
+    <text x="1011" y="1786" class="body center">en slaat de notitie op.</text>
+
+    <text x="620" y="1836" class="note center">Verandert de versie op de server tijdens het versturen? Dan kijkt de app opnieuw naar de wijzigingen.</text>
+    <text x="620" y="1862" class="sync-text center">Beide apparaten kunnen gegevens ophalen en versturen. De sleutel blijft op het apparaat.</text>
+    <text x="620" y="1889" class="note center">Familie en Secure Chat slaan hun eigen gegevens op en gebruiken ook het account-ID.</text>
   </g>
 
   <g aria-label="Legenda">
-    <rect x="48" y="1520" width="22" height="14" rx="3" class="box"/>
-    <text x="80" y="1532" class="note">stap of opslag</text>
-    <rect x="217" y="1520" width="22" height="14" rx="3" class="gray"/>
-    <text x="249" y="1532" class="note">invoer, keuze of uitkomst</text>
-    <path d="M465 1527 H493" class="relation"/>
-    <text x="503" y="1532" class="note">tabellen die bij elkaar horen</text>
-    <path d="M705 1527 H733" class="sync"/>
-    <text x="743" y="1532" class="note">versleutelde gegevens delen</text>
+    <rect x="48" y="1936" width="22" height="14" rx="3" class="box"/>
+    <text x="80" y="1948" class="note">stap of opslag</text>
+    <rect x="217" y="1936" width="22" height="14" rx="3" class="gray"/>
+    <text x="249" y="1948" class="note">invoer, keuze of uitkomst</text>
+    <path d="M465 1943 H493" class="relation"/>
+    <text x="503" y="1948" class="note">tabellen die bij elkaar horen</text>
+    <path d="M705 1943 H733" class="sync"/>
+    <text x="743" y="1948" class="note">versleutelde gegevens delen</text>
   </g>
 </svg>

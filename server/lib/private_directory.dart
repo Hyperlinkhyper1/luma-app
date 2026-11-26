@@ -1,5 +1,30 @@
 import 'dart:io';
 
+/// Closes the server's data directory (0700) and its secret key (0600) to
+/// every other account on the host. Both used to keep the umask's modes, so
+/// any local user or service could read `secret.key` and walk the blobs and
+/// stores beside it. Best effort: a failure is logged rather than fatal, so
+/// an unusual mount never keeps the server from starting. POSIX only; on
+/// Windows the account directory gets its own ACL in
+/// [restrictAccountDirectory].
+Future<void> restrictDataDirectory(Directory root) =>
+    _chmodQuietly('700', root.absolute.path);
+
+/// See [restrictDataDirectory].
+Future<void> restrictPrivateFile(File file) =>
+    _chmodQuietly('600', file.absolute.path);
+
+Future<void> _chmodQuietly(String mode, String path) async {
+  if (Platform.isWindows) return;
+  try {
+    final result = await Process.run('/bin/chmod', [mode, path]);
+    if (result.exitCode == 0) return;
+    stderr.writeln('[luma] could not chmod $mode $path: ${result.stderr}');
+  } on ProcessException catch (e) {
+    stderr.writeln('[luma] could not chmod $mode $path: $e');
+  }
+}
+
 /// Restricts the dedicated account directory to the server's OS identity.
 /// Host administrators can still take ownership; this is not a root sandbox.
 Future<void> restrictAccountDirectory(Directory directory) async {

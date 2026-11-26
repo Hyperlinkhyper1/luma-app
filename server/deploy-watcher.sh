@@ -74,6 +74,15 @@ POWER_LOG_FILE="$DATA_DIR/power.log"
 WIKI_STATE_FILE="$DATA_DIR/wiki.state"
 WIKI_START_CMD_FILE="$DATA_DIR/wiki.start-cmd"
 
+# The website editor's "publish" and "refresh fish library" buttons. The
+# luma-sync container mounts the wiki checkout read-only (see
+# docker-compose.yml), so it can't drop the builder's flag files itself; it
+# queues them here instead and relay_wiki_requests moves them into the
+# checkout. WIKI_CHECKOUT is the same ../wiki the compose file mounts.
+WIKI_CHECKOUT="$(cd "$SCRIPT_DIR/.." && pwd)/wiki"
+WIKI_BUILD_REQUEST_FILE="$DATA_DIR/wiki-build.request"
+WIKI_FISH_REQUEST_FILE="$DATA_DIR/wiki-fish-refresh.request"
+
 # Every path on $DATA_DIR is writable from inside the luma-sync container, so
 # any of them may have been swapped for a symlink to a file on this host. A
 # plain `>` follows it, which would let a compromised container overwrite
@@ -127,9 +136,10 @@ if [ -z "$REPO_PATH" ]; then
   exit 1
 fi
 
-# Optional: where the wiki's compose file lives, when it isn't
-# $REPO_PATH/wiki. Without it the wiki is found by wiki_detect below.
+# Optional: the folder the wiki's compose stack was started from, when it
+# isn't $REPO_PATH/wiki. Without it the wiki is found by wiki_detect below.
 WIKI_COMPOSE_DIR="$(grep -m1 '^LUMA_WIKI_COMPOSE_DIR=' "$SCRIPT_DIR/.env" 2>/dev/null | cut -d= -f2-)"
+WIKI_COMPOSE_DIR="${WIKI_COMPOSE_DIR%/}"
 
 # docker without sudo when this user is in the docker group, otherwise
 # passwordless sudo — the same two routes check_updates already tries.
@@ -141,21 +151,38 @@ docker_cmd() {
   fi
 }
 
+# The containers a compose stack started from directory $1, by the label
+# compose stamps on each of them, one name per line.
+#
+# The wiki is driven through these containers, never by running
+# `docker compose` in its folder. That folder is shared with containers
+# (luma-sync's website editor, the wiki's own builder), so a compose file,
+# override file or .env there is not necessarily the one the operator wrote.
+# `docker compose up` on a planted one could start a privileged container
+# with / mounted, which is the whole host. docker start/stop/restart only
+# act on containers that already exist, and read nothing from that folder.
+wiki_compose_containers() {
+  docker_cmd ps -a --filter "label=com.docker.compose.project.working_dir=$1" \
+    --format '{{.Names}}' 2>/dev/null
+}
+
 # Sets WIKI_KIND (compose / container / systemd) and WIKI_REF (directory,
-# container name or unit name). Returns 1 when no wiki is found.
+# container name or unit name), and for compose WIKI_CONTAINERS (the stack's
+# container names). Returns 1 when no wiki is found.
 wiki_detect() {
   WIKI_KIND=""
   WIKI_REF=""
-  local dir f name svc
+  WIKI_CONTAINERS=""
+  local dir name svc
   for dir in "$WIKI_COMPOSE_DIR" "$REPO_PATH/wiki"; do
     [ -n "$dir" ] || continue
-    for f in compose.yml compose.yaml docker-compose.yml docker-compose.yaml; do
-      if [ -f "$dir/$f" ]; then
-        WIKI_KIND=compose
-        WIKI_REF="$dir"
-        return 0
-      fi
-    done
+    WIKI_CONTAINERS="$(wiki_compose_containers "$dir" | tr '\n' ' ')"
+    WIKI_CONTAINERS="${WIKI_CONTAINERS% }"
+    if [ -n "$WIKI_CONTAINERS" ]; then
+      WIKI_KIND=compose
+      WIKI_REF="$dir"
+      return 0
+    fi
   done
   for name in wiki wiki.js luma-wiki luma_wiki; do
     if docker_cmd inspect "$name" >/dev/null 2>&1; then
@@ -178,19 +205,21 @@ wiki_detect() {
 wiki_ctl() {
   if ! wiki_detect; then
     if [ "$1" = status ]; then echo none; return 0; fi
-    echo "No wiki found (looked for a compose file in $REPO_PATH/wiki, a wiki container and a wiki systemd unit)."
+    echo "No wiki found (looked for containers started from $REPO_PATH/wiki, a wiki container and a wiki systemd unit)."
     return 1
   fi
   case "$WIKI_KIND:$1" in
     compose:status)
-      if [ -n "$(cd "$WIKI_REF" && docker_cmd compose ps --status running -q 2>/dev/null)" ]; then
+      if [ -n "$(docker_cmd ps -q --filter status=running \
+        --filter "label=com.docker.compose.project.working_dir=$WIKI_REF" 2>/dev/null)" ]; then
         echo running
       else
         echo stopped
       fi ;;
-    compose:start) (cd "$WIKI_REF" && docker_cmd compose up -d 2>&1) ;;
-    compose:stop) (cd "$WIKI_REF" && docker_cmd compose stop 2>&1) ;;
-    compose:restart) (cd "$WIKI_REF" && { docker_cmd compose restart 2>&1; docker_cmd compose up -d 2>&1; }) ;;
+    # Container names are docker's own ([A-Za-z0-9_.-]), so splitting the
+    # list into words is safe.
+    # shellcheck disable=SC2086
+    compose:*) docker_cmd "$1" $WIKI_CONTAINERS 2>&1 ;;
     container:status)
       if [ "$(docker_cmd inspect -f '{{.State.Running}}' "$WIKI_REF" 2>/dev/null)" = true ]; then
         echo running
@@ -207,7 +236,7 @@ wiki_ctl() {
 wiki_start_cmd() {
   wiki_detect || { echo ""; return; }
   case "$WIKI_KIND" in
-    compose) echo "cd $WIKI_REF && docker compose up -d" ;;
+    compose) echo "docker start $WIKI_CONTAINERS" ;;
     container) echo "docker start $WIKI_REF" ;;
     systemd) echo "sudo systemctl start $WIKI_REF" ;;
   esac
@@ -216,6 +245,26 @@ wiki_start_cmd() {
 sync_wiki_state() {
   publish "$WIKI_STATE_FILE" wiki_ctl status
   publish "$WIKI_START_CMD_FILE" wiki_start_cmd
+}
+
+# Moves the container's queued wiki requests into the checkout as the
+# builder's flag files. Only a request's existence counts, never what it
+# holds, and write_to refuses to follow a symlink planted at the flag's
+# path (the builder container can write that folder).
+relay_wiki_requests() {
+  local request flag
+  for request in "$WIKI_FISH_REQUEST_FILE" "$WIKI_BUILD_REQUEST_FILE"; do
+    [ -e "$request" ] || [ -L "$request" ] || continue
+    rm -f -- "$request"
+    if [ "$request" = "$WIKI_FISH_REQUEST_FILE" ]; then
+      flag=.fish-refresh-request
+    else
+      flag=.build-request
+    fi
+    if [ -d "$WIKI_CHECKOUT" ] && [ ! -L "$WIKI_CHECKOUT" ]; then
+      write_to "$WIKI_CHECKOUT/$flag" date -Is
+    fi
+  done
 }
 
 # Runs the "<action> <target>" read from power.request. The request is
@@ -522,11 +571,14 @@ while true; do
   # claiming any request, so a request is always handled by the script on
   # disk.
   if { [ -f "$REQUEST_FILE" ] || [ -f "$UPDATE_REQUEST_FILE" ] ||
-       [ -f "$REBOOT_REQUEST_FILE" ] || [ -f "$POWER_REQUEST_FILE" ]; } &&
+       [ -f "$REBOOT_REQUEST_FILE" ] || [ -f "$POWER_REQUEST_FILE" ] ||
+       [ -f "$WIKI_BUILD_REQUEST_FILE" ] || [ -f "$WIKI_FISH_REQUEST_FILE" ]; } &&
      [ "$(script_hash)" != "$SELF_HASH" ]; then
     echo "[deploy-watcher] script changed on disk — reloading before handling the request." >&2
     exec "$SCRIPT_DIR/deploy-watcher.sh"
   fi
+
+  relay_wiki_requests
 
   if [ -f "$REQUEST_FILE" ]; then
     # Lock first, then drop the request: the container checks the lock

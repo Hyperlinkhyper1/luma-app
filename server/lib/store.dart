@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'activity.dart';
 import 'account_database.dart';
 import 'metrics_history.dart';
+import 'private_directory.dart';
 import 'user_traffic.dart';
 import 'util.dart';
 
@@ -580,6 +581,7 @@ class Store {
   static Future<Store> open(String path) async {
     final store = Store._(path);
     await Directory(path).create(recursive: true);
+    await restrictDataDirectory(Directory(path));
     await Directory('$path/blobs').create(recursive: true);
     store._accounts = await AccountDatabase.open(path);
 
@@ -592,6 +594,7 @@ class Store {
       await atomicWriteString(
           store._secretFile, base64Encode(store.serverSecret));
     }
+    await restrictPrivateFile(secretFile);
 
     final users = store._accounts.migrated
         ? store._accounts.readUsers()
