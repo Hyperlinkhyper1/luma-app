@@ -39,7 +39,12 @@ services:
     # Outbound-only connection to Cloudflare's edge — no inbound ports, no
     # port forwarding on your router. The public hostname → api:3000 mapping
     # is configured in the Cloudflare Zero Trust dashboard, not here.
-    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
+    # The token goes in through the environment, not the command line:
+    # every process on the host can read every other process's command line
+    # (/proc/<pid>/cmdline), but not its environment.
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?Set CLOUDFLARE_TUNNEL_TOKEN in supermarket-db/.env}
     networks:
       - internal
     depends_on:
