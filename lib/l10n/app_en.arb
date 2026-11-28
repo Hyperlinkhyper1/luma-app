@@ -11508,6 +11508,16 @@
   "groceriesBackToLists": "Back to lists",
   "groceriesListFallbackTitle": "List",
   "groceriesAddProducts": "Add products",
+  "groceriesShareOnWhatsApp": "Share on WhatsApp",
+  "groceriesShareMarketOnWhatsApp": "Share {market} on WhatsApp",
+  "@groceriesShareMarketOnWhatsApp": {
+    "placeholders": {
+      "market": {
+        "type": "String"
+      }
+    }
+  },
+  "groceriesWhatsAppOpenFailed": "Could not open WhatsApp. You can copy the list and paste it into a chat.",
   "groceriesNoItemsTitle": "No items yet",
   "groceriesNoItemsSubtitle": "Search products to add them to this list.",
   "groceriesAllStores": "All stores",

@@ -19,6 +19,8 @@ import 'chat_turn_activity.dart';
 import 'chat_usage.dart';
 import 'memory/assistant_memory_repository.dart';
 import 'office/assistant_workbench.dart';
+import 'office/office_authoring_prompt.dart';
+import 'office/office_document.dart';
 import 'data/chat_repository.dart';
 import 'providers/ai_client.dart';
 import 'providers/ai_modes.dart';
@@ -243,10 +245,19 @@ class ChatController extends ChangeNotifier {
         artifactType: artifactType,
       );
     }
-    if (mode == AssistantComposeMode.chat) return route;
     final strongest = AiMode.values.lastWhere(
       (m) => m.availableForPlan(_settings.selectedPlanId),
     );
+    if (mode == AssistantComposeMode.chat) {
+      final routedOfficeKind = officeKindOf(route.artifactType ?? '');
+      if (routedOfficeKind != null &&
+          attachments.any(
+            (a) => a.isOffice && officeKindOf(a.name) == routedOfficeKind,
+          )) {
+        return AutoRoute(kind: AutoRouteKind.hard, chatMode: strongest);
+      }
+      return route;
+    }
     return switch (mode) {
       AssistantComposeMode.deepResearch => AutoRoute(
         kind: AutoRouteKind.research,
@@ -410,6 +421,11 @@ class ChatController extends ChangeNotifier {
         auto: auto,
       );
     }
+    final uploadedOfficeKinds = {
+      for (final attachment in attachments)
+        if (attachment.isOffice) ?officeKindOf(attachment.name),
+    };
+    final requestedOfficeKind = officeKindOf(artifactType ?? '');
     if (attachments.any((a) => a.isOffice)) {
       try {
         attachments = [
@@ -436,8 +452,8 @@ class ChatController extends ChangeNotifier {
     final serverAvailable = sync != null && sync.serverReady;
     AiMode? googleMode;
 
-    // Ultra Reasoning takes over plain and research turns on Luma AI; plan
-    // mode and file requests keep their own flow.
+    // Explicit file requests and Office uploads keep their editing tools
+    // instead of entering Ultra Reasoning's read-only workflow.
     final ultra =
         ultraReasoningActive(
           enabled: _settings.ultraReasoning,
@@ -445,6 +461,7 @@ class ChatController extends ChangeNotifier {
           providerId: providerId,
         ) &&
         artifactType == null &&
+        uploadedOfficeKinds.isEmpty &&
         (mode == AssistantComposeMode.chat ||
             mode == AssistantComposeMode.deepResearch);
     final effort = ultra
@@ -554,7 +571,9 @@ class ChatController extends ChangeNotifier {
         }
         if (AssistantWorkbench.toolNames.contains(name)) {
           final result = await workbench.execute(conversationId, name, input);
-          if (result['status'] == 'created') generated.add(result);
+          if (result['status'] == 'created') {
+            generated.add(Map.of(result)..remove('authoring_guidance'));
+          }
           return result;
         }
         if (name == AssistantArtifactStore.toolName) {
@@ -684,8 +703,12 @@ class ChatController extends ChangeNotifier {
             if (!planning && !usingLocalModel)
               'When a tool is needed, you may briefly tell the user what '
                   'you are about to do before calling it.',
-            if (artifactType != null &&
-                assistantOfficeArtifactTypes.contains(artifactType))
+            if (!planning && filesAllowed) ...[
+              officeAuthoringPrompt,
+              for (final kind in {...uploadedOfficeKinds, ?requestedOfficeKind})
+                officeFormatPrompt(kind),
+            ],
+            if (requestedOfficeKind != null)
               'Create a .$artifactType file for this request: start it with create_office_file, '
                   'then build it section by section with edit_office_file. '
                   'Report success only after the last edit succeeds.'

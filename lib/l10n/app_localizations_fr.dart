@@ -18781,6 +18781,18 @@ class LFr extends L {
   String get groceriesAddProducts => 'Ajouter des produits';
 
   @override
+  String get groceriesShareOnWhatsApp => 'Partager sur WhatsApp';
+
+  @override
+  String groceriesShareMarketOnWhatsApp(String market) {
+    return 'Partager $market sur WhatsApp';
+  }
+
+  @override
+  String get groceriesWhatsAppOpenFailed =>
+      'Impossible d’ouvrir WhatsApp. Vous pouvez copier la liste et la coller dans une discussion.';
+
+  @override
   String get groceriesNoItemsTitle => 'Aucun article pour l\'instant';
 
   @override

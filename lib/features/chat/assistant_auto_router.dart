@@ -216,6 +216,10 @@ AutoRoute routeAutoRequest(String text, AutoRouteContext context) {
 /// "export it as csv", "a json file with…"), so "summarise this pdf" or
 /// "answer in markdown" stay a chat.
 String? detectRequestedFileType(String lower) {
+  // An explicit output format wins over mentions of the input file.
+  for (final format in _fileFormats) {
+    if (format.outputPattern?.hasMatch(lower) ?? false) return format.type;
+  }
   for (final format in _fileFormats) {
     if (format.pattern.hasMatch(lower)) return format.type;
   }
@@ -238,20 +242,31 @@ RegExp _anyOf(List<String> words, [List<String> cjk = const []]) => RegExp(
 );
 
 class _FileFormat {
-  _FileFormat(this.type, String names, {bool afterPreposition = true})
-    : pattern = RegExp(
-        [
-          if (afterPreposition)
-            '$_start(?:as|to|into|als|naar|como|para|en)\\s+(?:a|an|een|un|une|una)?\\s*\\.?(?:$names)$_end',
-          '$_start(?:$names)[\\s-]+(?:file|document|bestand|fichier|archivo|documento|download)$_end',
-          '(?:$names)\\s*(?:文件|文档)',
-          '$_start(?:$_createVerbs)\\s+(?:\\S+\\s+){0,3}?\\.?(?:$names)$_end',
-          '(?:$_cjkCreateVerbs).{0,6}(?:$names)',
-        ].join('|'),
-        unicode: true,
-      );
+  _FileFormat(
+    this.type,
+    String names, {
+    bool afterPreposition = true,
+    bool matchFileMention = true,
+  }) : outputPattern = afterPreposition
+           ? RegExp(
+               '$_start(?:as|to|into|als|naar|como|para|en)\\s+(?:a|an|een|un|une|una)?\\s*\\.?(?:$names)$_end',
+               unicode: true,
+             )
+           : null,
+       pattern = RegExp(
+         [
+           if (matchFileMention) ...[
+             '$_start(?:$names)[\\s-]+(?:file|document|bestand|fichier|archivo|documento|download)$_end',
+             '(?:$names)\\s*(?:文件|文档)',
+           ],
+           '$_start(?:$_createVerbs)\\s+(?:\\S+\\s+){0,3}?\\.?(?:$names)$_end',
+           '(?:$_cjkCreateVerbs).{0,6}(?:$names)',
+         ].join('|'),
+         unicode: true,
+       );
 
   final String type;
+  final RegExp? outputPattern;
   final RegExp pattern;
 }
 
@@ -261,9 +276,14 @@ class _FileFormat {
 final _fileFormats = [
   _FileFormat('pdf', 'pdf'),
   _FileFormat(
-    'csv',
-    'csv|spreadsheet|excel(?:\\s+sheet)?|xlsx|rekenblad|tableur|hoja de cálculo',
+    'docx',
+    'docx|microsoft\\s+word|word[\\s-]*(?:document|doc|file|bestand|fichier)|'
+        'document\\s+word|documento\\s+word',
+    matchFileMention: false,
   ),
+  _FileFormat('pptx', 'pptx|powerpoint', matchFileMention: false),
+  _FileFormat('xlsx', 'xlsx|excel', matchFileMention: false),
+  _FileFormat('csv', 'csv|spreadsheet|rekenblad|tableur|hoja de cálculo'),
   _FileFormat('json', 'json'),
   _FileFormat('svg', 'svg|vector\\s+(?:image|graphic|logo|icon|illustration)'),
   _FileFormat(

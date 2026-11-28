@@ -17673,6 +17673,17 @@ class LZh extends L {
   String get groceriesAddProducts => '添加商品';
 
   @override
+  String get groceriesShareOnWhatsApp => '通过 WhatsApp 分享';
+
+  @override
+  String groceriesShareMarketOnWhatsApp(String market) {
+    return '通过 WhatsApp 分享$market的清单';
+  }
+
+  @override
+  String get groceriesWhatsAppOpenFailed => '无法打开 WhatsApp。你可以复制清单并将其粘贴到聊天中。';
+
+  @override
   String get groceriesNoItemsTitle => '还没有商品';
 
   @override

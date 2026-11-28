@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../app/widgets.dart';
 import '../../../../l10n/app_localizations.dart';
@@ -23,10 +25,28 @@ class GroceryListDetailPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final repo = GroceriesScope.of(context);
+    final itemsStream = repo.watchItems(listId);
+
+    return StreamBuilder<String?>(
+      stream: repo.watchListName(listId),
+      builder: (context, snapshot) => _buildContent(
+        context,
+        repo,
+        itemsStream,
+        snapshot.data ?? L.of(context).groceriesListFallbackTitle,
+      ),
+    );
+  }
+
+  Widget _buildContent(
+    BuildContext context,
+    GroceriesRepository repo,
+    Stream<List<GroceryListItemRecord>> itemsStream,
+    String name,
+  ) {
     final luma = context.luma;
     final t = L.of(context);
-    final repo = GroceriesScope.of(context);
-
     return Column(
       children: [
         Padding(
@@ -39,17 +59,14 @@ class GroceryListDetailPage extends StatelessWidget {
                 onPressed: onBack,
               ),
               Expanded(
-                child: StreamData<String?>(
-                  stream: repo.watchListName(listId),
-                  builder: (context, name) => Text(
-                    name ?? t.groceriesListFallbackTitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: luma.textPrimary,
-                      fontSize: 19,
-                      fontWeight: FontWeight.w800,
-                    ),
+                child: Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: luma.textPrimary,
+                    fontSize: 19,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
               ),
@@ -64,7 +81,7 @@ class GroceryListDetailPage extends StatelessWidget {
         ),
         Expanded(
           child: StreamData<List<GroceryListItemRecord>>(
-            stream: repo.watchItems(listId),
+            stream: itemsStream,
             builder: (context, items) {
               if (items.isEmpty) {
                 return Center(
@@ -82,14 +99,29 @@ class GroceryListDetailPage extends StatelessWidget {
               }
 
               final groups = _groupByMarket(items);
-              final grandTotal =
-                  items.fold<double>(0, (sum, i) => sum + i.lineTotal);
+              final grandTotal = items.fold<double>(
+                0,
+                (sum, i) => sum + i.lineTotal,
+              );
 
               return ListView(
                 padding: const EdgeInsets.fromLTRB(24, 4, 24, 24),
                 children: [
+                  Align(
+                    alignment: AlignmentDirectional.centerEnd,
+                    child: TextButton.icon(
+                      icon: const Icon(Icons.share_outlined),
+                      label: Text(t.groceriesShareOnWhatsApp),
+                      onPressed: () => _shareOnWhatsApp(context, name, groups),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
                   for (final group in groups) ...[
-                    _MarketSection(group: group, repo: repo),
+                    _MarketSection(
+                      group: group,
+                      repo: repo,
+                      onShare: () => _shareOnWhatsApp(context, name, [group]),
+                    ),
                     const SizedBox(height: 16),
                   ],
                   LumaCard(
@@ -137,7 +169,10 @@ List<_MarketGroup> _groupByMarket(List<GroceryListItemRecord> items) {
   final map = <String, _MarketGroup>{};
   for (final item in items) {
     map
-        .putIfAbsent(item.market, () => _MarketGroup(item.market, item.marketName, []))
+        .putIfAbsent(
+          item.market,
+          () => _MarketGroup(item.market, item.marketName, []),
+        )
         .items
         .add(item);
   }
@@ -146,8 +181,46 @@ List<_MarketGroup> _groupByMarket(List<GroceryListItemRecord> items) {
   return groups;
 }
 
+Future<void> _shareOnWhatsApp(
+  BuildContext context,
+  String listName,
+  List<_MarketGroup> groups,
+) async {
+  final t = L.of(context);
+  final message = [
+    listName,
+    for (final group in groups)
+      [
+        '*${group.marketName}*',
+        for (final item in group.items) '- ${item.quantity} × ${item.name}',
+      ].join('\n'),
+  ].join('\n\n');
+  final url = Uri(
+    scheme: 'https',
+    host: 'wa.me',
+    path: '/',
+    query: 'text=${Uri.encodeComponent(message)}',
+  );
+  try {
+    if (await launchUrl(url, mode: LaunchMode.externalApplication)) return;
+  } catch (_) {}
+
+  if (!context.mounted) return;
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(t.groceriesWhatsAppOpenFailed),
+      action: SnackBarAction(
+        label: t.commonCopy,
+        onPressed: () => Clipboard.setData(ClipboardData(text: message)),
+      ),
+    ),
+  );
+}
+
 Map<String, List<GroceryListItemRecord>> _groupByCategory(
-    List<GroceryListItemRecord> items, String otherLabel) {
+  List<GroceryListItemRecord> items,
+  String otherLabel,
+) {
   final map = <String, List<GroceryListItemRecord>>{};
   for (final item in items) {
     final key = (item.category != null && item.category!.trim().isNotEmpty)
@@ -159,10 +232,15 @@ Map<String, List<GroceryListItemRecord>> _groupByCategory(
 }
 
 class _MarketSection extends StatelessWidget {
-  const _MarketSection({required this.group, required this.repo});
+  const _MarketSection({
+    required this.group,
+    required this.repo,
+    required this.onShare,
+  });
 
   final _MarketGroup group;
   final GroceriesRepository repo;
+  final VoidCallback onShare;
 
   @override
   Widget build(BuildContext context) {
@@ -185,18 +263,23 @@ class _MarketSection extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: Text(
-                  group.marketName,
-                  style: TextStyle(
-                    color: luma.textPrimary,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      group.marketName,
+                      style: TextStyle(
+                        color: luma.textPrimary,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    Text(
+                      t.groceriesItemCount(group.items.length),
+                      style: TextStyle(color: luma.textMuted, fontSize: 12),
+                    ),
+                  ],
                 ),
-              ),
-              Text(
-                t.groceriesItemCount(group.items.length),
-                style: TextStyle(color: luma.textMuted, fontSize: 12),
               ),
               const SizedBox(width: 10),
               Text(
@@ -206,6 +289,11 @@ class _MarketSection extends StatelessWidget {
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
                 ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.share_outlined),
+                tooltip: t.groceriesShareMarketOnWhatsApp(group.marketName),
+                onPressed: onShare,
               ),
             ],
           ),
@@ -316,8 +404,11 @@ class _ImageFallback extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       color: luma.background,
-      child: Icon(Icons.image_not_supported_outlined,
-          size: 16, color: luma.textMuted),
+      child: Icon(
+        Icons.image_not_supported_outlined,
+        size: 16,
+        color: luma.textMuted,
+      ),
     );
   }
 }

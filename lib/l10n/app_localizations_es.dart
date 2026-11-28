@@ -18730,6 +18730,18 @@ class LEs extends L {
   String get groceriesAddProducts => 'Añadir productos';
 
   @override
+  String get groceriesShareOnWhatsApp => 'Compartir por WhatsApp';
+
+  @override
+  String groceriesShareMarketOnWhatsApp(String market) {
+    return 'Compartir $market por WhatsApp';
+  }
+
+  @override
+  String get groceriesWhatsAppOpenFailed =>
+      'No se pudo abrir WhatsApp. Puedes copiar la lista y pegarla en un chat.';
+
+  @override
   String get groceriesNoItemsTitle => 'Aún no hay artículos';
 
   @override

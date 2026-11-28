@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import '../assistant_files.dart';
 import '../data/chat_repository.dart';
 import '../providers/ai_client.dart';
+import 'office_authoring_prompt.dart';
 import 'office_document.dart';
 import 'office_export.dart';
 import 'office_import.dart';
@@ -181,7 +182,8 @@ class AssistantWorkbench extends ChangeNotifier {
     const AiToolDefinition(
       name: editTool,
       description:
-          'Change a file made with create_office_file. Word: content is Markdown blocks '
+          'Change a new or existing Office file. Read the affected parts of an existing '
+          'file first. Word: content is Markdown blocks '
           '(# headings, paragraphs, - or 1. lists indented two spaces per level, > quotes, '
           '| pipe | tables |, --- page break, **bold**, *italic*). PowerPoint: content is '
           'slides separated by --- lines, each with "# Title", an optional "## Subtitle" and '
@@ -287,6 +289,7 @@ class AssistantWorkbench extends ChangeNotifier {
       'name': name,
       'path': session.file.path,
       'mimeType': officeMimeTypes[kind],
+      'authoring_guidance': officeFormatPrompt(kind),
     };
   }
 
@@ -488,6 +491,7 @@ class AssistantWorkbench extends ChangeNotifier {
     }
     final session = await _sessionFor(input['file_id']);
     final document = session.document;
+    final authoringGuidance = officeFormatPrompt(document.kind);
     final index = (input['index'] as num?)?.toInt();
     if (index == null) {
       _show(
@@ -500,6 +504,7 @@ class AssistantWorkbench extends ChangeNotifier {
         'type': document.kind.name,
         'title': document.title,
         'outline': document.outline(),
+        'authoring_guidance': authoringGuidance,
       };
     }
     if (index < 0 || index >= document.partCount) {
@@ -535,6 +540,7 @@ class AssistantWorkbench extends ChangeNotifier {
       return {
         'status': 'ok',
         'sheet': sheet.name,
+        'authoring_guidance': authoringGuidance,
         'rows': [
           for (var r = from.$1; r <= to.$1 && r < from.$1 + 200; r++)
             {
@@ -559,6 +565,7 @@ class AssistantWorkbench extends ChangeNotifier {
     ].join('\n\n');
     return {
       'status': 'ok',
+      'authoring_guidance': authoringGuidance,
       'content': text.length > 20000 ? '${text.substring(0, 20000)}…' : text,
     };
   }

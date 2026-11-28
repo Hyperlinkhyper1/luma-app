@@ -51,6 +51,7 @@ class _Tools implements AiToolRegistry {
 /// Builds a report the way a model would: create, then two edits.
 class _WritingClient extends AiClient {
   List<String> toolNames = const [];
+  String lastSystemPrompt = '';
   final activeDuringEdits = <bool>[];
   AssistantWorkbench? workbench;
 
@@ -66,6 +67,7 @@ class _WritingClient extends AiClient {
     AiTextProgress? onCommentary,
   }) async {
     toolNames = [for (final t in tools) t.name];
+    lastSystemPrompt = systemPrompt;
     if (!systemPrompt.contains('create_office_file, then build it')) {
       return const AiChatResult(text: 'No file asked for');
     }
@@ -121,6 +123,7 @@ void main() {
           {'type': 'docx', 'name': '../../Bestuursnotitie 2026.docx'},
         );
         expect(result['status'], 'created');
+        expect(result['authoring_guidance'], contains('Markdown headings'));
         final path = result['path'] as String;
         expect(
           p(path),
@@ -191,6 +194,7 @@ void main() {
         {'file_id': id},
       );
       expect((outline['outline'] as List).length, 2);
+      expect(outline['authoring_guidance'], contains('one message'));
       expect(
         workbench.focus?.start,
         -1,
@@ -201,6 +205,7 @@ void main() {
         'index': 1,
       });
       expect(part['content'], '[1]\n# Punten\n- een');
+      expect(part['authoring_guidance'], outline['authoring_guidance']);
     });
 
     test(
@@ -233,6 +238,7 @@ void main() {
           AssistantWorkbench.readTool,
           {'file_id': id, 'index': 0, 'range': 'B2:B3'},
         );
+        expect(read['authoring_guidance'], contains('exact ranges'));
         expect(read['rows'], [
           {
             'row': 2,
@@ -361,6 +367,9 @@ void main() {
       );
 
       expect(client.toolNames, containsAll(AssistantWorkbench.toolNames));
+      expect(client.lastSystemPrompt, contains('check the resulting outline'));
+      expect(client.lastSystemPrompt, contains('Markdown headings'));
+      expect(client.lastSystemPrompt, isNot(contains('Excel workbook\n-')));
       expect(client.activeDuringEdits, [true]);
       expect(workbench.modelActive, isFalse);
       expect(workbench.session?.document.blocks.length, 4);
@@ -369,6 +378,7 @@ void main() {
       final artifacts =
           (jsonDecode(reply.metadataJson!) as Map)['artifacts'] as List;
       expect((artifacts.single as Map)['name'], 'notitie.docx');
+      expect(artifacts.single, isNot(contains('authoring_guidance')));
       expect(
         layoutRebuilds,
         greaterThanOrEqualTo(3),

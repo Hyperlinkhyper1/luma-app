@@ -67,6 +67,7 @@ class _Tools implements AiToolRegistry {
 /// Reads the upload's file_id from the prompt and rewrites block 1.
 class _EditingClient extends AiClient {
   String lastUserTurn = '';
+  String lastSystemPrompt = '';
   @override
   Future<AiChatResult> chat({
     required String apiKey,
@@ -79,6 +80,7 @@ class _EditingClient extends AiClient {
     AiTextProgress? onCommentary,
   }) async {
     lastUserTurn = history.last.text;
+    lastSystemPrompt = systemPrompt;
     final id = int.parse(
       RegExp(r'file_id (\d+)').firstMatch(lastUserTurn)!.group(1)!,
     );
@@ -365,7 +367,9 @@ void main() {
         final settings = await SettingsController.load();
         addTearDown(settings.dispose);
         settings.setAiProviderId('google');
+        settings.setAiMode('auto');
         settings.setAdminPlan('nova');
+        settings.setUltraReasoning(true);
         final client = _EditingClient();
         final controller = ChatController(
           repository: repo,
@@ -378,7 +382,7 @@ void main() {
         final chat = await repo.createConversation();
         await controller.sendMessage(
           chat,
-          'Herschrijf de tweede alinea',
+          'Maak dit Word document duidelijker door de tweede alinea te herschrijven',
           attachments: [await AssistantAttachment.fromFile(await sampleDocx())],
         );
 
@@ -392,6 +396,9 @@ void main() {
         );
         expect(stored.text, contains('file_id'));
         expect(client.lastUserTurn, contains('Oude tekst.'));
+        expect(client.lastSystemPrompt, contains('Make targeted changes'));
+        expect(client.lastSystemPrompt, contains('Markdown headings'));
+        expect(client.lastSystemPrompt, isNot(contains('Create a .docx file')));
         final copy = (await repo.watchArtifacts().first).single;
         final xml = utf8.decode(
           ZipDecoder()

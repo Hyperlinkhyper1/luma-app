@@ -150,6 +150,11 @@ void main() {
         'make me a pdf with my weekly schedule': 'pdf',
         'export this table as csv': 'csv',
         'create a spreadsheet of my expenses': 'csv',
+        'make a Word document with my notes': 'docx',
+        'maak een PowerPoint over onze resultaten': 'pptx',
+        'create an Excel workbook for my expenses': 'xlsx',
+        'export this Excel sheet as CSV': 'csv',
+        'convert this CSV file to Excel': 'xlsx',
         'generate a json file with 10 users': 'json',
         'make an svg logo for my bakery': 'svg',
         'build a landing page for my app': 'html',
@@ -169,6 +174,9 @@ void main() {
         'summarize this pdf',
         'answer in markdown please',
         'what is json?',
+        'edit this Excel file',
+        'how do I open a Word document?',
+        'make a word list',
         'what is the dot product of two vectors',
       ]) {
         expect(route(text).kind, isNot(AutoRouteKind.file), reason: text);

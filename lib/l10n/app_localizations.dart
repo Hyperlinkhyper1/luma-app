@@ -30417,6 +30417,24 @@ abstract class L {
   /// **'Add products'**
   String get groceriesAddProducts;
 
+  /// No description provided for @groceriesShareOnWhatsApp.
+  ///
+  /// In en, this message translates to:
+  /// **'Share on WhatsApp'**
+  String get groceriesShareOnWhatsApp;
+
+  /// No description provided for @groceriesShareMarketOnWhatsApp.
+  ///
+  /// In en, this message translates to:
+  /// **'Share {market} on WhatsApp'**
+  String groceriesShareMarketOnWhatsApp(String market);
+
+  /// No description provided for @groceriesWhatsAppOpenFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open WhatsApp. You can copy the list and paste it into a chat.'**
+  String get groceriesWhatsAppOpenFailed;
+
   /// No description provided for @groceriesNoItemsTitle.
   ///
   /// In en, this message translates to:

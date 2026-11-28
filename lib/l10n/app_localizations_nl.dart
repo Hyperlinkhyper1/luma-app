@@ -18709,6 +18709,18 @@ class LNl extends L {
   String get groceriesAddProducts => 'Producten toevoegen';
 
   @override
+  String get groceriesShareOnWhatsApp => 'Delen via WhatsApp';
+
+  @override
+  String groceriesShareMarketOnWhatsApp(String market) {
+    return '$market delen via WhatsApp';
+  }
+
+  @override
+  String get groceriesWhatsAppOpenFailed =>
+      'WhatsApp kon niet worden geopend. Je kunt de lijst kopiëren en in een chat plakken.';
+
+  @override
   String get groceriesNoItemsTitle => 'Nog geen artikelen';
 
   @override
